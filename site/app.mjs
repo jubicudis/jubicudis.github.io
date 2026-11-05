@@ -213,7 +213,7 @@ async function createWorld(){
     }
     drawn=s.generation;
     const current=state.snapshot();
-    if(current.generation===s.generation&&!current.paused&&current.outputs.spatial==='pending'&&!sourceStudies[current.topic])
+    if(current.generation===s.generation&&!current.paused&&current.outputs.spatial==='pending'&&!current.topic)
       state.observe(current.generation,'spatial','confirmed');
     return true;
   }};
@@ -321,7 +321,7 @@ function renderUI(s){
    const rect=$('speech').getBoundingClientRect();
    if(rect.width>0&&rect.height>0&&$('speech').textContent.trim())state.observe(generation,'caption','confirmed');
   }
-  if(current.outputs.spatial==='pending'&&drawn===generation&&!sourceStudies[current.topic]){
+  if(current.outputs.spatial==='pending'&&drawn===generation&&!current.topic){
    const rect=canvas.getBoundingClientRect();
    if(rect.width>0&&rect.height>0)state.observe(generation,'spatial','confirmed');
   }
