@@ -1,6 +1,7 @@
 import {subjects,subjectById,cues} from './content.mjs';
 import {createPresentation} from './state.mjs';
 import {explanationForCue} from './explanations.mjs';
+import {attachPresentationMedia} from './presentation-media.mjs';
 
 // A browser presentation, not the TNOS OS. Every visual and caption
 // consumes the same qualified presentation state. No fabricated machine inputs.
@@ -315,7 +316,7 @@ function renderUI(s){
    const rect=$('speech').getBoundingClientRect();
    if(rect.width>0&&rect.height>0&&$('speech').textContent.trim())state.observe(generation,'caption','confirmed');
   }
-  if(current.outputs.spatial==='pending'&&drawn===generation){
+  if(current.outputs.spatial==='pending'&&drawn===generation&&!sourceStudies[current.topic]){
    const rect=canvas.getBoundingClientRect();
    if(rect.width>0&&rect.height>0)state.observe(generation,'spatial','confirmed');
   }
@@ -366,6 +367,7 @@ document.addEventListener('keydown',e=>{
 });
 const current=state.snapshot();
 renderUI(current);size();createWorld();
+attachPresentationMedia({state,cues,explanationForCue});
 Object.defineProperty(window,'__tnosPresentation',{value:Object.freeze({
  snapshot:()=>state.snapshot(),scene:()=>currentGraph(state.snapshot()).title,
  action:event=>state.dispatch(event)
