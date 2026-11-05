@@ -1,0 +1,29 @@
+name: Validate TNOS presentation behavior
+on:
+  push:
+    branches: [complete-paper-grounded-presentation-20261105]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  presentation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test state authority and resumable interaction
+        run: node --test tests/presentation.test.mjs
+      - name: Install browser test driver
+        run: npm install --no-save --no-audit --no-fund playwright@1.56.1
+      - name: Test actual presentation in Chrome
+        run: |
+          python3 -m http.server 8000 >/tmp/tnos-pages-test.log 2>&1 &
+          node tests/browser.e2e.mjs
+      - name: Upload study snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-grounded-presentation-review
+          path: review-*.png
+          if-no-files-found: ignore

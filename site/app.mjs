@@ -1,5 +1,7 @@
 import {subjects,subjectById,cues} from './content.mjs';
 import {createPresentation} from './state.mjs';
+import {explanationForCue} from './explanations.mjs';
+import {attachPresentationMedia} from './presentation-media.mjs';
 
 // A browser presentation, not the TNOS OS. Every visual and caption
 // consumes the same qualified presentation state. No fabricated machine inputs.
@@ -38,6 +40,15 @@ const focusId={
  stages:3,external:7,workbench:1,observation:4,mcp:1,progress:0,support:4
 };
 const currentGraph=s=>concepts[s.mode==='arrival'?'arrival':s.mode==='explore'&&!s.topic?'chooser':s.topic]||concepts.arrival;
+const sourceStudies={
+ origin:{},experience:{},workbench:{},mcp:{},progress:{},
+ architecture:{desktop:'./site/studies/architecture-desktop.svg',mobile:'./site/studies/architecture-mobile.svg',
+   title:'Two reference frames, metric collection and contextual mathematics',
+   alt:'TNOS design study showing hardware acquisition and metrics in physical frame 01, a mathematical TranquilSpeak relationship, and the computing runtime as frame 02.'},
+ cognition:{desktop:'./site/studies/cognition-desktop.svg',mobile:'./site/studies/cognition-mobile.svg',
+   title:'Foundational state and continuing nine-stage cognition',
+   alt:'TNOS design study of stages 1 through 3 as foundation, stages 4 through 9 as cognition, and stage nine feedback to stage four.'}
+};
 function size(){
  const rect=canvas.getBoundingClientRect();
  w=Math.max(1,rect.width);h=Math.max(1,rect.height);
@@ -87,8 +98,12 @@ function draw2D(s,g){
  }
  g.edges.forEach(([a,b])=>{
   const p=pt(g.nodes[a]),q=pt(g.nodes[b]);
-  ctx.strokeStyle=g.tentative?'#79c6e555':'#83d8c5aa';
-  ctx.lineWidth=1.5;ctx.setLineDash(g.tentative?[5,7]:[]);
+  const admitted=s.outputs.caption==='confirmed'&&s.outputs.spatial==='confirmed';
+  const currentNode=focus(s);
+  const established=a<=currentNode&&b<=currentNode&&s.topic!==null;
+  ctx.strokeStyle=g.tentative?'#79c6e555':established&&admitted?'#8feee7':'#83d8c569';
+  ctx.lineWidth=established&&admitted?3.2:1.3;
+  ctx.setLineDash(g.tentative||!admitted?[5,7]:[]);
   ctx.beginPath();ctx.moveTo(...p);
   if(s.topic==='cognition'&&a===8&&b===3)
    ctx.bezierCurveTo(p[0],p[1]+66,q[0]-78,q[1]-140,...q);
@@ -106,7 +121,8 @@ function draw2D(s,g){
  g.nodes.forEach((node,i)=>{
   const [x,y]=pt(node),c=color[node[2]]||color.math,hex='#'+c.toString(16).padStart(6,'0');
   ctx.strokeStyle=hex;ctx.fillStyle=hex;
-  ctx.globalAlpha=i===selected?.95:.48;
+  const established=s.topic!==null&&i<=selected;
+  ctx.globalAlpha=i===selected?.95:established?.62:.24;
   ctx.lineWidth=i===selected?3:1.5;
   ctx.beginPath();ctx.arc(x,y,i===selected?20:11,0,Math.PI*2);ctx.stroke();
   ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);ctx.fill();
@@ -119,7 +135,8 @@ async function createWorld(){
   const renderer=new T.WebGLRenderer({alpha:true,antialias:true,powerPreference:'low-power'});
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
   renderer.domElement.setAttribute('aria-hidden','true');
-  Object.assign(renderer.domElement.style,{position:'absolute',inset:'0',width:'100%',height:'100%',pointerEvents:'none',zIndex:'1'});
+  renderer.domElement.classList.add('three-stage');
+  Object.assign(renderer.domElement.style,{position:'absolute',top:'0',left:'0',pointerEvents:'none',zIndex:'1'});
   canvas.parentElement.insertBefore(renderer.domElement,document.querySelector('.stage-overlay'));
   const scene=new T.Scene(),camera=new T.OrthographicCamera(-5,5,3,-3,.1,100);
   const group=new T.Group();scene.add(group);
@@ -164,6 +181,9 @@ async function createWorld(){
   }
   world={resize(){
     renderer.setSize(w,h,false);
+    // Match the real stage, not the growing mobile document.
+    renderer.domElement.style.width=w+'px';
+    renderer.domElement.style.height=h+'px';
     const ratio=w/h,span=Math.max(5.1,4.5/ratio);
     camera.left=-span*ratio/2;camera.right=span*ratio/2;
     camera.top=span/2;camera.bottom=-span/2;
@@ -193,7 +213,7 @@ async function createWorld(){
     }
     drawn=s.generation;
     const current=state.snapshot();
-    if(current.generation===s.generation&&!current.paused&&current.outputs.spatial==='pending')
+    if(current.generation===s.generation&&!current.paused&&current.outputs.spatial==='pending'&&!current.topic)
       state.observe(current.generation,'spatial','confirmed');
     return true;
   }};
@@ -202,6 +222,7 @@ async function createWorld(){
 }
 function drawScene(s){
  const g=currentGraph(s);
+ $('experience').dataset.scene=s.topic||s.mode;
  drawn=-1;
  try{
    draw2D(s,g);
@@ -237,7 +258,7 @@ function placeSubjectButtons(){
   b.type='button';b.dataset.subjectId=subject.id;
   // Subjects stay in the shared stage without leaking outside the phone width.
   const margin=w<850?60:90;
-  b.style.left=(w<850?Math.max(margin,Math.min(w-margin,x)):x)+'px';
+  b.style.left=Math.max(margin,Math.min(w-margin,x))+'px';
   b.style.top=(y+36)+'px';
   b.textContent=subject.name;
   b.addEventListener('click',()=>state.dispatch({type:'SELECT_SUBJECT',id:subject.id}));
@@ -300,7 +321,7 @@ function renderUI(s){
    const rect=$('speech').getBoundingClientRect();
    if(rect.width>0&&rect.height>0&&$('speech').textContent.trim())state.observe(generation,'caption','confirmed');
   }
-  if(current.outputs.spatial==='pending'&&drawn===generation){
+  if(current.outputs.spatial==='pending'&&drawn===generation&&!current.topic){
    const rect=canvas.getBoundingClientRect();
    if(rect.width>0&&rect.height>0)state.observe(generation,'spatial','confirmed');
   }
@@ -351,6 +372,7 @@ document.addEventListener('keydown',e=>{
 });
 const current=state.snapshot();
 renderUI(current);size();createWorld();
+attachPresentationMedia({state,cues,explanationForCue});
 Object.defineProperty(window,'__tnosPresentation',{value:Object.freeze({
  snapshot:()=>state.snapshot(),scene:()=>currentGraph(state.snapshot()).title,
  action:event=>state.dispatch(event)

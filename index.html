@@ -19,7 +19,12 @@
     <div class="stage-overlay" aria-hidden="true"></div>
     <div id="labels" class="stage-labels" aria-hidden="true"></div>
     <div id="diagram-key" class="diagram-key" aria-hidden="true"><span id="diagram-name"></span><span id="diagram-relation"></span></div>
-    <div id="subject-choices" class="subject-choices" aria-label="Choose a subject to explore" hidden></div>
+    <figure id="study-display" class="study-display" hidden aria-label="TNOS architectural design study">
+      <picture><source id="study-mobile" media="(max-width:850px)" srcset="./site/studies/architecture-mobile.svg">
+        <img id="study-image" src="./site/studies/architecture-desktop.svg" alt="The physical machine and runtime are two reference frames related by TranquilSpeak and mathematics; conceptual design, not native execution."></picture>
+      <figcaption><span id="study-caption">DESIGN STUDY · NOT NATIVE EXECUTION</span>
+        <button id="inspect-study" type="button">EXAMINE THE ARCHITECTURE ↗</button></figcaption>
+    </figure>
     <header class="masthead">
       <a href="/" id="restart" aria-label="Return to the beginning of the TNOS presentation"><span class="mark">TNOS</span><span class="submark">TRANQUILITY NEURO OPERATING SYSTEM</span></a>
       <div class="masthead-right"><span class="preview-note">WORKING PRESENTATION · INVENTOR REVIEW PENDING</span><span class="scene-indicator" id="scene-label">INTRODUCTION</span></div>
@@ -28,10 +33,31 @@
       <span class="signal"><i></i><i></i><i></i><i></i><i></i></span>
       <span class="presence-name">VIOLET</span><span class="presence-purpose">TNOS / PRESENTATION INTERFACE</span>
     </div>
+    <div id="violet-presenter" class="violet-presenter" data-mode="arrival" data-phase="ready" role="img"
+       aria-label="Violet, a nonhuman animated computer-presenter concept whose movement follows the talk state">
+      <svg viewBox="0 0 220 310" focusable="false" aria-hidden="true">
+        <defs><linearGradient id="violet-luminance" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#86e4ea"/><stop offset=".53" stop-color="#c6a8f0"/><stop offset="1" stop-color="#7f90e2"/>
+        </linearGradient></defs>
+        <g class="violet-figure">
+          <path class="violet-outline" d="M49 24 C53 91 67 160 109 233 C149 162 164 90 170 24"/>
+          <path class="violet-outline violet-outline-secondary" d="M26 39 C39 139 68 211 109 266 C150 211 179 139 194 39"/>
+          <path class="violet-core" d="M110 29 L110 224"/>
+          <path class="violet-left" d="M41 107 Q72 132 109 160"/>
+          <path class="violet-right" d="M179 107 Q146 132 110 160"/>
+          <path class="violet-pointer" d="M109 160 Q173 132 215 88"/>
+          <circle class="violet-center" cx="109" cy="159" r="10"/>
+          <circle class="violet-head" cx="109" cy="27" r="8"/>
+          <circle class="violet-ground" cx="109" cy="283" r="3"/>
+        </g>
+      </svg>
+      <span id="violet-condition" class="violet-condition">PRESENTER READY</span>
+    </div>
     <section id="presentation" class="presentation" tabindex="-1" aria-label="Violet's presentation">
       <p class="eyebrow" id="phase">THE INTRODUCTION</p>
       <h1 id="headline">An invention with a different foundation.</h1>
       <p class="speech" id="speech" aria-live="polite" aria-atomic="true">I'm Violet. This presentation introduces Jubi's Tranquility Neuro Operating System, why it began, what is being built, and what remains to be demonstrated.</p>
+      <p id="deep-speech" class="deep-speech" hidden></p>
       <p class="source-line" id="source-line">Working TNOS Sponsors introduction · Part I · Not a demonstration of the native operating system</p>
       <div class="actions" id="actions">
         <button type="button" id="advance" class="primary">Begin the introduction <span aria-hidden="true">↗</span></button>
@@ -40,11 +66,18 @@
         <button type="button" id="pause" class="secondary" hidden>Pause</button>
         <button type="button" id="voice" class="secondary" hidden>Hear Violet</button>
         <button type="button" id="retry" class="secondary" hidden>Retry presentation</button>
+        <button type="button" id="depth" class="secondary" aria-expanded="false" hidden>Explain further</button>
       </div>
     </section>
+    <div id="subject-choices" class="subject-choices" aria-label="Choose a subject to explore" hidden></div>
     <div class="evidence" aria-live="polite">
       <span id="evidence-type">SOURCE / DESIGN</span>
       <span id="evidence-status">WEBSITE VISUALIZATION · NOT NATIVE EXECUTION</span>
+      <div class="propagation" id="propagation" aria-label="Page presentation evidence, not TNOS native cognition">
+        <span id="prop-requested">CUE REQUESTED</span><i aria-hidden="true">→</i>
+        <span id="prop-caption">CAPTION PENDING</span><i aria-hidden="true">→</i>
+        <span id="prop-spatial">VISUAL PENDING</span>
+      </div>
     </div>
     <footer class="lower">
       <button id="back" type="button" aria-label="Previous passage" hidden>← PREVIOUS</button>
@@ -53,6 +86,16 @@
       <a class="sponsor-link" href="https://github.com/sponsors/jubicudis" target="_blank" rel="noopener noreferrer">GITHUB SPONSORS <span aria-hidden="true">↗</span></a>
       <button type="button" id="motion" aria-pressed="true">MOTION / ON</button>
     </footer>
+    <dialog id="study-dialog" class="study-dialog" aria-labelledby="study-dialog-heading">
+      <header class="study-dialog-top"><h2 id="study-dialog-heading">TNOS architectural design study</h2>
+        <button id="close-study" type="button">CLOSE ×</button></header>
+      <p id="study-explanation">This is a source-based design explanation, not a complete native execution demonstration.</p>
+      <div class="study-image-frame">
+        <picture><source id="study-dialog-mobile" media="(max-width:850px)" srcset="./site/studies/architecture-mobile.svg">
+          <img id="study-dialog-image" src="./site/studies/architecture-desktop.svg" alt="Detailed TNOS architectural relationship study">
+        </picture>
+      </div>
+    </dialog>
     <div id="readable" class="accessible-note">The visuals are conceptual explanations of TNOS architecture from the working sponsorship introduction. They are not actual hardware measurements, native cognition, or a live AI.</div>
     <noscript><section class="nojs"><h1>Tranquility Neuro Operating System</h1><p>A different foundation for intelligent computing. This interactive presentation requires JavaScript. The native TNOS project is under development.</p><a href="https://github.com/sponsors/jubicudis">Support TNOS on GitHub Sponsors</a></section></noscript>
   </main>

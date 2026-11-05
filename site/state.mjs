@@ -5,7 +5,7 @@
 import {cues,cuesForSubject,subjectById} from './content.mjs';
 const copy = value => structuredClone(value);
 export function createPresentation() {
-  let s={mode:'arrival',position:-1,topic:null,returnPoint:null,paused:false,finished:false,
+  let s={mode:'arrival',position:-1,topic:null,returnPoint:null,paused:false,finished:false,depth:'overview',
     generation:0,outputs:{},qualified:false,interaction:'arrived',visited:[],history:[]};
   const listeners=new Set();
   const snap=()=>copy(s);
@@ -38,10 +38,10 @@ export function createPresentation() {
           s.mode='explore';s.finished=true;s.returnPoint=null;s.topic=null;resetOutputs();s.outputs={};
           return emit('ENTER_EXPLORATION','guided presentation completed');
         }
-        return show(s.position+1,'continued guided presentation');
+        s.depth='overview';return show(s.position+1,'continued guided presentation');
       case 'PREVIOUS':
         if(s.mode!=='guided'||s.position<=0)return {accepted:false,state:snap()};
-        return show(s.position-1,'returned to previous passage');
+        s.depth='overview';return show(s.position-1,'returned to previous passage');
       case 'PAUSE':
         if(s.mode!=='guided'||s.paused)return {accepted:false,state:snap()};
         s.paused=true;return emit('PAUSED','presentation paused at existing generation');
@@ -49,14 +49,14 @@ export function createPresentation() {
         if(s.mode!=='guided'||!s.paused)return {accepted:false,state:snap()};
         s.paused=false;return emit('RESUMED','presentation resumed at existing generation');
       case 'EXPLORE':
-        if(s.mode==='guided')s.returnPoint={position:s.position,paused:s.paused};
+        if(s.mode==='guided')s.returnPoint={position:s.position,paused:s.paused,depth:s.depth};
         if(s.mode==='arrival')s.returnPoint=null;
-        s.mode='explore';s.paused=false;s.topic=null;resetOutputs();s.outputs={};
+        s.mode='explore';s.paused=false;s.topic=null;s.depth='overview';resetOutputs();s.outputs={};
         s.interaction='visitor chose exploration';return emit('ENTER_EXPLORATION','subject chooser');
       case 'SELECT_SUBJECT':
         if(!subjectById.has(event.id))return {accepted:false,state:snap()};
         if(s.mode==='guided')s.returnPoint={position:s.position,paused:s.paused};
-        s.mode='explore';s.paused=false;s.topic=event.id;
+        s.mode='explore';s.paused=false;s.topic=event.id;s.depth='overview';
         s.position=cues.indexOf(cuesForSubject(event.id)[0]);
         if(!s.visited.includes(event.id))s.visited.push(event.id);
         resetOutputs();s.interaction='visitor selected '+event.id;
@@ -69,19 +69,27 @@ export function createPresentation() {
           s.topic=null;resetOutputs();s.outputs={};
           return emit('ENTER_EXPLORATION','returned to subject selection');
         }
-        return show(cues.indexOf(relevant[current+1]),'continued contextual exploration');
+        s.depth='overview';return show(cues.indexOf(relevant[current+1]),'continued contextual exploration');
       }
       case 'EXPLORE_PREVIOUS': {
         if(s.mode!=='explore'||!s.topic)return {accepted:false,state:snap()};
         const relevant=cuesForSubject(s.topic);
         const current=relevant.findIndex(cue=>cue.id===cues[s.position]?.id);
         if(current<=0)return {accepted:false,state:snap()};
-        return show(cues.indexOf(relevant[current-1]),'returned to earlier related explanation');
+        s.depth='overview';return show(cues.indexOf(relevant[current-1]),'returned to earlier related explanation');
       }
       case 'RETURN':
         if(s.mode!=='explore'||!s.returnPoint)return {accepted:false,state:snap()};
-        const back=s.returnPoint;s.returnPoint=null;s.mode='guided';s.paused=back.paused;
+        const back=s.returnPoint;s.returnPoint=null;s.mode='guided';s.paused=back.paused;s.depth=back.depth??'overview';
         return show(back.position,'returned to the interrupted talk');
+      case 'SET_DEPTH':
+        if(!['overview','detail'].includes(event.depth)||s.mode==='arrival'||
+          (s.mode==='explore'&&!s.topic)||s.paused||s.depth===event.depth)
+          return {accepted:false,state:snap()};
+        s.depth=event.depth;
+        resetOutputs();
+        s.interaction='changed explanation detail to '+event.depth;
+        return emit('DEPTH_CHANGED',event.depth);
       case 'OBSERVE':
         if(s.paused||event.generation!==s.generation||!Object.hasOwn(s.outputs,event.output)||
            s.outputs[event.output]!=='pending'||!['confirmed','failed','unavailable'].includes(event.status))

@@ -52,3 +52,171 @@ button,a{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible
   .diagram-key #diagram-name{font-size:10px}
   .diagram-key #diagram-relation{font-size:9px;margin-top:3px}
 }
+
+
+/* The presenter responds to established scene state; it is not an idle bobbing avatar. */
+.violet-presenter{position:absolute;z-index:4;left:clamp(45px,8vw,140px);top:24%;width:clamp(112px,13vw,206px);
+  height:clamp(170px,27vh,255px);pointer-events:none;display:flex;flex-direction:column;align-items:center;
+  opacity:.88;transition:opacity .25s,transform .3s}
+.violet-presenter svg{height:100%;width:100%;overflow:visible;filter:drop-shadow(0 0 10px #a995e54a)}
+.violet-figure{fill:none;stroke:url(#violet-luminance);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.violet-outline{opacity:.76;stroke-width:2.1}.violet-outline-secondary{opacity:.37;stroke-width:1.15;stroke-dasharray:3 8}
+.violet-core{stroke-width:2.8;opacity:.72;transition:stroke-width .3s,opacity .3s}
+.violet-left,.violet-right{opacity:.57;stroke-width:1.8;transition:opacity .24s,transform .3s;transform-origin:109px 160px}
+.violet-pointer{opacity:0;stroke-width:1.7;transition:opacity .22s,transform .32s;transform-origin:109px 160px}
+.violet-center{fill:#bfa7ef;stroke:none;filter:drop-shadow(0 0 9px #c3b2ff)}
+.violet-head{fill:#89e3e5;stroke:none}.violet-ground{fill:#a6b1ff;stroke:none;opacity:.4}
+.violet-condition{font-size:8px;letter-spacing:.17em;color:#bba9e1;margin-top:-5px;white-space:nowrap}
+.violet-presenter[data-phase="presenting"] .violet-pointer{opacity:.9}
+.violet-presenter[data-phase="presenting"] .violet-right{transform:rotate(-17deg);opacity:.95}
+.violet-presenter[data-phase="presenting"] .violet-core{stroke-width:4;opacity:1}
+.violet-presenter[data-phase="observing"] .violet-left{transform:rotate(12deg);opacity:.95}
+.violet-presenter[data-phase="observing"] .violet-center{fill:#91e1e7}
+.violet-presenter[data-phase="paused"]{opacity:.4}
+.violet-presenter[data-phase="paused"] *{transition:none!important;animation:none!important}
+.violet-presenter[data-mode="explore"] .violet-pointer{opacity:.38}
+.violet-presenter[data-mode="explore"] .violet-left{transform:rotate(17deg)}
+.violet-presenter[data-mode="explore"] .violet-right{transform:rotate(-17deg)}
+.violet-presenter[data-phase="failed"] .violet-center{fill:#eabbaa}
+.deep-speech{max-width:565px;color:#d4def0;font-size:13px;line-height:1.55;margin:6px 0 12px;
+  padding-left:15px;border-left:2px solid #8d92b7cc}
+.propagation{display:flex;justify-content:flex-end;align-items:center;gap:7px;flex-wrap:wrap;margin-top:15px;
+  font-size:8px;letter-spacing:.07em;line-height:1.4}
+.propagation i{font-style:normal;color:#62788d}
+.propagation span{color:#7a8a9c}
+.propagation span.confirmed{color:#81e0de}
+.propagation span.pending{color:#dbc4a6}
+.propagation span.failed{color:#ffbaa9}
+.study-display{position:absolute;z-index:4;top:20%;right:clamp(19px,2.8vw,45px);
+  width:min(56vw,860px);margin:0;max-height:55%;pointer-events:auto}
+.study-display picture,.study-display img{display:block;width:100%;height:auto}
+.study-display img{filter:invert(.91) hue-rotate(178deg) saturate(.85);
+  opacity:.91;mask-image:linear-gradient(90deg,transparent 0%,black 3%,black 98%,transparent 100%);
+  max-height:min(49vh,490px);object-fit:contain}
+.study-display figcaption{display:flex;gap:12px;justify-content:space-between;align-items:center;margin:2px 0;
+  color:#a8bbd0;font-size:9px;letter-spacing:.09em}
+.study-display button{border:0;background:transparent;color:#92e3e4;text-transform:uppercase;
+  font:inherit;letter-spacing:.08em;padding:8px 0}
+#experience[data-scene="architecture"] .stage-labels,
+#experience[data-scene="cognition"] .stage-labels{opacity:0}
+#experience[data-scene="architecture"] #stage,
+#experience[data-scene="cognition"] #stage{opacity:.18!important}
+#experience[data-scene="architecture"] .diagram-key,
+#experience[data-scene="cognition"] .diagram-key{display:none}
+#experience[data-scene="architecture"] .violet-presenter,
+#experience[data-scene="cognition"] .violet-presenter{opacity:.48;transform:scale(.72);transform-origin:top left}
+.study-dialog{position:fixed;z-index:100;width:min(96vw,1500px);max-width:none;max-height:94dvh;
+  padding:clamp(15px,2.1vw,28px);border:1px solid #638b9b;background:#081423;color:#eaf3ff;
+  box-shadow:0 20px 70px #000b}
+.study-dialog::backdrop{background:#030711e9;backdrop-filter:blur(7px)}
+.study-dialog-top{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.study-dialog h2{font-size:clamp(16px,2vw,25px);margin:0;font-weight:540}
+.study-dialog button{background:transparent;color:#9be3e5;border:0;padding:13px;letter-spacing:.07em}
+.study-dialog p{font-size:12px;line-height:1.5;color:#b3c4da}
+.study-image-frame{max-height:70dvh;overflow:auto}
+.study-image-frame img{display:block;width:100%;min-width:min(700px,92vw);height:auto}
+@media(max-width:850px){
+  .violet-presenter{left:16px;top:116px;width:72px;height:122px;opacity:.85}
+  .violet-condition{font-size:7px;margin-top:-13px}
+  .study-display{top:179px;left:9px;right:9px;width:auto;max-height:235px}
+  .study-display img{max-height:195px}
+  .study-display figcaption{font-size:8px;justify-content:center;flex-wrap:wrap;text-align:center}
+  .study-display button{padding:2px 5px}
+  #experience[data-scene="architecture"] .violet-presenter,
+  #experience[data-scene="cognition"] .violet-presenter{opacity:.25;transform:scale(.70)}
+  .propagation{justify-content:flex-start;font-size:8px;gap:5px}
+  .deep-speech{font-size:12px}
+}
+@media(prefers-reduced-motion:reduce){.violet-presenter *{transition:none!important;animation:none!important}}
+
+
+/* Stage composition revised after real-browser screenshot, without changing the paper's presentation direction. */
+@media(min-width:851px){
+ .presentation{max-width:min(540px,41vw)}
+ .violet-presenter{top:20%;left:clamp(110px,12vw,220px);width:clamp(103px,10vw,145px);
+   height:clamp(130px,20vh,175px)}
+ .study-display{top:20%;right:clamp(20px,3.3vw,50px);width:min(52vw,710px);z-index:7}
+ .study-display img{max-height:min(48vh,430px)}
+ .study-display figcaption{justify-content:space-between;flex-wrap:wrap;gap:5px 16px}
+ .evidence{bottom:86px;pointer-events:none;z-index:5;max-width:315px}
+ #experience[data-scene="architecture"] .presentation,
+ #experience[data-scene="cognition"] .presentation{max-width:min(540px,41vw)}
+}
+.study-display #inspect-study{position:relative;z-index:9;color:#a3f0eb;border-bottom:1px solid #64b9bcaa}
+.study-display figcaption{background:linear-gradient(90deg,#0b1826e8,#0b1826b5);padding:3px 10px}
+@media(max-width:850px){
+ .evidence{pointer-events:none}
+ .study-display{z-index:7}
+ .violet-presenter{top:120px;height:102px}
+ .study-display figcaption{max-width:100%;font-size:7px}
+ .study-display #inspect-study{padding:7px 4px}
+}
+
+
+/* Free exploration is one spatial relationship: only the actual choices are labeled.
+   Duplicate canvas labels and the generic diagram title otherwise obscure those choices. */
+#experience[data-scene="explore"] .stage-labels,
+#experience[data-scene="explore"] .diagram-key{display:none}
+#experience[data-scene="explore"] .subject-choices button{
+  background:linear-gradient(180deg,#122139c0,#0a1625dd);
+  border:0;border-bottom:1px solid #6abac1bb;box-shadow:none;
+  min-height:45px;padding:8px 11px;
+  max-width:160px;font-size:11px;line-height:1.3;
+}
+#experience[data-scene="explore"] .subject-choices button:hover,
+#experience[data-scene="explore"] .subject-choices button:focus-visible{
+  color:#aaf1e9;background:#18364b}
+@media(max-width:850px){
+ #experience[data-scene="explore"] .subject-choices button{
+   max-width:110px;min-height:38px;font-size:9px;padding:6px 5px}
+}
+
+
+/* On phones the existing spatial subjects continue below the explanation.
+   Their coordinates cannot be squeezed into one 390px-wide picture without collisions. */
+@media(max-width:850px){
+ #experience[data-scene="explore"] .subject-choices{
+  position:relative!important;inset:auto!important;
+  width:auto;height:auto!important;margin:24px 22px 8px;
+  display:flex;flex-direction:column;gap:0;padding:0;
+  pointer-events:auto;z-index:5
+ }
+ #experience[data-scene="explore"] .subject-choices button{
+  position:relative!important;left:auto!important;top:auto!important;
+  transform:none!important;min-height:53px;width:100%;
+  max-width:none!important;padding:15px 34px 14px 4px!important;
+  border:0!important;border-bottom:1px solid #6594a777!important;
+  background:transparent!important;box-shadow:none!important;
+  text-align:left;font-size:12px!important;letter-spacing:.06em;line-height:1.35
+ }
+ #experience[data-scene="explore"] .subject-choices button::after{
+  content:"↗";position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  color:#8ad9db;font-size:17px
+ }
+ #experience[data-scene="explore"] .subject-choices button:hover,
+ #experience[data-scene="explore"] .subject-choices button:focus-visible{
+  color:#aaf1ec;outline-offset:1px
+ }
+ #experience[data-scene="explore"] .three-stage,
+ #experience[data-scene="explore"] #stage{opacity:.09!important}
+}
+
+
+/* A source-grounded illustration supersedes the old generic graph for every
+   selected subject, not only the two reference-frame studies. */
+#experience[data-has-study="true"] .stage-labels,
+#experience[data-has-study="true"] .diagram-key{display:none}
+#experience[data-has-study="true"] #stage,
+#experience[data-has-study="true"] .three-stage{opacity:.07!important}
+#experience[data-has-study="true"] .violet-presenter{
+ opacity:.54;transform:scale(.76);transform-origin:top left}
+
+
+/* Reference PDFs/SVGs use a light paper ground; semantic browser illustrations
+   are authored for this dark stage and must not be color-inverted. */
+.study-display[data-visual-source="generated"] img{
+ filter:none;opacity:1;mask-image:none
+}
+.study-display[data-visual-source="generated"] figcaption{
+ background:#091a28e8
+}
