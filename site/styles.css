@@ -38,3 +38,17 @@ button,a{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible
 @media(max-height:810px) and (min-width:850px){#experience{min-height:650px}.presence{top:17%}.presentation,.evidence{bottom:125px}.presentation h1{font-size:clamp(31px,3vw,44px);margin-bottom:12px}.speech{font-size:14px;line-height:1.55}.actions{margin-top:12px}.accessible-note{bottom:72px}.lower{bottom:21px}}
 @media(max-width:850px){#experience{height:auto;min-height:100svh;overflow:visible;padding-top:min(45vh,380px);padding-bottom:90px}#stage,.stage-overlay,.stage-labels,.subject-choices{height:min(51vh,430px)}.stage-overlay{background:linear-gradient(0deg,#080c18 0,#080c18aa 28%,#080c1814 80%,#080c186b 100%)}.masthead{padding:20px 22px}.mark{font-size:19px}.submark{display:none}.preview-note{font-size:8px;max-width:155px}.scene-indicator{font-size:8px}.presence{top:90px;left:22px;font-size:10px}.presence-purpose{font-size:8px}.presentation{position:relative;left:auto;right:auto;bottom:auto;max-width:none;margin:0 22px}.presentation h1{font-size:clamp(29px,7vw,40px);max-width:680px;margin-bottom:12px}.eyebrow{font-size:9px;margin-bottom:10px}.speech{font-size:15px;line-height:1.58}.source-line{font-size:10px}.actions{margin-top:15px;gap:4px 18px}.actions button{font-size:10px;padding:10px 0}.evidence{position:relative;left:auto;right:auto;bottom:auto;width:auto;margin:22px 22px 0;text-align:left;font-size:9px}.lower{position:relative;left:auto;right:auto;bottom:auto;flex-wrap:wrap;margin:25px 22px 0;gap:10px 17px}.progress{width:27vw;max-width:210px;min-width:105px}.progress-label{min-width:65px}.accessible-note{position:relative;left:auto;bottom:auto;margin:14px 22px 0}.subject-choices button{max-width:110px;font-size:10px;padding:7px 6px}.stage-label{font-size:9px;max-width:105px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* This label names the source relationship drawn in the scene.
+   It is not an additional menu, subsystem or third reference frame. */
+.diagram-key{position:absolute;z-index:4;top:24%;right:clamp(24px,4.5vw,76px);
+  width:min(445px,35vw);text-align:center;pointer-events:none;text-shadow:0 1px 14px #070b17}
+.diagram-key span{display:block}.diagram-key #diagram-name{font-size:12px;
+  color:#e5f5fb;letter-spacing:.13em;font-weight:750}
+.diagram-key #diagram-relation{margin-top:8px;color:#92bac8;
+  font-size:11px;letter-spacing:.06em;line-height:1.4}
+@media(max-width:850px){
+  .diagram-key{top:155px;right:15px;left:15px;width:auto}
+  .diagram-key #diagram-name{font-size:10px}
+  .diagram-key #diagram-relation{font-size:9px;margin-top:3px}
+}
