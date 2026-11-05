@@ -128,3 +128,26 @@ button,a{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible
   .deep-speech{font-size:12px}
 }
 @media(prefers-reduced-motion:reduce){.violet-presenter *{transition:none!important;animation:none!important}}
+
+
+/* Stage composition revised after real-browser screenshot, without changing the paper's presentation direction. */
+@media(min-width:851px){
+ .presentation{max-width:min(540px,41vw)}
+ .violet-presenter{top:20%;left:clamp(110px,12vw,220px);width:clamp(103px,10vw,145px);
+   height:clamp(130px,20vh,175px)}
+ .study-display{top:20%;right:clamp(20px,3.3vw,50px);width:min(52vw,710px);z-index:7}
+ .study-display img{max-height:min(48vh,430px)}
+ .study-display figcaption{justify-content:space-between;flex-wrap:wrap;gap:5px 16px}
+ .evidence{bottom:86px;pointer-events:none;z-index:5;max-width:315px}
+ #experience[data-scene="architecture"] .presentation,
+ #experience[data-scene="cognition"] .presentation{max-width:min(540px,41vw)}
+}
+.study-display #inspect-study{position:relative;z-index:9;color:#a3f0eb;border-bottom:1px solid #64b9bcaa}
+.study-display figcaption{background:linear-gradient(90deg,#0b1826e8,#0b1826b5);padding:3px 10px}
+@media(max-width:850px){
+ .evidence{pointer-events:none}
+ .study-display{z-index:7}
+ .violet-presenter{top:120px;height:102px}
+ .study-display figcaption{max-width:100%;font-size:7px}
+ .study-display #inspect-study{padding:7px 4px}
+}
