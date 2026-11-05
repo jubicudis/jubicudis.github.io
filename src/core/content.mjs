@@ -25,8 +25,10 @@ export function createPublicCatalog({claims = [], topics = [], cues = []} = {}) 
     check(KINDS.has(c.kind), 'claim ' + c.id + ' invalid class');
     check(BASES.has(c.basis), 'claim ' + c.id + ' missing evidence basis');
     check(nonempty(c.statement) && nonempty(c.source), 'claim ' + c.id + ' missing statement/source');
-    check(!(c.kind === 'demonstrated' && c.basis === 'inventor_design'),
-      'claim ' + c.id + ' conflates design with demonstration');
+    check(!(c.kind === 'implemented' && c.basis === 'inventor_design'),
+      'claim ' + c.id + ' confuses design with implementation');
+    check(!(c.kind === 'demonstrated' && !['execution_record', 'independent_verification'].includes(c.basis)),
+      'claim ' + c.id + ' requires execution evidence');
   }
   const byTopic = index(topics, 'topic');
   for (const t of byTopic.values()) {
