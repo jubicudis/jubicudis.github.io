@@ -48,7 +48,7 @@ test('interrupt saves a checkpoint, exploration does not overwrite it, return re
   p.dispatch({type:'PAUSE'});
   p.dispatch({type:'EXPLORE'});
   assert.equal(p.snapshot().topic,null);
-  assert.deepEqual(p.snapshot().returnPoint,{position:0,paused:true});
+  assert.deepEqual(p.snapshot().returnPoint,{position:0,paused:true,depth:'overview'});
   p.dispatch({type:'SELECT_SUBJECT',id:'workbench'});
   p.dispatch({type:'SELECT_SUBJECT',id:'architecture'});
   p.dispatch({type:'RETURN'});
@@ -87,4 +87,34 @@ test('choosing an unrelated subject cannot authorize invented evidence',()=>{
   assert.equal(p.dispatch({type:'SELECT_SUBJECT',id:'imaginary-doorway'}).accepted,false);
   assert.equal(p.snapshot().topic,null);
   assert.equal(cuesForSubject('workbench').every(c=>c.source.startsWith('Part I')),true);
+});
+
+test('explanation depth is authoritative, generation-qualified, and survives returning from an interruption',()=>{
+  const p=createPresentation();
+  p.dispatch({type:'START'});confirmAll(p);
+  const old=p.snapshot().generation;
+  assert.equal(p.dispatch({type:'SET_DEPTH',depth:'detail'}).accepted,true);
+  assert.equal(p.snapshot().depth,'detail');
+  assert.equal(p.snapshot().qualified,false);
+  assert.equal(p.observe(old,'caption','confirmed').accepted,false);
+  confirmAll(p);
+  p.dispatch({type:'PAUSE'});
+  p.dispatch({type:'EXPLORE'});
+  assert.deepEqual(p.snapshot().returnPoint,{position:0,paused:true,depth:'detail'});
+  p.dispatch({type:'SELECT_SUBJECT',id:'architecture'});
+  assert.equal(p.snapshot().depth,'overview');
+  p.dispatch({type:'RETURN'});
+  assert.equal(p.snapshot().position,0);
+  assert.equal(p.snapshot().depth,'detail');
+  assert.equal(p.snapshot().paused,true);
+  p.dispatch({type:'RESUME'});confirmAll(p);
+  assert.equal(p.snapshot().qualified,true);
+});
+test('incomplete or paused presentations cannot change depth into an unqualified output',()=>{
+  const p=createPresentation();
+  assert.equal(p.dispatch({type:'SET_DEPTH',depth:'detail'}).accepted,false);
+  p.dispatch({type:'START'});p.dispatch({type:'PAUSE'});
+  assert.equal(p.dispatch({type:'SET_DEPTH',depth:'detail'}).accepted,false);
+  p.dispatch({type:'RESUME'});
+  assert.equal(p.dispatch({type:'SET_DEPTH',depth:'detail'}).accepted,true);
 });
