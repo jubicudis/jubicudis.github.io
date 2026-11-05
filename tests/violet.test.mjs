@@ -116,3 +116,20 @@ test('exploratory content requires observed presentation before being marked rea
   assert.equal(o.accepted,true);
   assert.equal(o.effects[0].type,'TOPIC_READY');
 });
+
+
+test('a communication objective is only marked presented by an observed result', () => {
+  const catalog = createPublicCatalog({
+    claims:[{id:'c',approvedForPublic:true,product:'tnos',kind:'intended',basis:'inventor_design',statement:'Test',source:'Test fixture'}],
+    topics:[{id:'tnos',approvedForPublic:true,title:'TNOS',claimIds:['c'],relatedTopicIds:[]}],
+    cues:[{id:'one',approvedForPublic:true,topicId:'tnos',text:'Test',claimIds:['c'],requiredOutputs:['caption']}]
+  });
+  const engine=createExperience(catalog);
+  const guide=createVioletGuide(catalog,engine,{objectives:[{id:'explain-tnos',topicIds:['tnos']}]});
+  assert.equal(guide.snapshot().objectives[0].status,'not-presented');
+  guide.dispatch({type:'OPEN_TOPIC',topicId:'tnos'});
+  assert.equal(guide.snapshot().objectives[0].status,'not-presented');
+  engine.observe({generation:engine.snapshot().generation,output:'caption',status:'confirmed'});
+  assert.equal(guide.snapshot().objectives[0].status,'presented');
+  assert.ok(!Object.hasOwn(guide.snapshot().objectives[0],'understood'));
+});
