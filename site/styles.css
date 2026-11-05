@@ -170,3 +170,33 @@ button,a{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible
  #experience[data-scene="explore"] .subject-choices button{
    max-width:110px;min-height:38px;font-size:9px;padding:6px 5px}
 }
+
+
+/* On phones the existing spatial subjects continue below the explanation.
+   Their coordinates cannot be squeezed into one 390px-wide picture without collisions. */
+@media(max-width:850px){
+ #experience[data-scene="explore"] .subject-choices{
+  position:relative!important;inset:auto!important;
+  width:auto;height:auto!important;margin:24px 22px 8px;
+  display:flex;flex-direction:column;gap:0;padding:0;
+  pointer-events:auto;z-index:5
+ }
+ #experience[data-scene="explore"] .subject-choices button{
+  position:relative!important;left:auto!important;top:auto!important;
+  transform:none!important;min-height:53px;width:100%;
+  max-width:none!important;padding:15px 34px 14px 4px!important;
+  border:0!important;border-bottom:1px solid #6594a777!important;
+  background:transparent!important;box-shadow:none!important;
+  text-align:left;font-size:12px!important;letter-spacing:.06em;line-height:1.35
+ }
+ #experience[data-scene="explore"] .subject-choices button::after{
+  content:"↗";position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  color:#8ad9db;font-size:17px
+ }
+ #experience[data-scene="explore"] .subject-choices button:hover,
+ #experience[data-scene="explore"] .subject-choices button:focus-visible{
+  color:#aaf1ec;outline-offset:1px
+ }
+ #experience[data-scene="explore"] .three-stage,
+ #experience[data-scene="explore"] #stage{opacity:.09!important}
+}
