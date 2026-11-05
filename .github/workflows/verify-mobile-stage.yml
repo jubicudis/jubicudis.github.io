@@ -56,9 +56,49 @@ jobs:
           if(errors.length)throw Error('Browser page errors: '+errors.join(' ; '));
           await browser.close();
           NODE
+      - name: Install WebKit browser
+        run: npx playwright install --with-deps webkit
+      - name: Verify WebKit mobile layout and favicon request
+        run: |
+          python3 -m http.server 8001 >/tmp/tnos-webkit-server.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {webkit} from 'playwright';
+          const browser=await webkit.launch({headless:true});
+          const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+          const errors=[];
+          page.on('pageerror',e=>errors.push('PAGE '+(e.stack||e.message)));
+          page.on('console',msg=>{if(msg.type()==='error')errors.push('CONSOLE '+msg.text()+' '+msg.location().url);});
+          await page.goto('http://127.0.0.1:8001/',{waitUntil:'load'});
+          await page.waitForTimeout(900);
+          await page.locator('#explore').click();
+          await page.waitForTimeout(550);
+          const measure=()=>page.evaluate(()=>({
+            width:innerWidth,
+            scrollWidth:document.documentElement.scrollWidth,
+            activeSubjects:[...document.querySelectorAll('#subject-choices button')].filter(b=>!b.closest('[hidden]')).map(b=>({
+              name:b.textContent,left:b.getBoundingClientRect().left,right:b.getBoundingClientRect().right
+            }))
+          }));
+          let m=await measure();
+          console.log('WEBKIT_CORRECTED',JSON.stringify(m));
+          if(m.scrollWidth>m.width+1||m.activeSubjects.some(x=>x.left<0||x.right>m.width+1))throw Error('WebKit overflow on fresh mobile');
+          await page.setViewportSize({width:1280,height:800});
+          await page.waitForTimeout(300);
+          await page.setViewportSize({width:390,height:844});
+          await page.waitForTimeout(300);
+          m=await measure();
+          console.log('WEBKIT_AFTER_RESIZE',JSON.stringify(m));
+          if(m.scrollWidth>m.width+1||m.activeSubjects.some(x=>x.left<0||x.right>m.width+1))throw Error('WebKit overflow after resize');
+          console.log('WEBKIT_CONSOLE_ERRORS',JSON.stringify(errors));
+          if(errors.length)throw Error('WebKit errors: '+errors.join('; '));
+          await page.screenshot({path:'verified-webkit-mobile.png',fullPage:true});
+          await browser.close();
+          NODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: corrected-mobile-preview
-          path: verified-mobile.png
+          path: |
+            verified-mobile.png
+            verified-webkit-mobile.png
           if-no-files-found: ignore
