@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#040817">
   <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
   <meta name="description" content="Violet — an interactive spatial design study for Tranquility Neuro Operating System.">
   <title>Violet | An Encounter With TNOS</title>
   <link rel="stylesheet" href="./assets/spatial.css">
@@ -27,11 +28,11 @@
       <h1 id="headline">An encounter with a different kind of computer.</h1>
       <p id="caption" aria-live="polite" aria-atomic="true">I'm Violet, the proposed AI interface for Jubi's Tranquility Neuro Operating System. Welcome.</p>
       <p id="clarification" class="clarification">This is a visual study of the intended interaction—not the operating system running in your browser.</p>
-      <form id="name-prompt" autocomplete="off" aria-label="Optional introduction">
+      <div id="name-prompt" role="group" aria-label="Optional introduction">
         <label for="preferred-name">What should I call you? <span>Optional</span></label>
-        <div class="name-entry"><input id="preferred-name" maxlength="48" placeholder="Your preferred name" aria-label="Preferred name"><button type="submit">CONTINUE <span aria-hidden="true">↗</span></button></div>
+        <div class="name-entry"><input id="preferred-name" autocomplete="off" maxlength="48" placeholder="Your preferred name" aria-label="Preferred name"><button id="submit-name" type="button">CONTINUE <span aria-hidden="true">↗</span></button></div>
         <button id="skip-name" type="button" class="text-action">Continue without a name</button>
-      </form>
+      </div>
       <div id="interaction" class="interaction" hidden>
         <button id="continue" class="primary-action" type="button">CONTINUE <span aria-hidden="true">↗</span></button>
         <button id="explore" class="text-action" type="button">Explore the environment <span aria-hidden="true">↗</span></button>

@@ -58,7 +58,7 @@
     const key=state.sceneVersion;
     requestAnimationFrame(()=>requestAnimationFrame(()=> {
       // A DOM/layout observation, not a claim of human comprehension.
-      if(key!==state.sceneVersion) return;
+      if(key!==state.sceneVersion || (state.mode==='explore' && state.topic===null)) return;
       const rect=text.caption.getBoundingClientRect();
       if(rect.width>0 && rect.height>0 && text.caption.textContent.trim()) {
         state.qualified=true; if(state.mode==='talk') text.action.disabled=false;
@@ -66,15 +66,38 @@
     }));
   }
   function context7(){return {
-    who:state.name||'visitor', what:state.topic, when:state.mode,
+    who:state.name||'visitor', what:state.topic||'subject chooser', when:state.mode,
     where:'this unified visual environment', why:state.intent,
     how:state.motion?'animated visual + text':'still visual + text',extent:state.depth
   };}
+  function isVisibleControl(element) {
+    return element && element.isConnected && !element.disabled &&
+      element.getClientRects().length > 0 &&
+      !element.closest('[hidden]');
+  }
+  function restoreFocus(previous) {
+    // Preserve keyboard focus when a scene replaces or hides the active control.
+    if (!previous || previous===document.body || previous===document.documentElement) return;
+    if (isVisibleControl(previous)) return;
+    const previousTopic=previous.dataset?.topic;
+    if (previousTopic) {
+      const matching=[...$('node-field').querySelectorAll('button')].find(b=>b.dataset.topic===previousTopic);
+      if (isVisibleControl(matching)) { matching.focus({preventScroll:true}); return; }
+    }
+    if (state.mode==='explore' && state.topic===null) {
+      const first=$('node-field').querySelector('button');
+      if (isVisibleControl(first)) { first.focus({preventScroll:true}); return; }
+    }
+    // The transcript is a stable, visible reading and keyboard-navigation anchor.
+    $('transcript').focus({preventScroll:true});
+  }
   function switchScene(topic,intent){
-    if(!chapterById.has(topic))return;
-    state.topic=topic;state.mechanicsResult=null;state.requested=false;
+    if(topic!==null && !chapterById.has(topic))return;
+    const previous=document.activeElement;
+    state.topic=topic;state.mechanicsResult=null;state.requested=false;state.observed=false;
     updateContext(intent);
     renderText();renderNodes();
+    restoreFocus(previous);
   }
   function renderText(){
     const chapter=active(); const greeting=state.mode==='greeting';
@@ -86,6 +109,14 @@
       text.clarify.textContent='This is a visual design study, not a functioning TNOS AI.';
       text.phase.textContent='ESTABLISHING COMMUNICATION';
       text.note.textContent='Your name stays in this browser tab and is never transmitted to us.';
+    }else if(state.mode==='explore' && state.topic===null){
+      text.heading.textContent='Where would you like to look?';
+      text.caption.textContent='Choose one of the subjects around Violet. You can follow a connection, examine an explanation, or return to the introduction without losing your place.';
+      text.zone.textContent='SYSTEM / SUBJECT EXPLORATION';
+      text.count.textContent='FREE EXPLORATION';
+      text.clarify.textContent='The surrounding geometry represents available subjects; it is not a claim of working native TNOS cognition.';
+      text.phase.textContent='AWAITING A SUBJECT';
+      text.note.textContent='Select a subject to examine. No earlier result is being presented as a new observation.';
     }else{
       const personal=state.name&&state.index===0&&state.mode==='talk'?' '+state.name+',': '';
       text.heading.textContent=chapter.title;
@@ -103,30 +134,30 @@
     text.action.innerHTML=(state.index===chapters.length-1?'ENTER EXPLORATION':'CONTINUE')+' <span aria-hidden="true">↗</span>';
     text.explore.hidden=state.mode==='explore';
     text.returning.hidden=state.mode!=='explore'||state.checkpoint===null;
-    text.depth.hidden=state.mode!=='explore';
+    text.depth.hidden=state.mode!=='explore'||state.topic===null;
     text.depth.textContent=state.depth==='overview'?'GO DEEPER ＋':'BACK TO OVERVIEW −';
-    text.observe.hidden=state.mode==='greeting'||chapter.id!=='workbench';
+    text.observe.hidden=state.mode==='greeting'||state.topic===null||chapter.id!=='workbench';
     text.observe.textContent=state.requested?'MOVEMENT REQUESTED…':'TEST REQUESTED RESULT ⟶';
     text.observe.disabled=state.requested;
-    text.sponsor.hidden=state.mode==='greeting'||chapter.id!=='support';
+    text.sponsor.hidden=state.mode==='greeting'||state.topic===null||chapter.id!=='support';
     $('previous').hidden=state.mode!=='talk'||state.index===0;
-    const pct=state.mode==='greeting'?0:state.mode==='explore'?100:(state.index+1)/chapters.length*100;
+    const pct=state.mode==='greeting'?0:(state.index+1)/chapters.length*100;
     document.querySelector('.progress').style.setProperty('--pct',pct+'%');
-    document.querySelector('.progress').setAttribute('aria-valuenow',state.mode==='greeting'?0:state.mode==='explore'?7:state.index+1);
+    document.querySelector('.progress').setAttribute('aria-valuenow',state.mode==='greeting'?0:state.index+1);
   }
   function start(name){state.name=(typeof name==='string'&&name.trim())?name.replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,48):null;
     state.mode='talk';state.index=0;state.depth='overview';state.checkpoint=null;
     switchScene(chapters[0].id,'accepted the introduction');}
   function next(){if(state.mode!=='talk'||!state.qualified)return;
     if(state.index+1>=chapters.length){state.mode='explore';state.checkpoint=null;state.depth='overview';
-      switchScene('support','completed the introduction');return;}
+      switchScene(null,'completed the introduction');return;}
     state.index++;switchScene(chapters[state.index].id,'continued the introduction');}
   function prev(){if(state.mode!=='talk'||state.index<=0)return;state.index--;
     switchScene(chapters[state.index].id,'returned to an earlier passage');}
   function explore(){if(state.mode==='greeting'){start(null);}
     if(state.mode==='talk'){state.checkpoint=state.index;}
     state.mode='explore';state.depth='overview';
-    switchScene(state.topic,'chose to explore');}
+    switchScene(null,'chose to explore');}
   function returnToTalk(){if(state.mode!=='explore'||state.checkpoint===null)return;
     state.index=state.checkpoint;state.checkpoint=null;state.mode='talk';state.depth='overview';
     switchScene(chapters[state.index].id,'returned to the presentation');}
@@ -134,15 +165,24 @@
     if(state.mode==='talk')state.checkpoint=state.index;
     state.mode='explore';state.depth='overview';
     switchScene(id,'explicitly selected '+id);}
-  $('name-prompt').addEventListener('submit',e=>{e.preventDefault();start($('preferred-name').value);});
+  // The optional name is never submitted as a native GET form or placed in history.
+  $('submit-name').addEventListener('click',()=>start($('preferred-name').value));
+  $('preferred-name').addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();start($('preferred-name').value);}
+  });
   $('skip-name').addEventListener('click',()=>start(null));
   text.action.addEventListener('click',next);
   $('previous').addEventListener('click',prev);
   text.explore.addEventListener('click',explore);
   text.returning.addEventListener('click',returnToTalk);
   text.depth.addEventListener('click',()=>{state.depth=state.depth==='overview'?'detail':'overview';switchScene(state.topic,'requested '+state.depth+' depth');});
-  $('brand').addEventListener('click',e=>{e.preventDefault();state.mode='greeting';state.name=null;state.index=0;state.checkpoint=null;state.depth='overview';state.topic='tnos';updateContext('restarted');renderText();renderNodes();});
-  $('motion').addEventListener('click',()=>{state.motion=!state.motion;$('motion').textContent='MOTION / '+(state.motion?'ON':'OFF');$('motion').setAttribute('aria-pressed',String(state.motion));});
+  $('brand').addEventListener('click',e=>{e.preventDefault();state.mode='greeting';state.name=null;state.index=0;state.checkpoint=null;state.depth='overview';state.topic='tnos';updateContext('restarted');renderText();renderNodes();$('preferred-name').focus({preventScroll:true});});
+  function syncMotionControl(){
+    $('motion').textContent='MOTION / '+(state.motion?'ON':'OFF');
+    $('motion').setAttribute('aria-pressed',String(state.motion));
+  }
+  syncMotionControl();
+  $('motion').addEventListener('click',()=>{state.motion=!state.motion;syncMotionControl();});
   const help=$('help-sheet');$('help').addEventListener('click',()=>{help.hidden=!help.hidden;$('help').setAttribute('aria-expanded',String(!help.hidden));});
   $('close-help').addEventListener('click',()=>{help.hidden=true;$('help').setAttribute('aria-expanded','false');});
   document.addEventListener('keydown',e=>{if(e.target.matches('input,textarea')||!help.hidden)return;
@@ -164,16 +204,22 @@
     return polar.map(([x,y])=>[.67+x*.245,.43+y*.245]);
   }
   function renderNodes(){
+    const previouslyFocused=document.activeElement;
+    const focusedTopic=previouslyFocused?.dataset?.topic;
     const container=$('node-field');container.hidden=state.mode!=='explore'||state.depth==='detail';container.classList.toggle('exploring',state.mode==='explore'&&state.depth!=='detail');
     container.replaceChildren();hotspots=[];
     if(state.mode!=='explore'||state.depth==='detail')return;
     anchorPositions().forEach(([x,y],i)=>{
       const chapter=chapters[i],b=document.createElement('button');
-      b.className='constellation-node';b.type='button';b.style.left=(x*100)+'%';b.style.top=(y*100)+'%';
+      b.className='constellation-node';b.type='button';b.dataset.topic=chapter.id;b.style.left=(x*100)+'%';b.style.top=(y*100)+'%';
       b.textContent=chapter.id==='tnos'?'TNOS':chapter.id==='mcp'?'MCP':chapter.id;
       b.setAttribute('aria-label','Explore '+chapter.id);b.setAttribute('aria-pressed',String(state.topic===chapter.id));
       b.addEventListener('click',()=>chooseTopic(chapter.id));container.append(b);hotspots.push([x,y]);
     });
+    if (focusedTopic) {
+      const replacement=[...container.querySelectorAll('button')].find(b=>b.dataset.topic===focusedTopic);
+      if (isVisibleControl(replacement)) replacement.focus({preventScroll:true});
+    }
   }
   function resize(){W=window.innerWidth;H=window.innerHeight;DPR=Math.min(window.devicePixelRatio||1,mobile()?1.4:1.8);
     atmosphere.width=Math.round(W*DPR);atmosphere.height=Math.round(H*DPR);
@@ -255,7 +301,7 @@
   }
   function drawRelations(t,cx,cy){
     const c=active(),m=mobile(),anchor=[m?W*.5:W*.67,m?H*.31:H*.49];
-    if(state.mode==='greeting')return;
+    if(state.mode==='greeting'||state.topic===null)return;
     if(state.mode==='explore' && state.depth==='overview'){
       const pts=anchorPositions().map(([x,y])=>[x*W,y*H]);
       ctx.save();
@@ -406,7 +452,7 @@
     drawRelations(t,cx,cy);
     if(world)world.render(t);
     if(state.requested&&active().id==='workbench'){
-      state.mechanics=clamp(state.mechanics+delta*.48,0,1);
+      state.mechanics=state.motion?clamp(state.mechanics+delta*.48,0,1):state.mechanicsTarget;
       if(state.mechanics>=1){
         // Qualify the actual current simulated carriage position, not just the request.
         const correct=Math.abs(state.mechanics-state.mechanicsTarget)<.003;
