@@ -87,3 +87,15 @@ footer button{border:0;background:transparent;font-size:10px;letter-spacing:.1em
   .explanation #narrative{font-size:14px;line-height:1.5}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* Mobile evidence, narration and links belong to one scrollable spatial scene,
+   never an overlapping stack of fixed-height cards. */
+@media(max-width:700px){
+  #experience{min-height:0;height:auto;padding-top:450px;padding-bottom:18px;overflow:visible}
+  #world{height:490px}
+  .environment-light{height:520px}
+  .explanation{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:auto;max-width:none;margin:0 20px}
+  .provenance{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:auto;margin:24px 20px 0}
+  footer{position:relative;left:auto;right:auto;top:auto;bottom:auto;margin:30px 20px 0}
+  .source-line{top:397px}
+}
