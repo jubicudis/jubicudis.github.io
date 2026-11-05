@@ -222,16 +222,23 @@ function renderUI(s){
  $('evidence-status').textContent=s.paused?'PAUSED · ESTABLISHED POSITION PRESERVED':
  s.mode==='guided'?(s.qualified?'WEBSITE OUTPUT PRESENTED · NOT TNOS EXECUTION':'AWAITING WEBSITE PRESENTATION OBSERVATION'):
  'CONCEPT PRESENTATION · NOT LIVE TNOS';
- $('advance').hidden=chooser||s.mode==='explore';
- $('advance').disabled=s.mode==='guided'&&(!s.qualified||s.paused);
- $('advance').innerHTML=arrival?'BEGIN PRESENTATION ↗':s.position===cues.length-1?'EXPLORE THE INVENTION ↗':'CONTINUE ↗';
- $('explore').hidden=s.mode==='explore';
+ $('advance').hidden=chooser;
+ $('advance').disabled=!arrival&&!s.qualified||s.paused;
+ const subjectPassages=s.topic?cues.filter(c=>c.topic===s.topic):[];
+ const subjectIndex=subjectPassages.findIndex(c=>c.id===cue.id);
+ $('advance').textContent=arrival?'BEGIN PRESENTATION ↗':
+  s.mode==='explore'?(subjectIndex<subjectPassages.length-1?'NEXT RELATIONSHIP ↗':'ALL SUBJECTS ↗'):
+  s.position===cues.length-1?'EXPLORE THE INVENTION ↗':'CONTINUE ↗';
+ $('explore').hidden=chooser;
+ $('explore').textContent=s.mode==='explore'?'ALL SUBJECTS':'EXPLORE THE INVENTION';
  $('return').hidden=s.mode!=='explore'||!s.returnPoint;
  $('pause').hidden=s.mode!=='guided';$('pause').textContent=s.paused?'RESUME':'PAUSE';
  $('pause').setAttribute('aria-pressed',String(s.paused));
  $('voice').hidden=!("speechSynthesis" in window)||chooser;
  $('voice').textContent=speaking?'STOP VOICE':'HEAR VIOLET';
- $('back').hidden=s.mode!=='guided'||s.position<=0;
+ $('back').hidden=s.mode==='arrival'||chooser||(s.mode==='guided'&&s.position<=0)||
+  (s.mode==='explore'&&subjectIndex<=0);
+ $('back').setAttribute('aria-label',s.mode==='explore'?'Previous relationship':'Previous passage');
  $('retry').hidden=!Object.values(s.outputs||{}).some(x=>x==='failed'||x==='unavailable');
  const n=arrival?0:s.mode==='explore'&&s.returnPoint?s.returnPoint.position+1:
  s.mode==='explore'&&s.finished?cues.length:Math.max(0,s.position+1);
@@ -269,7 +276,7 @@ state.subscribe((s,type)=>{
 });
 $('advance').addEventListener('click',()=>{
  const s=state.snapshot();
- state.dispatch({type:s.mode==='arrival'?'START':'NEXT'});
+ state.dispatch({type:s.mode==='arrival'?'START':s.mode==='guided'?'NEXT':'EXPLORE_NEXT'});
 });
 $('explore').addEventListener('click',()=>state.dispatch({type:'EXPLORE'}));
 $('return').addEventListener('click',()=>state.dispatch({type:'RETURN'}));
@@ -277,7 +284,7 @@ $('pause').addEventListener('click',()=>{
  const s=state.snapshot();
  state.dispatch({type:s.paused?'RESUME':'PAUSE'});
 });
-$('back').addEventListener('click',()=>state.dispatch({type:'PREVIOUS'}));
+$('back').addEventListener('click',()=>state.dispatch({type:state.snapshot().mode==='explore'?'EXPLORE_PREVIOUS':'PREVIOUS'}));
 $('retry').addEventListener('click',()=>state.dispatch({type:'RETRY'}));
 $('restart').addEventListener('click',event=>{event.preventDefault();state.dispatch({type:'RESTART'});$('presentation').focus({preventScroll:true});});
 $('motion').addEventListener('click',()=>{
