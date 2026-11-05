@@ -141,11 +141,23 @@ export function createVioletGuide(catalog, experience, plan = {}) {
         visitor.delivery = event.delivery;
         result = {accepted: true, effect: {type: 'DELIVERY_UPDATED', delivery: visitor.delivery}};
         break;
-      case 'SET_DEPTH':
+      case 'SET_DEPTH': {
         if (!DEPTHS.has(event.depth)) reject('invalid detail preference');
+        if (visitor.depth === event.depth) return {accepted: false, snapshot: snapshot()};
         visitor.depth = event.depth;
-        result = {accepted: true, effect: {type: 'DEPTH_UPDATED', depth: visitor.depth}};
+        const snap = experience.snapshot();
+        const effects = snap.mode === 'explore' && snap.topicId
+          ? experience.dispatch({type: 'EXPLORE', topicId: snap.topicId}).effects : [];
+        result = {accepted: true, effects, effect: {type: 'DEPTH_UPDATED', depth: visitor.depth}};
         break;
+      }
+      case 'RESTART_TALK': {
+        const r = experience.dispatch({type: 'RESTART_TALK'});
+        if (!r.accepted) return {accepted: false, snapshot: snapshot()};
+        visitor.intent = 'guided-introduction';
+        result = {accepted: true, effects: r.effects};
+        break;
+      }
       case 'START_TALK': {
         // A name is not required; the visitor has already chosen to begin.
         const r = experience.dispatch({type: 'START'});
