@@ -78,6 +78,20 @@ try {
  watch(mobile,'mobile');
  await mobile.goto(site,{waitUntil:'load',timeout:30000});
  await mobile.locator('#explore').click();
+ const mobileLayout=await mobile.evaluate(()=>({
+   choices:[...document.querySelectorAll('#subject-choices button')].map(b=>{
+     const r=b.getBoundingClientRect();
+     return {top:r.top,bottom:r.bottom,left:r.left,right:r.right};
+   }),
+   visualHeight:document.querySelector('.three-stage')?.getBoundingClientRect().height||0,
+   stageHeight:document.querySelector('#stage')?.getBoundingClientRect().height||0
+ }));
+ failUnless(mobileLayout.choices.length===7,'Mobile exploration has missing subject choices');
+ failUnless(mobileLayout.choices.every((r,i)=>r.left>=0&&r.right<=390+1&&
+     (i===0||r.top>=mobileLayout.choices[i-1].bottom-1)),
+   'Overlapping or offscreen mobile subject targets: '+JSON.stringify(mobileLayout));
+ failUnless(mobileLayout.visualHeight<=mobileLayout.stageHeight+2,
+   'Three.js overlay extends into the narration: '+JSON.stringify(mobileLayout));
  await mobile.screenshot({path:'review-mobile-explore.png',fullPage:true});
  let bounds=await mobile.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth}));
  failUnless(bounds.document<=bounds.viewport+2,'Overflow in mobile chooser: '+JSON.stringify(bounds));
