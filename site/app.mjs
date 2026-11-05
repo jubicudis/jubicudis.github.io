@@ -253,7 +253,7 @@ function placeSubjectButtons(){
   b.type='button';b.dataset.subjectId=subject.id;
   // Subjects stay in the shared stage without leaking outside the phone width.
   const margin=w<850?60:90;
-  b.style.left=(w<850?Math.max(margin,Math.min(w-margin,x)):x)+'px';
+  b.style.left=Math.max(margin,Math.min(w-margin,x))+'px';
   b.style.top=(y+36)+'px';
   b.textContent=subject.name;
   b.addEventListener('click',()=>state.dispatch({type:'SELECT_SUBJECT',id:subject.id}));
