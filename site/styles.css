@@ -210,3 +210,13 @@ button,a{font:inherit}button{cursor:pointer}button:focus-visible,a:focus-visible
 #experience[data-has-study="true"] .three-stage{opacity:.07!important}
 #experience[data-has-study="true"] .violet-presenter{
  opacity:.54;transform:scale(.76);transform-origin:top left}
+
+
+/* Reference PDFs/SVGs use a light paper ground; semantic browser illustrations
+   are authored for this dark stage and must not be color-inverted. */
+.study-display[data-visual-source="generated"] img{
+ filter:none;opacity:1;mask-image:none
+}
+.study-display[data-visual-source="generated"] figcaption{
+ background:#091a28e8
+}
