@@ -1,0 +1,64 @@
+name: Verify mobile stage coordinate correction
+on:
+  push:
+    branches: [fix-live-responsive-loading-20261105]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run state regression tests
+        run: node --test tests/presentation.test.mjs
+      - name: Install browser controller
+        run: npm install --no-save --no-audit --no-fund playwright@1.56.1
+      - name: Verify mobile exploration and device rotation
+        run: |
+          python3 -m http.server 8000 >/tmp/tnos-server.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import {chromium} from 'playwright';
+          const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox']});
+          const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+          const errors=[];
+          page.on('pageerror',e=>errors.push(e.stack||e.message));
+          await page.goto('http://127.0.0.1:8000/',{waitUntil:'load'});
+          await page.waitForTimeout(900);
+          const metrics=()=>page.evaluate(()=>({
+            width:innerWidth,
+            scrollWidth:document.documentElement.scrollWidth,
+            topicButtons:[...document.querySelectorAll('#subject-choices button')]
+              .filter(x=>!x.closest('[hidden]'))
+              .map(x=>({name:x.textContent,rect:{left:x.getBoundingClientRect().left,right:x.getBoundingClientRect().right}})),
+            state:window.__tnosPresentation?.snapshot()
+          }));
+          console.log('INITIAL_MOBILE',JSON.stringify(await metrics()));
+          await page.locator('#explore').click();
+          await page.waitForTimeout(400);
+          let after=await metrics();
+          console.log('MOBILE_EXPLORE',JSON.stringify(after));
+          if(after.scrollWidth>after.width+2)throw Error('Horizontal overflow on fresh mobile load: '+after.scrollWidth);
+          if(after.topicButtons.length!==7)throw Error('Expected all 7 existing subjects');
+          if(after.topicButtons.some(b=>b.rect.left<0||b.rect.right>after.width+2))throw Error('Subject target outside mobile viewport');
+          await page.setViewportSize({width:1280,height:800});
+          await page.waitForTimeout(300);
+          await page.setViewportSize({width:390,height:844});
+          await page.waitForTimeout(300);
+          after=await metrics();
+          console.log('MOBILE_AFTER_ROTATION',JSON.stringify(after));
+          if(after.scrollWidth>after.width+2)throw Error('Horizontal overflow after viewport resize: '+after.scrollWidth);
+          if(after.topicButtons.some(b=>b.rect.left<0||b.rect.right>after.width+2))throw Error('Stale offscreen subject coordinates after resize');
+          await page.screenshot({path:'verified-mobile.png',fullPage:true});
+          await page.locator('#subject-choices button').first().click();
+          await page.waitForTimeout(300);
+          console.log('MOBILE_AFTER_SELECTION',JSON.stringify(await metrics()));
+          if(errors.length)throw Error('Browser page errors: '+errors.join(' ; '));
+          await browser.close();
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: corrected-mobile-preview
+          path: verified-mobile.png
+          if-no-files-found: ignore
