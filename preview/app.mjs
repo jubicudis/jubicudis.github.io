@@ -34,9 +34,12 @@ function setControl(name, visible, enabled = true, current = false) {
   else el.removeAttribute('aria-current');
 }
 function paintNavigation(s) {
+  const suggested = new Set(s.recommendations.map(item => item.id));
   for (const button of topicNavigation.querySelectorAll('button[data-topic]')) {
     const selected = s.presentation.mode === 'explore' &&
       s.presentation.topicId === button.dataset.topic;
+    const title = previewCatalog.topics.get(button.dataset.topic).title;
+    button.textContent = title + (suggested.has(button.dataset.topic) ? ' · suggested next' : '');
     button.setAttribute('aria-current', selected ? 'true' : 'false');
   }
 }
