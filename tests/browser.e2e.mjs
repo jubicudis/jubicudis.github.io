@@ -62,11 +62,23 @@ try {
  }
  const end=await desktop.evaluate(()=>window.__tnosPresentation.snapshot());
  failUnless(end.mode==='explore'&&end.topic===null&&end.finished,'Talk does not transition to exploration: '+JSON.stringify(end));
+ const desktopChoices=await desktop.evaluate(()=>({
+   width:innerWidth,labels:getComputedStyle(document.querySelector('.stage-labels')).display,
+   subjectBounds:[...document.querySelectorAll('#subject-choices button')]
+     .map(b=>({name:b.textContent,left:b.getBoundingClientRect().left,right:b.getBoundingClientRect().right}))
+ }));
+ failUnless(desktopChoices.labels==='none','Duplicate diagram labels obscuring free exploration');
+ failUnless(desktopChoices.subjectBounds.length===7,'Expected all source-grounded exploration subjects');
+ failUnless(desktopChoices.subjectBounds.every(b=>b.left>=0&&b.right<=desktopChoices.width+1),
+   'Desktop exploration subject clipped: '+JSON.stringify(desktopChoices));
+ failUnless((await desktop.locator('#prop-caption').innerText()).includes('NO CAPTION REQUEST'),
+   'Unselected chooser invents a pending caption');
  await desktop.screenshot({path:'review-desktop-explore.png'});
  const mobile=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
  watch(mobile,'mobile');
  await mobile.goto(site,{waitUntil:'load',timeout:30000});
  await mobile.locator('#explore').click();
+ await mobile.screenshot({path:'review-mobile-explore.png',fullPage:true});
  let bounds=await mobile.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth}));
  failUnless(bounds.document<=bounds.viewport+2,'Overflow in mobile chooser: '+JSON.stringify(bounds));
  await mobile.locator('[data-subject-id="architecture"]').click();
