@@ -4,7 +4,7 @@ import {createStateStudy} from './state.mjs';
 const $ = id => document.getElementById(id);
 const experience = $('experience'), canvas = $('world'), ctx = canvas.getContext('2d');
 const engine = createStateStudy();
-let sceneWidth=1,sceneHeight=1,dpr=1,last=performance.now();
+let sceneWidth=1,sceneHeight=1,dpr=1,last=performance.now(),engaged=false;
 let displayAngle=0,visitorProgress=0,three=null,shownContext=false;
 const reduce=window.matchMedia('(prefers-reduced-motion: reduce)');
 let motion=!reduce.matches;
@@ -15,7 +15,10 @@ function say(message) { $('outcome').textContent=message; }
 function describe(state,type) {
   const e=state.evidence, r=state.runtime, a=state.passage;
   let story,headline;
-  if(type==='ENVIRONMENT_CHANGED' || e.status==='pending'){
+  if(!engaged){
+    headline='An answer must have a foundation.';
+    story='I’m Violet, a proposed interface to TNOS. Jubi began this project after AI models understood his instructions but lost established circumstances between conversations. Here, changing a simulated room state must change what the system is allowed to conclude—even without another question. Open the doorway to see why.';
+  }else if(type==='ENVIRONMENT_CHANGED' || e.status==='pending'){
     headline='The room changes first.';
     story='The doorway is changing in the simulated environment. The computational side has no admitted reading for this revision. It must not reuse an earlier permission or invent a new one.';
   }else if(a.status==='observed'){
@@ -66,10 +69,12 @@ engine.subscribe((state,type)=> {
 });
 $('door-event').addEventListener('click',()=> {
   const s=engine.snapshot();
+  engaged=true;
   engine.changeEnvironment(s.physical.targetAngle<.5);
   visitorProgress=0;
 });
 $('crossing').addEventListener('click',()=> {
+  engaged=true;
   const result=engine.requestPassage();
   if(result.accepted)visitorProgress=0;
 });
@@ -177,7 +182,7 @@ function makeThree(THREE) {
     pointer.set((event.clientX-bounds.left)/bounds.width*2-1,-(event.clientY-bounds.top)/bounds.height*2+1);
     raycaster.setFromCamera(pointer,camera);
     if(raycaster.intersectObjects([door,edge],false).length){
-      const s=engine.snapshot();engine.changeEnvironment(s.physical.targetAngle<.5);visitorProgress=0;
+      const s=engine.snapshot();engaged=true;engine.changeEnvironment(s.physical.targetAngle<.5);visitorProgress=0;
     }
   });
   function resize3d(){
