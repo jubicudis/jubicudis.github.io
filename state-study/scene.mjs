@@ -225,30 +225,28 @@ function loop(timestamp){
   const target=current.physical.targetAngle;
   if(!motion)displayAngle=target;
   else displayAngle=lerp(displayAngle,target,soft(dt*3.5,0,1));
-  if(Math.abs(displayAngle-target)<.017){
-    displayAngle=target;
-    if(current.evidence.status==='pending'){
-      // Observation reads the angle realized by the current visual model, not the command.
-      const renderedAngle=three?three.angle():displayAngle;
-      // The Three.js render happens below: qualification uses this model's pose
-      // after the scene updates, on a subsequent frame.
-      if(Math.abs(renderedAngle-target)<.035) engine.observeDoor({
-        revision:current.revision, angle:renderedAngle, source:'browser-scene-model'
-      });
-    }
-  }
-  const latest=engine.snapshot();
-  if(latest.passage.status==='requested'){
+  if(Math.abs(displayAngle-target)<.017)displayAngle=target;
+  if(current.passage.status==='requested'){
     visitorProgress=motion?soft(visitorProgress+dt*.38,0,1):1;
-    if(visitorProgress>=.985){
-      engine.observePassage({revision:latest.revision,position:visitorProgress});
-    }
   }
+  // First realize this frame's model geometry. Requested positions never
+  // qualify an observation merely because they were assigned as targets.
   if(three) {
     ctx.clearRect(0,0,sceneWidth,sceneHeight);
-    three.render(engine.snapshot());
+    three.render(current);
   } else {
-    fallbackRoom(timestamp/1000,engine.snapshot());
+    fallbackRoom(timestamp/1000,current);
+  }
+  if(current.evidence.status==='pending' && Math.abs(displayAngle-target)<.017){
+    // Read the scene's actual model pose AFTER this frame has been rendered.
+    // This is not pixel inspection, external sensor data, or native TNOS.
+    const renderedAngle=three?three.angle():displayAngle;
+    if(Math.abs(renderedAngle-target)<.035) engine.observeDoor({
+      revision:current.revision, angle:renderedAngle, source:'browser-scene-model'
+    });
+  }
+  if(current.passage.status==='requested' && visitorProgress>=.985){
+    engine.observePassage({revision:current.revision,position:visitorProgress});
   }
   requestAnimationFrame(loop);
 }
