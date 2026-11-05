@@ -42,6 +42,11 @@ export function createExperience(catalog) {
           effects = present(0); accepted = true;
         }
         break;
+      case 'RESTART_TALK':
+        if (s.mode === 'explore' && !s.checkpoint && catalog.cues.length) {
+          s.finishedTalk = false; effects = present(0); accepted = true;
+        }
+        break;
       case 'OBSERVE':
         // An observation of an old generation cannot establish a new result.
         if ((s.mode === 'guided' || s.mode === 'explore') && event.generation === s.generation &&
@@ -61,8 +66,8 @@ export function createExperience(catalog) {
             effects = present(s.position + 1);
           } else {
             s.finishedTalk = true; s.mode = 'explore'; s.checkpoint = null;
-            s.outputs = {};
-            effects = [{type: 'ENTER_EXPLORATION', topicId: s.topicId}];
+            s.topicId = null; s.generation++; s.outputs = {};
+            effects = [{type: 'ENTER_EXPLORATION', topicId: null}];
           }
         }
         break;
