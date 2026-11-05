@@ -49,6 +49,8 @@ function size(){
  if(world)world.resize();
  positioned=[];
  drawScene(state.snapshot());
+ // Reposition exploration choices whenever phone orientation or viewport changes.
+ placeSubjectButtons();
 }
 addEventListener('resize',size,{passive:true});
 function pt(node){return [cx+node[3]*scale,cy-node[4]*scale];}
@@ -69,7 +71,9 @@ function updateLabels(s,g){
  const emphasis=focus(s);
  g.nodes.forEach((node,i)=>{
   const [x,y]=pt(node);
-  createLabel(node,x,y-22,i===emphasis&&s.topic!==null);
+  // Prevent semantic labels from extending the page beyond a mobile viewport.
+  const labelX=w<850?Math.max(56,Math.min(w-56,x)):x;
+  createLabel(node,labelX,y-22,i===emphasis&&s.topic!==null);
  });
 }
 function draw2D(s,g){
@@ -231,7 +235,10 @@ function placeSubjectButtons(){
   const node=g.nodes[i],[x,y]=pt(node);
   const b=document.createElement('button');
   b.type='button';b.dataset.subjectId=subject.id;
-  b.style.left=x+'px';b.style.top=(y+36)+'px';
+  // Subjects stay in the shared stage without leaking outside the phone width.
+  const margin=w<850?60:90;
+  b.style.left=(w<850?Math.max(margin,Math.min(w-margin,x)):x)+'px';
+  b.style.top=(y+36)+'px';
   b.textContent=subject.name;
   b.addEventListener('click',()=>state.dispatch({type:'SELECT_SUBJECT',id:subject.id}));
   container.append(b);
