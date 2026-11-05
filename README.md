@@ -34,7 +34,7 @@ The default Pages branch `main` intentionally retains an empty `index.html` unti
 
 ## Violet — communication layer (implementation in progress)
 
-\`src/core/violet.mjs\` is an independent communication-policy layer cooperating with the existing experience engine. It does **not** replace the experience engine's authority over presentation position, observations, or checkpoint state.
+`src/core/violet.mjs` is an independent communication-policy layer cooperating with the existing experience engine. It does **not** replace the experience engine's authority over presentation position, observations, or checkpoint state.
 
 **Identity:** Violet is the name of Jubi/Jubicudis's developer AI instance and the intended introductory identity in future TNOS onboarding. A TNOS user would later be able to personalize and rename their own AI or retain Violet. The browser Violet is an explicitly authored *representation of the intended interface*, not the native AI or a working TNOS cognitive prototype.
 
@@ -63,4 +63,45 @@ The default Pages branch `main` intentionally retains an empty `index.html` unti
 5. Collaboratively select Violet's expressive form, geometry, movement, and placement **with** the environment. Target the experience of communicating with a computer system, not talking to a separate synthetic person. No final artwork, styling, or voice has been chosen.
 6. Test the complete experience and approve public content/art before building the root Pages entry point and publishing.
 
-**Status:** Core communication policy and engine observations have automated Node tests in \`tests/violet.test.mjs\` (run \`node --test tests/*.test.mjs\`). No speech engine, model, rendered stage, computer-vision adapter, browser UI, visitor analytics, or published website has been implemented in this layer.
+**Status:** Core communication policy and engine observations have automated Node tests in `tests/violet.test.mjs` (run `node --test tests/*.test.mjs`). No speech engine, model, rendered stage, computer-vision adapter, browser UI, visitor analytics, or published website has been implemented in this layer.
+
+
+## Functional browser interaction preview (not published)
+
+The branch now includes a deliberately neutral browser prototype under `preview/`:
+
+- `preview/index.html`: accessible semantic layout and action controls.
+- `preview/styles.css`: restrained mobile/desktop layout without a chosen Violet character design.
+- `preview/app.mjs`: connects user actions to Violet's communication policy and the experience engine; observes rendered DOM text/layout before qualifying captions.
+- `preview/demo-content.mjs`: **synthetic, development-only** dialogue and claims. The `approvedForPublic` values in this test fixture only satisfy the validator for a throwaway UI demonstration. They are **not inventor approval**, actual TNOS engineering evidence, or approved publication copy.
+- `tests/preview.test.mjs`: repeatable state/transition integration checks.
+
+### Run locally
+
+From a clone of this repository on the `site-foundation` branch:
+
+```sh
+python3 -m http.server 8000
+```
+
+Open `http://localhost:8000/preview/` in a modern browser. The demo must be served from HTTP, not opened as a `file://` page, because it imports JavaScript modules.
+
+Run automated checks with:
+
+```sh
+node --test tests/*.test.mjs
+```
+
+The preview includes a voluntary name exchange, guided placeholder talk, topic exploration, contextual next-subject suggestions, explanation depth, pause/resume, interruption/return, completion, and replay. The visual presence area intentionally contains **no approved character design**. The text is placeholder-only; actual public TNOS content must be curated and approved before release.
+
+The DOM observer checks that current-generation text exists in an element with browser layout. It does **not** establish actual pixel-level appearance, audibility, reader attention, comprehension, native TNOS execution, or true Stage 7 observation. Those are distinct responsibilities. No external AI model, audio playback, webcam, microphone, cookies, visitor analytics, server component, or external network API is involved in the preview. Visitor-provided names are kept in temporary memory only.
+
+### Review still required
+
+- Browser-level manual acceptance, including keyboard, screen-reader, viewport, and mobile tests.
+- Replace synthetic copy with reviewed material from Part I of the current GitHub Sponsors master. Keep Part II private.
+- Collaboratively establish Violet's expressive form and the environment's unified behavior based on functional communication goals.
+- Connect optional narration, synchronized captions, gestures, genuine supporting media, and appropriate outcome observers.
+- Implement browser history/direct-link navigation and production deployment only after the experience is validated.
+
+The default branch `main` still has an empty entrypoint: this branch does not publish the prototype.
