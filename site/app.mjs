@@ -121,7 +121,7 @@ async function createWorld(){
   const group=new T.Group();scene.add(group);
   scene.add(new T.AmbientLight(0xc4d9ee,1.5));
   const lamp=new T.PointLight(0x83d8c5,30,30);lamp.position.set(0,3,7);scene.add(lamp);
-  let lastKey='';
+  let lastKey='', animationStart=0, animationScheduled=false;
   function rebuild(s,g){
    while(group.children.length){
     const o=group.children[0];group.remove(o);
@@ -145,6 +145,12 @@ async function createWorld(){
     const line=new T.Line(new T.BufferGeometry().setFromPoints(path.getPoints(48)),
       new T.LineBasicMaterial({color:0x83d8c5,transparent:true,opacity:g.tentative?.28:.6}));
     group.add(line);
+    if(!g.tentative){
+      const points=path.getPoints(48);
+      const end=points[47],before=points[44];
+      const direction=new T.Vector3().subVectors(end,before).normalize();
+      group.add(new T.ArrowHelper(direction,end.clone().addScaledVector(direction,-.39),.22,0x83d8c5,.14,.085));
+    }
    }
    for(const [i,n] of g.nodes.entries()){
     const mat=new T.MeshBasicMaterial({color:color[n[2]]||color.math,transparent:true,opacity:i===active?.95:.58,wireframe:true});
@@ -165,8 +171,27 @@ async function createWorld(){
     camera.position.set(0,0,12);camera.lookAt(0,0,0);camera.updateProjectionMatrix();
   },render(s,g){
     const key=(s.mode+'|'+(s.topic||'')+'|'+(s.position||0));
-    if(key!==lastKey){lastKey=key;rebuild(s,g);}
-    renderer.render(scene,camera);return true;
+    if(key!==lastKey){lastKey=key;animationStart=performance.now();rebuild(s,g);}
+    const elapsed=animate?Math.min(1,(performance.now()-animationStart)/550):1;
+    const ease=elapsed*elapsed*(3-2*elapsed);
+    group.scale.setScalar(.94+.06*ease);
+    renderer.render(scene,camera);
+    if(elapsed<1){
+      if(!s.paused&&!animationScheduled){
+        const generation=s.generation;animationScheduled=true;
+        requestAnimationFrame(()=>{
+          animationScheduled=false;
+          const current=state.snapshot();
+          if(current.generation===generation&&world)world.render(current,currentGraph(current));
+        });
+      }
+      return false;
+    }
+    drawn=s.generation;
+    const current=state.snapshot();
+    if(current.generation===s.generation&&!current.paused&&current.outputs.spatial==='pending')
+      state.observe(current.generation,'spatial','confirmed');
+    return true;
   }};
   world.resize();drawScene(state.snapshot());
  }catch(error){console.info('Three.js unavailable: semantic Canvas scene remains active.',error.message);}
@@ -176,10 +201,18 @@ function drawScene(s){
  drawn=-1;
  try{
    draw2D(s,g);
-   if(world){world.render(s,g);canvas.style.opacity='0';}else canvas.style.opacity='1';
+   if(world){world.render(s,g);canvas.style.opacity='0';}else{canvas.style.opacity='1';drawn=s.generation;}
    updateLabels(s,g);
+   $('diagram-name').textContent=g.title;
+   $('diagram-relation').textContent=s.topic==='architecture'?'Two reference frames; TranquilSpeak is their mathematical relationship, not a third frame.':
+      s.topic==='cognition'?'Stage 9 feeds Stage 4. Properly admitted external events can enter at Stage 8.':
+      s.topic==='workbench'?'The engineering tool and its observation mechanisms are not the native OS.':
+      s.topic==='mcp'?'Intended external interface. The integration is not complete.':
+      s.topic==='progress'?'Distinct progress and support needs; no claim of one completed system.':
+      s.topic==='origin'?'A documented development history, not simulated machine behavior.':
+      s.topic==='experience'?'Intended AI interface and ordinary computing, not a native demo.':
+      'Three separate engineering efforts; the website is only a presentation.';
    $('stage').setAttribute('aria-label',g.title+'. '+g.nodes.map(n=>n[0]+': '+n[1]).join('; ')+'. Educational design visualization only.');
-   drawn=s.generation;
  }catch(error){
    console.error('Site stage rendering failed',error);
    if(s.outputs.spatial==='pending')state.observe(s.generation,'spatial','failed');
@@ -291,6 +324,7 @@ $('motion').addEventListener('click',()=>{
  animate=!animate;
  $('motion').setAttribute('aria-pressed',String(animate));
  $('motion').textContent=animate?'MOTION / ON':'MOTION / OFF';
+ drawScene(state.snapshot());
 });
 $('motion').textContent=animate?'MOTION / ON':'MOTION / OFF';
 $('motion').setAttribute('aria-pressed',String(animate));
