@@ -166,9 +166,21 @@
     state.mode='explore';state.depth='overview';
     switchScene(id,'explicitly selected '+id);}
   // The optional name is never submitted as a native GET form or placed in history.
-  $('submit-name').addEventListener('click',()=>start($('preferred-name').value));
-  $('preferred-name').addEventListener('keydown',e=>{
-    if(e.key==='Enter'){e.preventDefault();start($('preferred-name').value);}
+  function isNameSubmissionKey(e, composing) {
+    // Enter is also used to confirm IME candidates, not just to submit a name.
+    // keyCode 229 covers IMEs (notably Safari) that end composition before
+    // reporting the Enter keydown as no longer composing.
+    return e.key==='Enter' && !composing && !e.isComposing && e.keyCode!==229;
+  }
+  const nameInput=$('preferred-name');
+  let nameCompositionActive=false;
+  nameInput.addEventListener('compositionstart',()=>{nameCompositionActive=true;});
+  nameInput.addEventListener('compositionend',()=>{nameCompositionActive=false;});
+  $('submit-name').addEventListener('click',()=>start(nameInput.value));
+  nameInput.addEventListener('keydown',e=>{
+    if(!isNameSubmissionKey(e,nameCompositionActive))return;
+    e.preventDefault();
+    start(nameInput.value);
   });
   $('skip-name').addEventListener('click',()=>start(null));
   text.action.addEventListener('click',next);
