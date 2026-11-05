@@ -38,18 +38,20 @@ export function createExperience(catalog) {
     let accepted = false, effects = [];
     switch (event.type) {
       case 'START':
-        if (s.mode === 'welcome' && catalog.cues.length) {
+        if ((s.mode === 'welcome' || (s.mode === 'explore' && !s.checkpoint && !s.finishedTalk)) && catalog.cues.length) {
           effects = present(0); accepted = true;
         }
         break;
       case 'OBSERVE':
         // An observation of an old generation cannot establish a new result.
-        if (s.mode === 'guided' && event.generation === s.generation &&
+        if ((s.mode === 'guided' || s.mode === 'explore') && event.generation === s.generation &&
             OUTPUTS.has(event.output) && RESULTS.has(event.status) &&
             Object.hasOwn(s.outputs, event.output) &&
             s.outputs[event.output] === 'pending') {
           s.outputs[event.output] = event.status; accepted = true;
           if (ready()) effects.push({type: 'CUE_READY', cueId: catalog.cues[s.position].id});
+          if (s.mode === 'explore' && Object.values(s.outputs).every(x => x === 'confirmed'))
+            effects.push({type: 'TOPIC_READY', topicId: s.topicId, generation: s.generation});
         }
         break;
       case 'NEXT':
@@ -87,7 +89,7 @@ export function createExperience(catalog) {
             s.checkpoint = {position: s.position, paused: s.paused};
           }
           s.mode = 'explore'; s.topicId = event.topicId;
-          s.generation++; s.outputs = {}; accepted = true;
+          s.generation++; s.outputs = {caption: 'pending'}; accepted = true;
           effects = [{type: 'SHOW_TOPIC', topicId: event.topicId, generation: s.generation}];
         }
         break;
