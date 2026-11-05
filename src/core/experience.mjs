@@ -32,8 +32,9 @@ export function createExperience(catalog) {
       Object.values(s.outputs).length > 0 &&
       Object.values(s.outputs).every(result => result === 'confirmed');
   }
-  function dispatch(event) {
+  function process(event, authority) {
     if (!event || typeof event.type !== 'string') throw new Error('Event type required');
+    if (event.type === 'OBSERVE' && authority !== 'observer') throw new Error('Observation authority required');
     let accepted = false, effects = [];
     switch (event.type) {
       case 'START':
@@ -113,8 +114,10 @@ export function createExperience(catalog) {
     }
     return {accepted, state: snapshot(), effects};
   }
+  const dispatch = event => process(event, 'interaction');
+  const observe = observation => process({...observation, type: 'OBSERVE'}, 'observer');
   return Object.freeze({
-    snapshot, dispatch,
+    snapshot, dispatch, observe,
     subscribe(callback) {
       if (typeof callback !== 'function') throw new Error('Listener must be a function');
       listeners.add(callback);
