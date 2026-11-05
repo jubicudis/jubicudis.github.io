@@ -35,6 +35,12 @@ export function createPublicCatalog({claims = [], topics = [], cues = []} = {}) 
     check(t.approvedForPublic === true && nonempty(t.title), 'topic ' + t.id + ' not approved');
     check(Array.isArray(t.claimIds), 'topic ' + t.id + ' has no claim references');
     for (const id of t.claimIds) check(byClaim.has(id), 'topic ' + t.id + ': unknown claim ' + id);
+    for (const key of ['overviewClaimIds', 'detailClaimIds']) {
+      if (t[key] !== undefined) {
+        check(Array.isArray(t[key]), 'topic ' + t.id + ': ' + key + ' must be an array');
+        for (const id of t[key]) check(byClaim.has(id), 'topic ' + t.id + ': unknown ' + key + ' claim ' + id);
+      }
+    }
     for (const id of t.relatedTopicIds ?? []) {
       check(byTopic.has(id), 'topic ' + t.id + ': unknown related topic ' + id);
     }
