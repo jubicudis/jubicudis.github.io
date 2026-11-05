@@ -134,7 +134,8 @@ async function createWorld(){
   const renderer=new T.WebGLRenderer({alpha:true,antialias:true,powerPreference:'low-power'});
   renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
   renderer.domElement.setAttribute('aria-hidden','true');
-  Object.assign(renderer.domElement.style,{position:'absolute',inset:'0',width:'100%',height:'100%',pointerEvents:'none',zIndex:'1'});
+  renderer.domElement.classList.add('three-stage');
+  Object.assign(renderer.domElement.style,{position:'absolute',top:'0',left:'0',pointerEvents:'none',zIndex:'1'});
   canvas.parentElement.insertBefore(renderer.domElement,document.querySelector('.stage-overlay'));
   const scene=new T.Scene(),camera=new T.OrthographicCamera(-5,5,3,-3,.1,100);
   const group=new T.Group();scene.add(group);
@@ -179,6 +180,9 @@ async function createWorld(){
   }
   world={resize(){
     renderer.setSize(w,h,false);
+    // Match the real stage, not the growing mobile document.
+    renderer.domElement.style.width=w+'px';
+    renderer.domElement.style.height=h+'px';
     const ratio=w/h,span=Math.max(5.1,4.5/ratio);
     camera.left=-span*ratio/2;camera.right=span*ratio/2;
     camera.top=span/2;camera.bottom=-span/2;
