@@ -61,6 +61,23 @@ export function createPresentation() {
         if(!s.visited.includes(event.id))s.visited.push(event.id);
         resetOutputs();s.interaction='visitor selected '+event.id;
         return emit('SHOW_SUBJECT',event.id);
+      case 'EXPLORE_NEXT': {
+        if(s.mode!=='explore'||!s.topic||!s.qualified)return {accepted:false,state:snap()};
+        const relevant=cuesForSubject(s.topic);
+        const current=relevant.findIndex(cue=>cue.id===cues[s.position]?.id);
+        if(current<0||current+1>=relevant.length){
+          s.topic=null;resetOutputs();s.outputs={};
+          return emit('ENTER_EXPLORATION','returned to subject selection');
+        }
+        return show(cues.indexOf(relevant[current+1]),'continued contextual exploration');
+      }
+      case 'EXPLORE_PREVIOUS': {
+        if(s.mode!=='explore'||!s.topic)return {accepted:false,state:snap()};
+        const relevant=cuesForSubject(s.topic);
+        const current=relevant.findIndex(cue=>cue.id===cues[s.position]?.id);
+        if(current<=0)return {accepted:false,state:snap()};
+        return show(cues.indexOf(relevant[current-1]),'returned to earlier related explanation');
+      }
       case 'RETURN':
         if(s.mode!=='explore'||!s.returnPoint)return {accepted:false,state:snap()};
         const back=s.returnPoint;s.returnPoint=null;s.mode='guided';s.paused=back.paused;
