@@ -133,3 +133,11 @@ test('a communication objective is only marked presented by an observed result',
   assert.equal(guide.snapshot().objectives[0].status,'presented');
   assert.ok(!Object.hasOwn(guide.snapshot().objectives[0],'understood'));
 });
+
+
+test('unapproved deep explanations cannot bypass content validation', () => {
+  assert.throws(()=>createPublicCatalog({
+    claims:[{id:'c',approvedForPublic:true,product:'tnos',kind:'intended',basis:'inventor_design',statement:'Test',source:'Fixture'}],
+    topics:[{id:'tnos',approvedForPublic:true,title:'TNOS',claimIds:['c'],detailClaimIds:['private'],relatedTopicIds:[]}]
+  }),/unknown detailClaimIds claim private/);
+});
