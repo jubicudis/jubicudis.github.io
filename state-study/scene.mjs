@@ -239,8 +239,12 @@ function loop(timestamp){
       engine.observePassage({revision:latest.revision,position:visitorProgress});
     }
   }
-  fallbackRoom(timestamp/1000,engine.snapshot());
-  if(three)three.render(engine.snapshot());
+  if(three) {
+    ctx.clearRect(0,0,sceneWidth,sceneHeight);
+    three.render(engine.snapshot());
+  } else {
+    fallbackRoom(timestamp/1000,engine.snapshot());
+  }
   requestAnimationFrame(loop);
 }
 resize();
