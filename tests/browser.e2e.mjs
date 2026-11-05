@@ -107,6 +107,19 @@ try {
  failUnless(await mobile.locator('#study-dialog').evaluate(d=>d.open),'Mobile study inspection failed');
  await mobile.screenshot({path:'review-mobile-study.png',fullPage:true});
  await mobile.locator('#close-study').click();
+ // A mobile generated study must also be genuinely displayed, not qualified by Canvas alone.
+ await mobile.locator('#explore').click();
+ await mobile.locator('[data-subject-id="mcp"]').click();
+ await waitQualified(mobile,'mobile MCP generated visual');
+ const mcpImage=await mobile.locator('#study-image').evaluate(img=>({
+   visible:img.getBoundingClientRect().width>0,
+   width:img.naturalWidth,src:img.currentSrc.slice(0,19),
+   filter:getComputedStyle(img).filter
+ }));
+ failUnless(mcpImage.visible&&mcpImage.width>0&&mcpImage.src.startsWith('data:image/svg'),
+    'Generated MCP image missing on phone: '+JSON.stringify(mcpImage));
+ failUnless(mcpImage.filter==='none','Generated visual was unexpectedly color inverted: '+JSON.stringify(mcpImage));
+ await mobile.screenshot({path:'review-mobile-mcp.png',fullPage:true});
  bounds=await mobile.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth}));
  failUnless(bounds.document<=bounds.viewport+2,'Overflow after mobile study: '+JSON.stringify(bounds));
  console.log('QUALIFIED_GUIDED_CUES',count);
