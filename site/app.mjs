@@ -41,6 +41,7 @@ const focusId={
 };
 const currentGraph=s=>concepts[s.mode==='arrival'?'arrival':s.mode==='explore'&&!s.topic?'chooser':s.topic]||concepts.arrival;
 const sourceStudies={
+ origin:{},experience:{},workbench:{},mcp:{},progress:{},
  architecture:{desktop:'./site/studies/architecture-desktop.svg',mobile:'./site/studies/architecture-mobile.svg',
    title:'Two reference frames, metric collection and contextual mathematics',
    alt:'TNOS design study showing hardware acquisition and metrics in physical frame 01, a mathematical TranquilSpeak relationship, and the computing runtime as frame 02.'},
