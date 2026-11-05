@@ -452,7 +452,7 @@
     drawRelations(t,cx,cy);
     if(world)world.render(t);
     if(state.requested&&active().id==='workbench'){
-      state.mechanics=clamp(state.mechanics+delta*.48,0,1);
+      state.mechanics=state.motion?clamp(state.mechanics+delta*.48,0,1):state.mechanicsTarget;
       if(state.mechanics>=1){
         // Qualify the actual current simulated carriage position, not just the request.
         const correct=Math.abs(state.mechanics-state.mechanicsTarget)<.003;
