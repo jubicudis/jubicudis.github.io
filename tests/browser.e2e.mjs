@@ -29,12 +29,17 @@ try {
   const snapshot=await desktop.evaluate(()=>window.__tnosPresentation.snapshot());
   failUnless(snapshot.position===i,'Incorrect guided position at '+i+': '+JSON.stringify(snapshot));
   const topic=snapshot.topic;
-  if(topic==='architecture'||topic==='cognition'){
-   failUnless(await desktop.locator('#study-display').isVisible(),'Source study not visible at '+i);
-   const image=await desktop.locator('#study-image').evaluate(img=>({width:img.naturalWidth,complete:img.complete,src:img.currentSrc}));
-   failUnless(image.complete&&image.width>0,'Source study failed to render: '+JSON.stringify(image));
-   if(i===3||i===6)await desktop.screenshot({path:'review-'+topic+'.png'});
-  }
+  failUnless(await desktop.locator('#study-display').isVisible(),
+    'Source-grounded visual missing for '+topic+' at '+i);
+  const diagram=await desktop.locator('#study-image').evaluate(img=>({
+    width:img.naturalWidth,complete:img.complete,src:img.currentSrc,
+    box:img.getBoundingClientRect().toJSON()
+  }));
+  failUnless(diagram.complete&&diagram.width>0&&diagram.box.width>0&&diagram.box.height>0,
+    'Subject visual not rendered at '+i+': '+JSON.stringify(diagram));
+  failUnless(snapshot.outputs.spatial==='confirmed','Diagram not qualified at '+i);
+  if(i===0||i===2||i===3||i===6||i===8||i===10||i===11)
+    await desktop.screenshot({path:'review-subject-'+topic+'.png'});
   if(i===3){
    await desktop.locator('#depth').click();
    await waitQualified(desktop,'deep architecture');
