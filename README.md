@@ -29,7 +29,7 @@ Together these form the **nonvisual foundation**, not a finished website. They a
 4. **Exploration:** Present approved related subjects through the same interface. Preserve accessible navigation and direct links without inventing architectural attractions.
 5. **Verification and release:** Exercise pause/return, old-generation rejection, audio/caption synchronization, mobile behavior, reduced-motion accessibility, and content-approval boundaries. Only then connect an approved presentation to the root `index.html`.
 
-The default Pages branch `main` intentionally retains an empty `index.html` until the user-facing design and public content are approved. This branch is for foundational implementation review, not a public-site launch.
+The working branch initially preserved an empty `main` entry point. On Jubi's direct instruction, this **explicitly marked development preview** is being published for user-experience review, without approving its placeholder content as final TNOS publication copy.
 
 
 ## Violet — communication layer (implementation in progress)
@@ -104,4 +104,4 @@ The DOM observer checks that current-generation text exists in an element with b
 - Connect optional narration, synchronized captions, gestures, genuine supporting media, and appropriate outcome observers.
 - Implement browser history/direct-link navigation and production deployment only after the experience is validated.
 
-The default branch `main` still has an empty entrypoint: this branch does not publish the prototype.
+The development preview is now eligible for publication to `main` for Jubi's hands-on evaluation. The root entry point loads the same interactive prototype; the final TNOS story, visual identity, and approved presentation are not yet published.
