@@ -17,6 +17,13 @@ export function createVioletGuide(catalog, experience, plan = {}) {
   const route = plan.route ?? [];
   if (!Array.isArray(route) || new Set(route).size !== route.length ||
       route.some(id => !catalog.topics.has(id))) reject('route must contain distinct approved topic IDs');
+  const goals = plan.objectives ?? [];
+  if (!Array.isArray(goals) || new Set(goals.map(g => g?.id)).size !== goals.length ||
+      goals.some(g => !g || typeof g.id !== 'string' || !g.id ||
+        !Array.isArray(g.topicIds) || !g.topicIds.length ||
+        g.topicIds.some(id => !catalog.topics.has(id)))) {
+    reject('objectives require unique IDs and approved topic coverage');
+  }
   if (plan.greeting !== undefined &&
       (!plan.greeting || plan.greeting.approvedForPublic !== true ||
        typeof plan.greeting.text !== 'string' || !plan.greeting.text.trim())) {
@@ -28,6 +35,27 @@ export function createVioletGuide(catalog, experience, plan = {}) {
     openedTopicIds: []
   };
   const listeners = new Set();
+  const presentedTopics = new Set();
+  const presentedCues = new Set();
+  experience.subscribe((_state, effects) => {
+    for (const effect of effects) {
+      if (effect.type === 'TOPIC_READY') presentedTopics.add(effect.topicId);
+      if (effect.type === 'CUE_READY') {
+        presentedCues.add(effect.cueId);
+        const cue = catalog.cues.find(item => item.id === effect.cueId);
+        if (cue && catalog.cues.filter(item => item.topicId === cue.topicId)
+          .every(item => presentedCues.has(item.id))) presentedTopics.add(cue.topicId);
+      }
+    }
+  });
+  function objectiveStatus() {
+    return goals.map(g => {
+      const shown = g.topicIds.filter(id => presentedTopics.has(id));
+      return {id: g.id, status: shown.length === g.topicIds.length ? 'presented' :
+        shown.length ? 'partially-presented' : 'not-presented',
+        presentedTopicIds: shown};
+    });
+  }
   const state = () => structuredClone(visitor);
   const context = () => {
     const presentation = experience.snapshot();
@@ -44,7 +72,9 @@ export function createVioletGuide(catalog, experience, plan = {}) {
   function recommendations(limit = 3) {
     const snap = experience.snapshot();
     const explicitRelated = catalog.topics.get(snap.topicId)?.relatedTopicIds ?? [];
-    const order = [...explicitRelated, ...route, ...catalog.topics.keys()];
+    const unmet = goals.filter(g => g.topicIds.some(id => !presentedTopics.has(id)))
+      .flatMap(g => g.topicIds.filter(id => !presentedTopics.has(id)));
+    const order = [...explicitRelated, ...unmet, ...route, ...catalog.topics.keys()];
     const unique = [...new Set(order)].filter(id => id !== snap.topicId && catalog.topics.has(id));
     return unique.filter(id => !visitor.openedTopicIds.includes(id)).concat(
       unique.filter(id => visitor.openedTopicIds.includes(id))
@@ -77,7 +107,7 @@ export function createVioletGuide(catalog, experience, plan = {}) {
   }
   function snapshot() {
     return {visitor: state(), presentation: experience.snapshot(), context: context(),
-      recommendations: recommendations()};
+      recommendations: recommendations(), objectives: objectiveStatus()};
   }
   function dispatch(event) {
     if (!event || typeof event.type !== 'string') reject('typed event required');
