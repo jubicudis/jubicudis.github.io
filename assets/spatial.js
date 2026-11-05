@@ -164,9 +164,9 @@
     return polar.map(([x,y])=>[.67+x*.245,.43+y*.245]);
   }
   function renderNodes(){
-    const container=$('node-field');container.hidden=state.mode!=='explore';container.classList.toggle('exploring',state.mode==='explore');
+    const container=$('node-field');container.hidden=state.mode!=='explore'||state.depth==='detail';container.classList.toggle('exploring',state.mode==='explore'&&state.depth!=='detail');
     container.replaceChildren();hotspots=[];
-    if(state.mode!=='explore')return;
+    if(state.mode!=='explore'||state.depth==='detail')return;
     anchorPositions().forEach(([x,y],i)=>{
       const chapter=chapters[i],b=document.createElement('button');
       b.className='constellation-node';b.type='button';b.style.left=(x*100)+'%';b.style.top=(y*100)+'%';
@@ -212,9 +212,19 @@
     }
     return [cx,cy];
   }
+  const violet2D={x:null,y:null,scale:null};
   function drawViolet2D(t,cx,cy){
-    const scale=mobile()?Math.min(W/390,.92)*.8:clamp(W/1330,.77,1.2),v=state.mode==='explore'?.82:1;
-    ctx.save();ctx.translate(cx,cy);ctx.scale(scale*v,scale*v);
+    const explaining=state.mode!=='greeting';
+    const targetX=mobile()?(explaining?W*.81:cx):(explaining?W*.89:cx);
+    const targetY=mobile()?(explaining?H*.25:cy):(explaining?H*.47:cy);
+    const base=mobile()?Math.min(W/390,.92)*.8:clamp(W/1330,.77,1.2);
+    const targetScale=base*(explaining?.53:1);
+    if(violet2D.x===null){violet2D.x=cx;violet2D.y=cy;violet2D.scale=base;}
+    const easing=state.motion?.06:1;
+    violet2D.x+=(targetX-violet2D.x)*easing;
+    violet2D.y+=(targetY-violet2D.y)*easing;
+    violet2D.scale+=(targetScale-violet2D.scale)*easing;
+    ctx.save();ctx.translate(violet2D.x,violet2D.y);ctx.scale(violet2D.scale,violet2D.scale);
     const sway=state.motion?Math.sin(t*.72)*6:0;
     ctx.translate(0,sway);
     // An articulated interface presence: a face-like lattice growing from the environment, not a body or orb.
@@ -246,6 +256,22 @@
   function drawRelations(t,cx,cy){
     const c=active(),m=mobile(),anchor=[m?W*.5:W*.67,m?H*.31:H*.49];
     if(state.mode==='greeting')return;
+    if(state.mode==='explore' && state.depth==='overview'){
+      const pts=anchorPositions().map(([x,y])=>[x*W,y*H]);
+      ctx.save();
+      for(let i=0;i<pts.length;i++){
+        const a=pts[i],b=pts[(i+1)%pts.length];
+        line(a,b,'rgba(140,182,244,.22)',.85);
+        if(i%2===0)line(a,pts[(i+3)%pts.length],'rgba(176,145,240,.10)',.7);
+      }
+      const selected=chapters.findIndex(c=>c.id===state.topic);
+      if(selected>=0){
+        const p=pts[selected];
+        pts.forEach((to,i)=>{if(i!==selected)line(p,to,'rgba(167,185,255,.12)',.7);});
+        ellipse(p[0],p[1],13,13,0,'rgba(216,200,255,.62)',1);
+      }
+      ctx.restore();return;
+    }
     const alpha=clamp((now()-state.sceneStarted)/850,0,1);ctx.save();ctx.globalAlpha=alpha;
     const radius=Math.min(m?W*.33:W*.19,H*.23);
     switch(c.visual){
@@ -346,12 +372,20 @@
       for(let i=0;i<260;i++){const a=i*2.399963,b=i/260*Math.PI*2;pData[i*3]=Math.cos(a)*(.5+b*.23);pData[i*3+1]=Math.sin(a)*(.5+b*.19);pData[i*3+2]=(Math.sin(i*9.3))*.5}
       const particlesGeo=new THREE.BufferGeometry();particlesGeo.setAttribute('position',new THREE.BufferAttribute(pData,3));
       const particles=new THREE.Points(particlesGeo,new THREE.PointsMaterial({size:.025,color:0xb9b3ff,transparent:true,opacity:.6,depthWrite:false}));violet.add(particles);
+      violet.position.set(mobile()?0:2.4,mobile()?1.95:.1,0);
+      violet.scale.setScalar(mobile()?.70:1.0);
       function resizeWorld(){renderer.setSize(W,H,false);camera.aspect=W/H;camera.updateProjectionMatrix();}
       world={resize:resizeWorld,render(t){
-        violet.position.set(mobile()?0:2.4,mobile()?1.95:.1,0);
+        const explaining=state.mode!=='greeting';
+        const targetX=mobile()?(explaining?2.0:0):(explaining?4.2:2.4);
+        const targetY=mobile()?(explaining?2.25:1.95):(explaining?.2:.1);
         const base=mobile()?.70:1.0;
-        const scale=state.mode==='explore'?base*.86:base;
-        violet.scale.setScalar(scale);
+        const targetScale=base*(explaining?.58:1);
+        const eased=state.motion?.09:1;
+        violet.position.x+=(targetX-violet.position.x)*eased;
+        violet.position.y+=(targetY-violet.position.y)*eased;
+        const oldScale=violet.scale.x;
+        violet.scale.setScalar(oldScale+(targetScale-oldScale)*eased);
         violet.rotation.y=state.motion?Math.sin(t*.44)*.13+pointerX*.045:pointerX*.045;
         violet.rotation.x=state.motion?Math.sin(t*.38)*.045-pointerY*.022:0;
         violet.position.y+=(state.motion?Math.sin(t*.78)*.08:0);
