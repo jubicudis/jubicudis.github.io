@@ -3,7 +3,7 @@ import {createExperience} from '../src/core/experience.mjs';
 import {createVioletGuide} from '../src/core/violet.mjs';
 import {previewCatalog, previewPlan} from './demo-content.mjs';
 
-if (!/(?:^|\/)preview\/(?:index\.html)?$/.test(window.location.pathname)) {
+if (!(/(?:^|\/)preview\/(?:index\.html)?$/.test(window.location.pathname) || /^\/(?:index\.html)?$/.test(window.location.pathname))) {
   throw new Error('Development-only fixture must be served from /preview/');
 }
 const experience = createExperience(previewCatalog);
