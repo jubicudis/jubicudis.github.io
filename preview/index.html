@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Violet — TNOS Interaction Preview</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <a class="skip-link" href="#experience">Skip to experience</a>
+  <div class="preview-banner" role="note">DEVELOPMENT PREVIEW — placeholder dialogue, no approved public TNOS presentation, no live AI</div>
+  <header class="site-header">
+    <div>
+      <p class="eyebrow">TNOS · interface development</p>
+      <h1>Meet Violet</h1>
+    </div>
+    <p class="intro">Testing how a visitor and a computer interface can establish context and communicate within one continuous environment.</p>
+  </header>
+  <main id="experience" class="layout">
+    <section class="experience" aria-label="Violet presentation environment">
+      <div class="presence" aria-label="Reserved space for Violet's visual presence and the surrounding presentation environment">
+        <p class="eyebrow">Visual identity and environment</p>
+        <strong>Violet</strong>
+        <p>Appearance, geometry, movement, and information placement will be designed together around communication needs.</p>
+        <p class="muted">This is a functional placeholder, not proposed character artwork.</p>
+      </div>
+      <div class="conversation">
+        <p class="eyebrow">Current communication</p>
+        <h2 id="scene-title" tabindex="-1">Welcome</h2>
+        <div id="scene-content" class="scene-content" aria-live="polite" aria-atomic="true"></div>
+        <p id="observation-status" class="status" role="status"></p>
+        <form id="name-form" class="name-form" autocomplete="off">
+          <label for="visitor-name">What should Violet call you? <span class="muted">(optional)</span></label>
+          <input id="visitor-name" name="visitorName" maxlength="60" placeholder="Preferred name">
+          <div class="controls">
+            <button type="submit" class="primary">Continue with name</button>
+            <button type="button" data-action="skip-name">Skip name</button>
+          </div>
+          <small>No account or name storage. This prototype keeps the name only in this tab's temporary memory.</small>
+        </form>
+        <div id="controls" class="controls" aria-label="Presentation controls">
+          <button type="button" data-action="start-talk" class="primary" hidden>Begin Violet's introduction</button>
+          <button type="button" data-action="restart-talk" hidden>Replay introduction</button>
+          <button type="button" data-action="next" class="primary" hidden>Continue presentation</button>
+          <button type="button" data-action="pause" hidden>Pause</button>
+          <button type="button" data-action="resume" hidden>Resume</button>
+          <button type="button" data-action="retry" hidden>Retry this explanation</button>
+          <button type="button" data-action="return-talk" hidden>Return to Violet's introduction</button>
+          <button type="button" data-action="explore" hidden>Explore the subjects</button>
+        </div>
+      </div>
+    </section>
+    <aside class="sidebar" aria-label="Explore TNOS subjects">
+      <section>
+        <p class="eyebrow">Same environment · free exploration</p>
+        <h2>Explore a subject</h2>
+        <p>Choose what interests you. Violet keeps the presentation position if you explore during the introduction.</p>
+        <nav id="topics" aria-label="Subject choices"></nav>
+      </section>
+      <section id="depth-controls" hidden>
+        <h2>Explanation depth</h2>
+        <div class="controls">
+          <button type="button" data-action="overview">Overview</button>
+          <button type="button" data-action="detail">More detail</button>
+        </div>
+      </section>
+      <details class="coverage">
+        <summary>Presentation coverage</summary>
+        <p>Tracks which placeholder subjects were actually displayed, not whether a visitor understood or agreed with them.</p>
+        <ul id="coverage-list"></ul>
+      </details>
+      <section class="support">
+        <h2>About this prototype</h2>
+        <p>It tests communication, context, navigation, and observable results. Violet's final appearance, approved narration, visual evidence, and audio have not yet been added.</p>
+        <p><a href="https://github.com/sponsors/jubicudis" rel="noopener noreferrer">Jubicudis on GitHub Sponsors</a></p>
+      </section>
+    </aside>
+  </main>
+  <footer>TNOS website interaction prototype · development-only content · no camera, microphone, analytics, or model access</footer>
+</body>
+</html>
