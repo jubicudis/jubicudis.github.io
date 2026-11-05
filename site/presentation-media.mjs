@@ -23,6 +23,7 @@ export function attachPresentationMedia({state,cues,explanationForCue}) {
  };
  const showStage=(s,cue)=>{
   const study=studies[s.topic]||semanticVisual(s.topic,cue?.id)||null,container=$('study-display');
+  container.dataset.visualSource=studies[s.topic]?'reference':'generated';
   container.hidden=!study;
   if(!study)return;
   setIfDifferent($('study-mobile'),'srcset',study.mobile);
@@ -33,6 +34,7 @@ export function attachPresentationMedia({state,cues,explanationForCue}) {
   $('study-dialog-image').alt=study.alt;
   $('study-dialog-heading').textContent=study.title+' · design study';
   $('study-caption').textContent=(cue?.label||study.title)+' · NOT END-TO-END VERIFIED';
+  $('inspect-study').textContent='EXAMINE THIS SUBJECT ↗';
   $('study-explanation').textContent=explanationForCue[cue?.id]||study.title;
  };
  function qualifyDiagram(generation) {
