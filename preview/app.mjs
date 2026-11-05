@@ -44,7 +44,7 @@ function paintNavigation(s) {
   }
 }
 function qualifyRenderedCaption(generation, expectedText) {
-  // Explicit observation of this browser's visible DOM output, NOT an assumption
+  // Bounded DOM/layout check, not camera/OpenCV/pixel observation or an assumption
   // that presenting a request means the visitor has read or understood it.
   window.requestAnimationFrame(() => {
     const correctGeneration = content.dataset.generation === String(generation);
@@ -95,7 +95,7 @@ function showScene(s) {
   }
   if (isGuide && p.paused) status.textContent = 'Introduction paused. The current explanation remains available to read.';
   else if ((isGuide || isTopic) && p.outputs.caption === 'pending') status.textContent = 'Checking the rendered explanation.';
-  else if ((isGuide || isTopic) && p.outputs.caption === 'confirmed') status.textContent = 'The explanation is rendered. This does not establish that it was understood.';
+  else if ((isGuide || isTopic) && p.outputs.caption === 'confirmed') status.textContent = 'The explanation is present in the browser layout. This does not establish that it was seen or understood.';
   else if ((isGuide || isTopic) && ['failed','unavailable'].includes(p.outputs.caption))
     status.textContent = 'The output could not be confirmed. You can retry or choose another subject.';
   else status.textContent = 'Choose how you would like to continue.';
