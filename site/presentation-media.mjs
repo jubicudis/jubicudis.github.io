@@ -92,7 +92,11 @@ export function attachPresentationMedia({state,cues,explanationForCue}) {
    observing:'AWAITING QUALIFIED OUTPUT',presenting:'CURRENT SUBJECT ESTABLISHED'};
   $('violet-condition').textContent=phaseNames[phase];
   const status=s.outputs||{};
-  const phases=[
+  const phases=chooser?[
+   [$('prop-requested'),'AWAITING SUBJECT',''],
+   [$('prop-caption'),'NO CAPTION REQUEST',''],
+   [$('prop-spatial'),'NO VISUAL REQUEST','']
+  ]:[
    [$('prop-requested'),arrival?'NOT REQUESTED':'CUE REQUESTED',arrival?'':'confirmed'],
    [$('prop-caption'),status.caption==='confirmed'?'CAPTION OBSERVED':
       status.caption==='failed'?'CAPTION FAILED':'CAPTION PENDING',status.caption||''],
