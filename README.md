@@ -26,10 +26,14 @@ The website's actual logic is in `assets/spatial.js`, the presentation styling i
 
 `src/core/content.mjs`, `src/core/experience.mjs`, and `src/core/violet.mjs` remain as earlier architectural experiments. The new integrated visual study is currently self-contained and **does not yet use those modules as its authoritative state engine**. Integrating and validating a consolidated engine is later work; do not claim the two implementations are already connected.
 
-The earlier control-based preview remains under `preview/` for comparison, not as the intended design.
+The previous box-based browser preview has been retired: `preview/` redirects to the spatial homepage, and its obsolete scripts, styles and fixture tests were deleted. The earlier nonvisual `src/core/` modules remain as separate reference experiments.
 
 ## Continuing the collaboration
 
 Use the published visual experience to evaluate Violet's form, spatial composition, wording, animation, information relevance, interaction and comfort on actual devices. Decisions are to be based on their communication purpose, not presentation decoration. Changes are evaluated visually and functionally before representing them as completed work.
 
 The user-facing name is **Jubi / Jubicudis**. Violet is Jubi's developer AI identity in the proposed TNOS product; the browser version is a visualization, not the native AI.
+
+## Verification limits and next engineering steps
+
+Local Chromium interaction checks exercised the arrival, optional name, guided transitions, contextual exploration, return to the previous point, deeper explanation, illustrative Workbench command/result qualification and mobile viewport. The spatial JavaScript passed syntax checks. Three.js is pinned to 0.180.0 and downloaded externally; the full WebGL path has **not** been visually verified in this restricted environment, while the Canvas2D fallback was visually checked. GitHub Pages hosting and actual phone Safari behavior must be tested in the deployed site. The content and artistic choices remain provisional pending Jubi's direct review.
