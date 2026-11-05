@@ -1,5 +1,6 @@
 // Presentation media are consumers of the established browser state.
 // This module never claims to operate TNOS or observe anything beyond this page.
+import {semanticVisual} from './source-visuals.mjs';
 export function attachPresentationMedia({state,cues,explanationForCue}) {
  const $=id=>document.getElementById(id);
  const studies={
@@ -21,7 +22,7 @@ export function attachPresentationMedia({state,cues,explanationForCue}) {
   if(el.getAttribute(attribute)!==value)el.setAttribute(attribute,value);
  };
  const showStage=(s,cue)=>{
-  const study=studies[s.topic]||null,container=$('study-display');
+  const study=studies[s.topic]||semanticVisual(s.topic,cue?.id)||null,container=$('study-display');
   container.hidden=!study;
   if(!study)return;
   setIfDifferent($('study-mobile'),'srcset',study.mobile);
@@ -37,7 +38,7 @@ export function attachPresentationMedia({state,cues,explanationForCue}) {
  function qualifyDiagram(generation) {
   const current=state.snapshot();
   if(current.generation!==generation||current.paused||current.outputs.spatial!=='pending'||
-     !studies[current.topic]||$('study-display').hidden)return false;
+     !(studies[current.topic]||semanticVisual(current.topic,cues[current.position]?.id))||$('study-display').hidden)return false;
   const image=studyImage,rect=image.getBoundingClientRect();
   if(image.complete&&image.naturalWidth>0&&rect.width>0&&rect.height>0){
    // The browser actually loaded the source diagram and laid it out.
@@ -53,12 +54,12 @@ export function attachPresentationMedia({state,cues,explanationForCue}) {
  });
  studyImage.addEventListener('error',()=>{
   const s=state.snapshot();
-  if(studies[s.topic]&&s.outputs.spatial==='pending'&&!s.paused)
+  if((studies[s.topic]||semanticVisual(s.topic,cues[s.position]?.id))&&s.outputs.spatial==='pending'&&!s.paused)
    state.observe(s.generation,'spatial','unavailable');
  });
  $('inspect-study').addEventListener('click',()=>{
   const s=state.snapshot();
-  if(studies[s.topic])$('study-dialog').showModal();
+  if(studies[s.topic]||semanticVisual(s.topic,cues[s.position]?.id))$('study-dialog').showModal();
  });
  $('close-study').addEventListener('click',()=>$('study-dialog').close());
  $('study-dialog').addEventListener('close',()=>{
@@ -79,7 +80,8 @@ export function attachPresentationMedia({state,cues,explanationForCue}) {
   depthButton.textContent=detail?'BACK TO OVERVIEW −':'EXPLAIN FURTHER +';
   depthButton.setAttribute('aria-expanded',String(detail));
   $('experience').dataset.depth=s.depth||'overview';
-  const currentStudy=studies[s.topic]||null;
+  const currentStudy=studies[s.topic]||semanticVisual(s.topic,cue?.id)||null;
+  $('experience').dataset.hasStudy=String(!!currentStudy);
   showStage(s,cue);
   const figure=$('violet-presenter');
   figure.dataset.mode=s.mode;
