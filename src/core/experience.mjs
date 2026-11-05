@@ -108,8 +108,9 @@ export function createExperience(catalog) {
       case 'SKIP_TO_EXPLORATION':
         if (s.mode === 'guided' || s.mode === 'welcome') {
           s.generation++; s.mode = 'explore'; s.paused = false;
-          s.checkpoint = null; s.outputs = {}; accepted = true;
-          effects = [{type: 'ENTER_EXPLORATION', topicId: s.topicId}];
+          s.checkpoint = null; s.topicId = null; s.outputs = {}; accepted = true;
+          // The chooser is not a selected topic or a newly observed result.
+          effects = [{type: 'ENTER_EXPLORATION', topicId: null, generation: s.generation}];
         }
         break;
       default: throw new Error('Unknown event: ' + event.type);
