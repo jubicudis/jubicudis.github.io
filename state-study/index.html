@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050914">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>TNOS / State Propagation Study</title>
+  <link rel="stylesheet" href="./scene.css">
+  <script type="module" src="./scene.mjs"></script>
+</head>
+<body>
+  <a class="skip" href="#narration">Skip to Violet's explanation</a>
+  <main id="experience" aria-label="State propagation in a single TNOS-inspired environment">
+    <canvas id="world" aria-hidden="true"></canvas>
+    <div class="environment-light" aria-hidden="true"></div>
+    <header class="identity">
+      <div class="mark"><a href="../" title="Return to the current website">TNOS</a><span class="edition">STATE PROPAGATION STUDY / 01</span></div>
+      <div class="qualification">BROWSER SIMULATION <span class="indicator"></span> NOT NATIVE TNOS</div>
+    </header>
+    <div class="coordinate physical-label" aria-hidden="true">
+      <span>01 / PHYSICAL MODEL</span><strong>Simulated doorway</strong>
+    </div>
+    <div class="coordinate runtime-label" aria-hidden="true">
+      <span>02 / COMPUTATIONAL MODEL</span><strong id="runtime-label">Awaiting observation</strong>
+    </div>
+    <div class="source-line" id="source-line" aria-hidden="true">MEASUREMENT DOES NOT EQUAL INTERPRETATION</div>
+    <section class="explanation" id="narration" tabindex="-1" aria-label="Violet's explanation">
+      <div class="violet-voice"><span class="signal" aria-hidden="true"></span> VIOLET / INTERFACE CONCEPT</div>
+      <h1 id="headline">What changes when the world changes?</h1>
+      <p id="narrative" aria-live="polite" aria-atomic="true">One of the problems that led Jubi to TNOS was AI answering from incomplete context. In the intended architecture, an established change can influence later computation. This browser model illustrates that principle. The doorway is closed.</p>
+      <p class="caveat">Illustrative browser model, not TNOS executing its native cognition. Drawn state is not a physical sensor reading.</p>
+      <div class="actions">
+        <button id="door-event" type="button" class="action-major">Open the doorway <span aria-hidden="true">↗</span></button>
+        <button id="crossing" type="button" class="action-minor">Request passage <span aria-hidden="true">→</span></button>
+        <button id="explain-more" type="button" class="action-minor">Explain this relationship <span aria-hidden="true">↗</span></button>
+      </div>
+      <p class="outcome" id="outcome" role="status">The model has not yet admitted a measurement.</p>
+    </section>
+    <aside class="provenance" id="provenance" aria-label="Live causal state">
+      <p class="eyebrow">ONE SOURCE → QUALIFIED CONSUMERS</p>
+      <div class="sequence" aria-label="Causal sequence">
+        <span id="step-event">ENVIRONMENT</span><i aria-hidden="true">›</i>
+        <span id="step-observation">OBSERVATION</span><i aria-hidden="true">›</i>
+        <span id="step-grounded">GROUNDED STATE</span><i aria-hidden="true">›</i>
+        <span id="step-decision">DECISION</span><i aria-hidden="true">›</i>
+        <span id="step-feedback">FEEDBACK</span>
+      </div>
+      <dl class="readings">
+        <div><dt>Physical model</dt><dd id="physical-value">Door closed · 0°</dd></div>
+        <div><dt>Observation</dt><dd id="evidence-value">Pending</dd></div>
+        <div><dt>Runtime decision</dt><dd id="decision-value">Not established</dd></div>
+        <div><dt>Observed outcome</dt><dd id="feedback-value">None</dd></div>
+      </dl>
+      <p class="causal-status" id="causal-status">A requested action alone does not qualify a result.</p>
+    </aside>
+    <footer>
+      <span>Derived from the TNOS Sponsors working introduction: origin, two reference frames, contextual computation, observation, and feedback.</span>
+      <a href="https://github.com/sponsors/jubicudis" rel="noopener noreferrer" target="_blank">SPONSOR JUBICUDIS <span aria-hidden="true">↗</span></a>
+      <button type="button" id="motion-toggle" aria-pressed="true">MOTION ON</button>
+    </footer>
+    <noscript>This study requires JavaScript. See <a href="https://github.com/sponsors/jubicudis">Jubicudis on GitHub Sponsors</a>.</noscript>
+  </main>
+</body>
+</html>
