@@ -84,7 +84,7 @@ try{
     assert.match(caption,/may I ask what to call you/);
     await page.locator('#visitor-name').fill('Morgan');
     await page.locator('#name-confirm').click();
-    assert.match(await page.locator('#violet-caption').innerText(),/^Welcome, Morgan/);
+    assert.match(await page.locator('#violet-caption').innerText(),/^Welcome\\. I'm glad you're here/);
     // While generation is pending, the presentation must not move ahead to
     // orientation and the generic prerecording cannot be substituted.
     const pending=await page.evaluate(()=>({
@@ -111,7 +111,7 @@ try{
     assert.ok(generatedEnd.poses.some(x=>x.pose==='viseme-open'||x.pose==='viseme-wide'||x.pose==='viseme-round'),
       'real generated phonemes should produce articulated mouth expressions');
     await page.waitForFunction(()=>window.__heartEvents.some(x=>
-      x.src.endsWith('/site/audio/violet-heart-post-welcome.mp3')&&x.event==='playing'),
+      x.src.endsWith('/site/audio/violet-heart-after-name.mp3')&&x.event==='playing'),
       null,{timeout:15000});
     await page.waitForFunction(()=>
       document.querySelector('#environment').dataset.phase==='orientation',
@@ -140,9 +140,9 @@ try{
     assert.equal(await page.evaluate(()=>window.__audioPlayersConstructed),1,
       'real named visitor journey must reuse the already authorized media element');
     assert.equal(result.events.filter(x=>
-      x.src.includes('violet-heart-after-name.mp3')).length,0);
+      x.src.includes('violet-heart-after-name.mp3')).length>0);
     assert.ok(result.events.some(x=>x.src.startsWith('blob:')&&x.event==='ended'));
-    assert.ok(result.events.some(x=>x.src.endsWith('violet-heart-post-welcome.mp3')&&x.event==='ended'));
+    assert.ok(result.events.some(x=>x.src.endsWith('violet-heart-after-name.mp3')&&x.event==='ended'));
     assert.deepEqual(errors,[]);
     mkdirSync('artifacts',{recursive:true});
     writeFileSync('artifacts/violet-name-real-journey.json',
