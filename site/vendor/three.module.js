@@ -2316,30 +2316,31 @@ function WebGLCapabilities( gl, extensions, parameters, utils ) {
 
 	function getMaxPrecision( precision ) {
 
+		// WebKit may return null for a shader precision query even while a
+		// WebGL context exists. A null query is not evidence of zero precision.
+		// Keep the requested precision and let real shader compilation/rendering
+		// establish support; never dereference a missing query result.
+		const supported = ( shader, kind ) => {
+			const format = gl.getShaderPrecisionFormat( shader, kind );
+			return format === null ? null : format.precision > 0;
+		};
 		if ( precision === 'highp' ) {
 
-			if ( gl.getShaderPrecisionFormat( gl.VERTEX_SHADER, gl.HIGH_FLOAT ).precision > 0 &&
-				gl.getShaderPrecisionFormat( gl.FRAGMENT_SHADER, gl.HIGH_FLOAT ).precision > 0 ) {
-
-				return 'highp';
-
-			}
-
+			const vertex = supported( gl.VERTEX_SHADER, gl.HIGH_FLOAT );
+			const fragment = supported( gl.FRAGMENT_SHADER, gl.HIGH_FLOAT );
+			if ( vertex === null || fragment === null ) return 'highp';
+			if ( vertex && fragment ) return 'highp';
 			precision = 'mediump';
 
 		}
-
 		if ( precision === 'mediump' ) {
 
-			if ( gl.getShaderPrecisionFormat( gl.VERTEX_SHADER, gl.MEDIUM_FLOAT ).precision > 0 &&
-				gl.getShaderPrecisionFormat( gl.FRAGMENT_SHADER, gl.MEDIUM_FLOAT ).precision > 0 ) {
-
-				return 'mediump';
-
-			}
+			const vertex = supported( gl.VERTEX_SHADER, gl.MEDIUM_FLOAT );
+			const fragment = supported( gl.FRAGMENT_SHADER, gl.MEDIUM_FLOAT );
+			if ( vertex === null || fragment === null ) return 'mediump';
+			if ( vertex && fragment ) return 'mediump';
 
 		}
-
 		return 'lowp';
 
 	}
