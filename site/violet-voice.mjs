@@ -131,7 +131,7 @@ export function createVioletVoiceEngine({
   // Premium recorded narration may be supplied as approved audio assets later.
   // The caller must explicitly request this transport; a missing or broken
   // file NEVER triggers silent substitution by browser text-to-speech.
-  function playAuthored({src,token,emit,onPosition}){
+  function playAuthored({src,token,emit,onPosition,startAtMs=0}){
     cancel('replaced');
     if(typeof src!=='string'||!src||!Number.isSafeInteger(token))
       throw new TypeError('Authored narration requires an actual file URL and state token');
@@ -152,6 +152,11 @@ export function createVioletVoiceEngine({
       const session={kind:'authored',audio,token,emit,src:url.pathname,
         playing:false,onPosition};
       active=session;
+      if(startAtMs>0){
+        const seek=()=>{if(active===session)audio.currentTime=startAtMs/1000;};
+        if(audio.readyState>=1)seek();
+        else audio.addEventListener('loadedmetadata',seek,{once:true});
+      }
       const promise=audio.play();
       if(promise&&typeof promise.catch==='function')promise.catch(error=>{
         if(active===session){active=null;emitSafely(emit,{type:'SPEECH_FAILED',token,reason:String(error?.message||error)});}
@@ -167,8 +172,10 @@ export function createVioletVoiceEngine({
   // The full presentation completes only after the separate approved Heart
   // continuation has actually played; generated welcome completion alone
   // must never manufacture the final SPEECH_ENDED state.
-  function playGenerated({wav,token,emit,onPosition,onEnded}){
-    cancel('replaced');
+  function playGenerated({wav,token,emit,onPosition,onEnded,insertAfterAuthored=false}){
+    if(insertAfterAuthored&&active?.kind==='authored'&&active.token===token){
+      active=null;media.pause();
+    }else cancel('replaced');
     if(!(wav instanceof ArrayBuffer)||wav.byteLength<=44||!Number.isSafeInteger(token))
       throw new TypeError('Generated speech requires qualified WAV and current token');
     if(!AudioCtor||typeof URL==='undefined'||typeof URL.createObjectURL!=='function'){
