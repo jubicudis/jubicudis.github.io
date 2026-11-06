@@ -23,7 +23,7 @@ export function pronunciationText(visitorName){
     visitorName.length>48||/[\u0000-\u001f\u007f<>]/.test(visitorName)||
     visitorName!==visitorName.trim())
     throw new TypeError('Name must be the authorized, normalized visitor input');
-  return 'Welcome, '+visitorName+". I'm glad you're here.";
+  return visitorName+", let's continue.";
 }
 
 export async function observedInferenceBackend(browser=typeof navigator==='undefined'?null:navigator){
