@@ -82,6 +82,18 @@ try{
       null,{timeout:20000});
     const status=await page.locator('#environment').getAttribute('data-render-status');
     assert.equal(status,'observed',JSON.stringify(errors));
+    // The exact authored SVG contains all required expression parts.
+    // Safari-safe XML attribute lookup must not report an existing part missing.
+    const faceParts=await page.evaluate(async()=>{
+      const xml=await (await fetch('/site/violet-face.svg')).text();
+      const doc=new DOMParser().parseFromString(xml,'image/svg+xml');
+      return Array.from(doc.getElementsByTagName('*'))
+        .map(element=>element.getAttribute('id')).filter(Boolean);
+    });
+    for(const part of ['eye-smile','eye-open','eye-blink','mouth-smile',
+      'mouth-speak','mouth-viseme-closed','mouth-viseme-open',
+      'mouth-viseme-wide','mouth-viseme-round'])
+      assert.ok(faceParts.includes(part),'authored Violet SVG part missing: '+part);
     await page.waitForFunction(()=>!document.querySelector('#violet-activate').disabled,null,{timeout:15000});
     assert.equal(await page.locator('#render-failure').isVisible(),false);
     assert.equal(await page.locator('#audio-failure').isVisible(),false);
