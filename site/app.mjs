@@ -13,6 +13,32 @@ const ui=Object.fromEntries([
 let lastFigureKey='',lastSpeechKey='';
 let currentUtterance=null;
 let lastFocusPhase='idle';
+let verifyingGeneration=-1;
+
+function qualifyPresence(generation,target,attempt=0){
+  const state=store.getState();
+  if(generation!==state.presenceGeneration || !['receding','returning'].includes(state.presence))return;
+  const strands=[...document.querySelectorAll('.strand')];
+  const feature=document.querySelector('.features');
+  if(strands.length!==4||!feature)return;
+  const opacities=strands.map(n=>Number(getComputedStyle(n).opacity));
+  const expressionOpacity=Number(getComputedStyle(feature).opacity);
+  const complete=target==='marker'
+    ? opacities.every(value=>value<=.015)&&expressionOpacity<=.015
+    : opacities.every(value=>value>=.985)&&expressionOpacity>=.985;
+  if(complete){
+    store.dispatch({type:'PRESENCE_SETTLED',generation,target});
+  }else if(attempt<125){
+    requestAnimationFrame(()=>qualifyPresence(generation,target,attempt+1));
+  }
+}
+function beginPresenceVerification(state){
+  if(verifyingGeneration===state.presenceGeneration)return;
+  verifyingGeneration=state.presenceGeneration;
+  const generation=state.presenceGeneration;
+  const target=state.presence==='receding'?'marker':'full';
+  requestAnimationFrame(()=>qualifyPresence(generation,target));
+}
 
 const store=createStore((state,previous,event)=>render(state,previous,event));
 function welcomeMessage(state){
@@ -132,9 +158,8 @@ function render(state,previous,event){
       if(visible)store.dispatch({type:'VISUAL_OBSERVED',generation,isVisible:true});
     });
   }
-  if(matchMedia('(prefers-reduced-motion: reduce)').matches&&['receding','returning'].includes(state.presence)){
-    const generation=state.presenceGeneration;
-    requestAnimationFrame(()=>store.dispatch({type:'PRESENCE_SETTLED',generation,target:state.presence==='receding'?'marker':'full'}));
+  if(['receding','returning'].includes(state.presence)){
+    beginPresenceVerification(state);
   }
 }
 ui.violet.addEventListener('click',()=>{
@@ -147,7 +172,7 @@ ui.violet.addEventListener('transitionend',event=>{
   if(event.propertyName!=='opacity'||!event.target.classList?.contains('strand'))return;
   const state=store.getState();
   if(state.presence==='receding'||state.presence==='returning'){
-    store.dispatch({type:'PRESENCE_SETTLED',generation:state.presenceGeneration,target:state.presence==='receding'?'marker':'full'});
+    qualifyPresence(state.presenceGeneration,state.presence==='receding'?'marker':'full');
   }
 });
 ui['name-form'].addEventListener('submit',event=>{event.preventDefault();store.dispatch({type:'NAME',value:ui['visitor-name'].value});});
