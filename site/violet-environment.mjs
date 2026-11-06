@@ -72,9 +72,9 @@ function addBand(threeScene,def,index,markTexture){
   const movement=new THREE.Group();
   const curve=buildParam(def);
   const material=new THREE.MeshPhysicalMaterial({
-    color:def.color,metalness:.46,roughness:.235,clearcoat:1,
+    color:def.color,metalness:.38,roughness:.27,clearcoat:.9,
     clearcoatRoughness:.13,side:THREE.DoubleSide,
-    emissive:def.color,emissiveIntensity:.045
+    emissive:def.color,emissiveIntensity:.115
   });
   const mesh=new THREE.Mesh(makeRibbonGeometry(curve),material);
   movement.add(mesh);
@@ -147,8 +147,8 @@ function makeVisor(group,expressions){
   const shell=new THREE.Mesh(
     new THREE.SphereGeometry(1,80,56),
     new THREE.MeshPhysicalMaterial({
-      color:0x10112a,metalness:.27,roughness:.17,
-      clearcoat:1,clearcoatRoughness:.12
+      color:0x10112a,metalness:.12,roughness:.38,
+      clearcoat:.78,clearcoatRoughness:.29
     })
   );
   shell.position.z=.18;shell.scale.set(1.59,1.01,.46);
@@ -177,7 +177,7 @@ function makeVisor(group,expressions){
   );
   face.position.z=.676;
   group.add(face);
-  const edgeLight=new THREE.PointLight(0xc183ff,5.6,4.4);
+  const edgeLight=new THREE.PointLight(0xc183ff,1.5,4.4);
   edgeLight.position.set(-.45,-.34,1.32);group.add(edgeLight);
   const shadowGlow=new THREE.Mesh(
     new THREE.PlaneGeometry(3.8,2.65),
@@ -246,7 +246,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
     });
     renderer.outputColorSpace=THREE.SRGBColorSpace;
     renderer.toneMapping=THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure=1.4;
+    renderer.toneMappingExposure=1.24;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
     const expressions={};
     const faceURL=new URL('./violet-face.svg',import.meta.url);
@@ -261,11 +261,11 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
     scene.background=new THREE.Color(0x080c1e);
     const camera=new THREE.OrthographicCamera(-3,3,6,-6,.1,50);
     camera.position.set(0,0,15);camera.lookAt(0,0,0);
-    scene.add(new THREE.AmbientLight(0xaaa5e9,1.3));
-    const key=new THREE.DirectionalLight(0xf1e9ff,4.2);key.position.set(-4,5,8);scene.add(key);
-    const cyan=new THREE.PointLight(0x31baff,100,12);cyan.position.set(-4,1.7,3.8);scene.add(cyan);
-    const pink=new THREE.PointLight(0xd46dff,86,12);pink.position.set(3,1.1,3.9);scene.add(pink);
-    const gold=new THREE.PointLight(0xffad55,65,10);gold.position.set(1.8,-2.2,3.2);scene.add(gold);
+    scene.add(new THREE.AmbientLight(0xaaa5e9,.92));
+    const key=new THREE.DirectionalLight(0xf1e9ff,2.5);key.position.set(-4,5,8);scene.add(key);
+    const cyan=new THREE.PointLight(0x31baff,34,12);cyan.position.set(-4,1.7,3.8);scene.add(cyan);
+    const pink=new THREE.PointLight(0xd46dff,29,12);pink.position.set(3,1.1,3.9);scene.add(pink);
+    const gold=new THREE.PointLight(0xffad55,25,10);gold.position.set(1.8,-2.2,3.2);scene.add(gold);
 
     makeStage(scene);
     const body=new THREE.Group();scene.add(body);body.position.y=.53;
