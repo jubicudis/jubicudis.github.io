@@ -10,7 +10,7 @@ export const initialState=Object.freeze({
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
   playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-  observedSpeechPose:null,nameAudioCompleted:false,enteredAt:0,
+  observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false,enteredAt:0,
   context:Object.freeze({
     who:'unidentified visitor',what:'Violet',when:'unstarted',
     where:'TNOS public introduction',why:'arrival',how:'await activation',
@@ -23,6 +23,8 @@ const finalSpeechStatuses=new Set(['completed','unavailable','failed','interrupt
 export function openingMessage(state){
   if(state.phase==='dormant')return '';
   const track=state.track||openingTrackForPhase(state.phase);
+  if(state.nameAudioPlaying&&state.nameDecision==='provided')
+    return state.visitorName+", let's continue.";
   return visibleOpeningSegment(track,state.cueIndex,null);
 }
 export function nameChoiceReady(state){
@@ -61,7 +63,7 @@ export function reduceOpening(state,event){
         patch={phase:'asking-name',track:'asking-name',cueIndex:0,enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-          observedSpeechPose:null,nameAudioCompleted:false};
+          observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false};
       break;
     case 'GIVE_NAME':
       if(!nameChoiceReady(state)||typeof event.name!=='string')break;
@@ -124,13 +126,18 @@ export function reduceOpening(state,event){
         patch={observedSpeechPose:proof.pose,envelopePositionMs:proof.elapsedMs};
       }
       break;
+    case 'NAME_AUDIO_STARTED':
+      if(state.nameDecision==='provided'&&state.speechStatus==='speaking'&&
+         event.token===state.speechToken&&event.evidence?.type==='observed-generated-heart-playing')
+        patch={nameAudioPlaying:true};
+      break;
     case 'NAME_AUDIO_ENDED':
       if(state.nameDecision==='provided'&&
         state.speechStatus==='speaking'&&!state.nameAudioCompleted&&
         event.token===state.speechToken&&
         event.evidence?.type==='observed-generated-heart-ended'&&
         event.evidence.assetId==='generated-heart:'+state.speechToken)
-        patch={nameAudioCompleted:true,observedSpeechPose:null};
+        patch={nameAudioCompleted:true,nameAudioPlaying:false,observedSpeechPose:null};
       break;
     case 'SPEECH_CUE_OBSERVED':
       {
