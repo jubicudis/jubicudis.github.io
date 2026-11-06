@@ -39,7 +39,7 @@
     },
     "after-name": {
       "file": "/site/audio/violet-heart-after-name.mp3",
-      "durationMs": 100597,
+      "durationMs": 100606,
       "cues": [
         {
           "index": 0,
@@ -109,56 +109,56 @@
           "phase": "presentation",
           "text": "Imagine turning on your computer.",
           "startMs": 61587,
-          "endMs": 63587
+          "endMs": 63596
         },
         {
           "index": 10,
           "phase": "presentation",
           "text": "But instead of being greeted by the usual desktop, you're welcomed by a visual interface that helps you understand your computer and work with it.",
-          "startMs": 63787,
-          "endMs": 71620
+          "startMs": 63796,
+          "endMs": 71628
         },
         {
           "index": 11,
           "phase": "presentation",
           "text": "An interface much like the one you're interacting with right now.",
-          "startMs": 71820,
-          "endMs": 75384
+          "startMs": 71828,
+          "endMs": 75393
         },
         {
           "index": 12,
           "phase": "presentation",
           "text": "That's part of the experience TNOS is being developed to create.",
-          "startMs": 75584,
-          "endMs": 79489
+          "startMs": 75593,
+          "endMs": 79498
         },
         {
           "index": 13,
           "phase": "presentation",
           "text": "But what you're seeing here is only a representation of that intended experience. You're not actually running TNOS in your browser.",
-          "startMs": 79689,
-          "endMs": 87401
+          "startMs": 79698,
+          "endMs": 87410
         },
         {
           "index": 14,
           "phase": "presentation",
           "text": "And the larger idea goes much deeper than the interface itself.",
-          "startMs": 87601,
-          "endMs": 91365
+          "startMs": 87610,
+          "endMs": 91374
         },
         {
           "index": 15,
           "phase": "presentation",
           "text": "To understand what makes TNOS different, we need to look beneath what you can see.",
-          "startMs": 91565,
-          "endMs": 96312
+          "startMs": 91574,
+          "endMs": 96320
         },
         {
           "index": 16,
           "phase": "presentation",
           "text": "Because the real difference begins with the operating system itself.",
-          "startMs": 96512,
-          "endMs": 100597
+          "startMs": 96520,
+          "endMs": 100606
         }
       ]
     }
