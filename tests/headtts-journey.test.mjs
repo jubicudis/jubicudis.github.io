@@ -38,7 +38,7 @@ try{
         // source identity must be evaluated at playback, not construction.
         const nativePlay=media.play.bind(media);
         media.play=function(){
-          media.playbackRate=String(media.src).startsWith('blob:')?1:12;
+          media.playbackRate=String(media.src).startsWith('blob:')?1:1;
           return nativePlay();
         };
         for(const event of ['playing','ended','error']){
@@ -85,16 +85,13 @@ try{
     await page.locator('#visitor-name').fill('Morgan');
     await page.locator('#name-confirm').click();
     assert.match(await page.locator('#violet-caption').innerText(),/^Welcome\\. I'm glad you're here/);
-    // While generation is pending, the presentation must not move ahead to
-    // orientation and the generic prerecording cannot be substituted.
-    const pending=await page.evaluate(()=>({
-      speech:document.querySelector('#environment').dataset.speechStatus,
-      phase:document.querySelector('#environment').dataset.phase,
-      events:window.__heartEvents.filter(x=>x.src.includes('after-name.mp3'))
-    }));
-    assert.equal(pending.phase,'welcome');
-    assert.equal(pending.speech,'pending');
-    assert.equal(pending.events.length,0);
+    // The approved Heart track begins immediately while the name is
+    // synthesized in parallel; no blank waiting screen is authorized.
+    await page.waitForFunction(()=>window.__heartEvents.some(x=>
+      x.src.endsWith('/site/audio/violet-heart-after-name.mp3')&&
+      x.event==='playing'),null,{timeout:15000});
+    assert.equal(await page.locator('#violet-caption').innerText(),
+      "Welcome. I'm glad you're here.");
     await page.waitForFunction(()=>window.__heartEvents.some(x=>
       x.src.startsWith('blob:')&&x.event==='playing'),null,{timeout:220000});
     await page.waitForFunction(()=>window.__heartEvents.some(x=>
@@ -139,7 +136,7 @@ try{
     assert.equal(result.unexpectedBrowserTTS,0);
     assert.equal(await page.evaluate(()=>window.__audioPlayersConstructed),1,
       'real named visitor journey must reuse the already authorized media element');
-    assert.equal(result.events.filter(x=>
+    assert.ok(result.events.filter(x=>
       x.src.includes('violet-heart-after-name.mp3')).length>0);
     assert.ok(result.events.some(x=>x.src.startsWith('blob:')&&x.event==='ended'));
     assert.ok(result.events.some(x=>x.src.endsWith('violet-heart-after-name.mp3')&&x.event==='ended'));
