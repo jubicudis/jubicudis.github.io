@@ -17,14 +17,8 @@ and the separate MCP server are accurately distinguished.
    completes. A technical failure or interruption is **diagnostic only**;
    it may not forge a completed name question or alternative presentation.
 3. Skipping the optional name plays the approved `after-name` recording.
-4. Entering a name authorizes **only that name** to be synthesized locally
-   using the same selected Kokoro Heart voice, through HeadTTS in-browser.
-   The actual generated WAV and its phoneme/viseme timing belong to the same
-   synthesis result. Playback must be observed before the presentation
-   can advance; no other device voice or made-up spoken completion is allowed.
-5. After the *actual* generated welcome ends, the approved prerecorded
-   `violet-heart-post-welcome.mp3` continues at the first orientation subject,
-   so a visitor does not hear the generic greeting repeated.
+4. Providing a name also starts the approved `after-name` recording immediately. Name synthesis runs concurrently, not as a silent prerequisite to narration.
+5. The same selected Heart voice synthesizes a brief later acknowledgment of the visitor's name. If it becomes ready, the presentation inserts it at an observed later paragraph boundary and resumes the recorded Heart narration at the observed position. No synthetic timing, alternate voice, or invented name completion is permitted. If inference fails, the name is not claimed to have been spoken.
 6. Captions and approved topic changes follow the observed audio clock,
    not speculative timeouts. The actual viseme evidence drives Violet's
    existing A2 mouth textures during generated speech.
@@ -59,7 +53,7 @@ and the separate MCP server are accurately distinguished.
 
 - `site/audio/violet-heart-asking-name.mp3`
 - `site/audio/violet-heart-after-name.mp3` (skip-name path)
-- `site/audio/violet-heart-post-welcome.mp3` (named continuation)
+- `site/audio/violet-heart-post-welcome.mp3` (retained historical recording; not used by deferred-name route)
 - `site/audio/heart-timeline.json` (actual measured paragraph timing)
 - `site/audio/heart-continuation-provenance.json` and SHA-256 evidence
 
