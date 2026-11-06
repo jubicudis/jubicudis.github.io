@@ -58,5 +58,16 @@ try{
     await page.screenshot({path:'artifacts/'+label+'-welcome.png'});
     await page.close();
   }
-  console.log('Verified real WebGL + SVG textures, Violet-only opening, names, stages, mobile and six screenshots.');
+  // A missing required SVG must not be silently replaced with another face or renderer.
+  const failedPage=await browser.newPage({viewport:{width:390,height:844}});
+  await failedPage.route('**/site/violet-face.svg',route=>route.abort('failed'));
+  await failedPage.goto(base,{waitUntil:'domcontentloaded'});
+  await failedPage.waitForFunction(()=>document.querySelector('#environment').dataset.renderStatus==='failed',null,{timeout:12000});
+  assert.equal(await failedPage.locator('#violet-activate').isEnabled(),false);
+  assert.equal(await failedPage.locator('#visitor-dialogue').isVisible(),false);
+  assert.equal(await failedPage.locator('#render-failure').isVisible(),true);
+  assert.match(await failedPage.locator('#render-failure').innerText(),/Violet could not be rendered/);
+  assert.equal(await failedPage.locator('#environment').getAttribute('data-phase'),'dormant');
+  await failedPage.close();
+  console.log('Verified Three.js/WebGL+SVG appearance, opening interaction, and explicit failure with missing required SVG (no successful fallback).');
 }finally{await browser.close();server.kill();}
