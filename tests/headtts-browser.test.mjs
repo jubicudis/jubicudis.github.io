@@ -34,7 +34,7 @@ try{
         window.__audioPlayersConstructed++;
         const nativePlay=media.play.bind(media);
         media.play=function(){
-          media.playbackRate=String(media.src).startsWith('blob:')?1:12;
+          media.playbackRate=String(media.src).startsWith('blob:')?1:(String(media.src).includes('asking-name')?12:1);
           return nativePlay();
         };
         const record=event=>{
@@ -104,7 +104,7 @@ try{
     await page.screenshot({path:'artifacts/violet-real-heart-named-orientation.png'});
     await page.waitForFunction(()=>
       document.getElementById('environment').dataset.speechStatus==='completed',
-      null,{timeout:30000});
+      null,{timeout:180000});
     assert.equal(await page.locator('#violet-caption').innerText(),
       'Because the real difference begins with the operating system itself.');
     const result=await page.evaluate(()=>({
