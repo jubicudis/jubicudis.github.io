@@ -59,6 +59,20 @@ try{
     assert.ok(bounds.scroll<=bounds.viewport+2,'horizontal overflow: '+JSON.stringify(bounds));
     assert.deepEqual(errors,[],'browser errors on '+label);
     await page.screenshot({path:'artifacts/'+label+'-welcome.png'});
+    // The accepted A2 image must remain unchanged before and after the visitor
+    // asks Violet to step back. No added navigation or fake alternative character.
+    assert.equal(await page.locator('#violet-activate').isVisible(),true);
+    await page.locator('#violet-activate').click();
+    await page.waitForFunction(()=>document.querySelector('#environment').dataset.presence==='marker',null,{timeout:15000});
+    assert.equal(await page.locator('#violet-activate').getAttribute('aria-label'),'Recall Violet');
+    assert.equal(await page.locator('#environment').getAttribute('data-phase'),'welcome');
+    assert.equal(await page.locator('#visitor-dialogue').isVisible(),true);
+    await page.screenshot({path:'artifacts/'+label+'-marker.png'});
+    await page.locator('#violet-activate').click();
+    await page.waitForFunction(()=>document.querySelector('#environment').dataset.presence==='full',null,{timeout:15000});
+    assert.equal(await page.locator('#violet-activate').getAttribute('aria-label'),'Let Violet step back');
+    assert.equal(await page.locator('#render-failure').isVisible(),false);
+    await page.screenshot({path:'artifacts/'+label+'-recalled.png'});
     await page.close();
   }
   // A missing required SVG must not be silently replaced with another face or renderer.

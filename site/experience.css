@@ -25,3 +25,24 @@
 .violet-activate:disabled{cursor:default}
 .render-failure{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(580px,calc(100% - 48px));color:#f3c6dc;text-align:center;line-height:1.6}
 .render-failure[hidden]{display:none!important}
+
+
+/* The only recall control remains Violet herself, not a separate UI button. */
+.environment[data-phase="welcome"][data-presence="marker"] .violet-activate{
+  width:min(26vw,180px);
+  height:min(20vw,136px);
+  max-height:none;
+  top:36%;
+}
+.environment[data-phase="welcome"][data-presence="marker"] .violet-activate:focus-visible{
+  outline:2px solid #a883f2;
+  outline-offset:6px;
+}
+@media(max-width:620px){
+  .environment[data-phase="welcome"][data-presence="marker"] .violet-activate{
+    top:41%;
+    width:31vw;
+    height:23vw;
+    max-height:none;
+  }
+}

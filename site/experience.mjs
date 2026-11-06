@@ -44,7 +44,10 @@ function render(state,previous){
   scene?.update(state);
   stage.dataset.phase=state.phase;
   stage.dataset.renderStatus=state.renderStatus;
-  activate.disabled=state.renderStatus!=='observed';
+  stage.dataset.presence=state.presence;
+  activate.disabled=state.renderStatus!=='observed'||state.phase==='asking-name'||['receding','returning'].includes(state.presence);
+  activate.hidden=state.phase==='asking-name';
+  activate.setAttribute('aria-label',state.phase==='dormant'?'Activate Violet':state.presence==='marker'?'Recall Violet':'Let Violet step back');
   failure.hidden=state.renderStatus!=='failed';
   if(state.renderStatus==='failed'){
     // This is an actual renderer failure. No replacement character is drawn.
@@ -56,13 +59,15 @@ function render(state,previous){
   form.hidden=state.phase!=='asking-name';
   if(previous?.phase!==state.phase){
     beginSpeech(state);
-    if(state.phase==='asking-name'||state.phase==='welcome'){
-      activate.hidden=true;
-    }
+
   }
 }
 activate.addEventListener('click',()=>{
-  if(store.getState().renderStatus==='observed')store.dispatch({type:'ACTIVATE'});
+  const state=store.getState();
+  if(state.renderStatus!=='observed')return;
+  if(state.phase==='dormant')store.dispatch({type:'ACTIVATE'});
+  else if(state.phase==='welcome'&&state.presence==='full')store.dispatch({type:'PRESENCE_HIDE'});
+  else if(state.phase==='welcome'&&state.presence==='marker')store.dispatch({type:'PRESENCE_RECALL'});
 });
 form.addEventListener('submit',event=>{
   event.preventDefault();store.dispatch({type:'GIVE_NAME',name:nameInput.value});
@@ -78,6 +83,7 @@ try{
   const {createVioletEnvironment}=await import('./violet-environment.mjs');
   scene=await createVioletEnvironment(document.getElementById('world'),{
     onObserved:evidence=>store.dispatch({type:'RENDER_OBSERVED',evidence}),
+    onPresenceObserved:event=>store.dispatch(event),
     onFailure:error=>store.dispatch({type:'RENDER_FAILED',reason:error.message||String(error)})
   });
   scene.update(store.getState());

@@ -7,7 +7,7 @@
   #eye-smile,#eye-open,#eye-blink,#mouth-smile,#mouth-speak{display:none}
   svg[data-mode="rest"] #eye-smile,svg[data-mode="talk"] #eye-smile{display:inline}
   svg[data-mode="ask"] #eye-open{display:inline}
-  svg[data-mode="blink"] #eye-blink{display:inline}
+  svg[data-mode="blink"] #eye-blink,svg[data-mode="close"] #eye-blink{display:inline}
   svg[data-mode="rest"] #mouth-smile,svg[data-mode="ask"] #mouth-smile,svg[data-mode="blink"] #mouth-smile{display:inline}
   svg[data-mode="talk"] #mouth-speak{display:inline}
   .illuminated{stroke:url(#lumen);stroke-linecap:round;stroke-linejoin:round;fill:none}
