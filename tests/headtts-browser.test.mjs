@@ -1,6 +1,6 @@
-// Actual HeadTTS synthesis probe; NOT a mocked TTS engine or a website state.
-// It qualifies whether the selected Heart model can render a name locally in
-// Chromium on a static site. iPhone Safari still requires its own test.
+// Real end-to-end Violet name flow with HeadTTS/Kokoro Heart synthesis.
+// No mock speech, synthetic state events or alternate browser voices.
+// This is Chromium evidence only; iPhone Safari needs separate actual proof.
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdirSync,writeFileSync} from 'node:fs';
@@ -10,40 +10,122 @@ const server=spawn('python3',['-m','http.server','4179','--bind','127.0.0.1'],{s
 const base='http://127.0.0.1:4179/';
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 try{
+  let started=false;
   for(let i=0;i<80;i++){
-    try{const r=await fetch(base);if(r.ok)break;}catch{}
+    try{const r=await fetch(base);if(r.ok){started=true;break;}}catch{}
     await sleep(250);
   }
-  const browser=await chromium.launch({headless:true});
+  assert.equal(started,true,'Actual website must be served locally');
+  const browser=await chromium.launch({
+    headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']
+  });
   try{
-    const page=await browser.newPage();
-    page.setDefaultTimeout(270000);
+    const page=await browser.newPage({viewport:{width:1440,height:900}});
+    page.setDefaultTimeout(180000);
     const errors=[];
     page.on('pageerror',e=>errors.push(e.message));
-    await page.goto(base,{waitUntil:'domcontentloaded'});
-    const result=await page.evaluate(async()=>{
-      const {synthesizeHeartName}=await import('/site/violet-dynamic-name.mjs');
-      const t0=performance.now();
-      const audio=await synthesizeHeartName('Morgan',{browser:null});
-      return {
-        elapsedMs:Math.round(performance.now()-t0),
-        voice:audio.voiceId,spokenText:audio.spokenText,
-        backend:audio.backend,durationMs:audio.durationMs,
-        visemeCount:audio.visemes.length,wavBytes:audio.wav.byteLength,
-        phoneticCues:audio.visemes.slice(0,8).map(x=>({kind:x.kind,startMs:x.startMs}))
+    await page.addInitScript(()=>{
+      window.__realHeartEvents=[];
+      window.__spokenByBrowserDevice=0;
+      const ActualAudio=window.Audio;
+      window.Audio=function(src){
+        const media=new ActualAudio(src);
+        const kind=String(src).startsWith('blob:')?'generated-name':'approved-recording';
+        media.playbackRate=kind==='generated-name'?1:12;
+        media.addEventListener('playing',()=>window.__realHeartEvents.push({kind,event:'playing',src:String(src)}));
+        media.addEventListener('ended',()=>window.__realHeartEvents.push({kind,event:'ended',src:String(src)}));
+        return media;
       };
+      if(window.speechSynthesis){
+        const native=window.speechSynthesis.speak.bind(window.speechSynthesis);
+        window.speechSynthesis.speak=function(...args){
+          window.__spokenByBrowserDevice++;
+          return native(...args);
+        };
+      }
     });
-    assert.equal(result.voice,'af_heart');
-    assert.equal(result.backend,'wasm');
-    assert.equal(result.spokenText,"Welcome, Morgan. I'm glad you're here.");
-    assert.ok(result.durationMs>700);
-    assert.ok(result.visemeCount>3);
-    assert.ok(result.wavBytes>30000);
+    await page.goto(base,{waitUntil:'domcontentloaded'});
+    await page.waitForFunction(()=>{
+      const el=document.getElementById('environment');
+      return el.dataset.renderStatus==='observed' &&
+        !document.getElementById('violet-activate').disabled;
+    },null,{timeout:30000});
+    await page.evaluate(()=>{
+      const stage=document.getElementById('environment');
+      window.__posesSeen=[];
+      window.__lastPoseSeen='';
+      new MutationObserver(()=>{
+        const pose=stage.dataset.speechPose;
+        if(pose&&pose!==window.__lastPoseSeen){
+          window.__posesSeen.push(pose);window.__lastPoseSeen=pose;
+        }
+      }).observe(stage,{attributes:true,attributeFilter:['data-speech-pose']});
+    });
+    await page.locator('#violet-activate').click();
+    await page.waitForFunction(()=>{
+      const s=document.getElementById('environment');
+      return s.dataset.phase==='asking-name' &&
+        s.dataset.speechStatus==='completed' &&
+        !document.getElementById('name-form').hidden;
+    },null,{timeout:18000});
+    await page.locator('#visitor-name').fill('Morgan');
+    await page.locator('#name-confirm').click();
+    assert.equal(await page.locator('#violet-caption').innerText(),
+      "Welcome, Morgan. I'm glad you're here.");
+    assert.equal(await page.locator('#environment').getAttribute('data-name-audio-completed'),'false');
+    const synthesisStarted=performance.now();
+    await page.waitForFunction(()=>window.__realHeartEvents.some(e=>
+      e.kind==='generated-name'&&e.event==='playing'),null,{timeout:180000});
+    const initializationElapsed=performance.now()-synthesisStarted;
+    await page.waitForFunction(()=>{
+      const e=window.__realHeartEvents;
+      const s=document.getElementById('environment');
+      return e.some(x=>x.kind==='generated-name'&&x.event==='ended') &&
+        s.dataset.nameAudioCompleted==='true';
+    },null,{timeout:15000});
+    await page.waitForFunction(()=>window.__realHeartEvents.some(x=>
+      x.kind==='approved-recording'&&x.src.endsWith('/site/audio/violet-heart-post-welcome.mp3')&&
+      x.event==='playing'),null,{timeout:12000});
+    await page.waitForFunction(()=>
+      document.getElementById('environment').dataset.phase==='orientation',
+      null,{timeout:16000});
+    assert.equal(await page.locator('#name-form').isVisible(),false);
+    assert.equal(await page.locator('#audio-failure').isVisible(),false);
+    await page.screenshot({path:'artifacts/violet-real-heart-named-orientation.png'});
+    await page.waitForFunction(()=>
+      document.getElementById('environment').dataset.speechStatus==='completed',
+      null,{timeout:30000});
+    assert.equal(await page.locator('#violet-caption').innerText(),
+      'Because the real difference begins with the operating system itself.');
+    const result=await page.evaluate(()=>({
+      audioEvents:window.__realHeartEvents,
+      posesSeen:window.__posesSeen,
+      deviceVoiceInvocations:window.__spokenByBrowserDevice,
+      phase:document.getElementById('environment').dataset.phase,
+      speechStatus:document.getElementById('environment').dataset.speechStatus,
+      nameAudioCompleted:document.getElementById('environment').dataset.nameAudioCompleted
+    }));
+    assert.equal(result.deviceVoiceInvocations,0);
+    assert.equal(result.nameAudioCompleted,'true');
+    assert.equal(result.phase,'presentation');
+    assert.equal(result.speechStatus,'completed');
+    assert.ok(result.posesSeen.length>=2,
+      'Actual synthesized Heart audio must produce multiple observed mouth poses');
+    assert.ok(result.audioEvents.some(x=>x.kind==='generated-name'&&x.event==='ended'));
+    assert.ok(result.audioEvents.some(x=>x.kind==='approved-recording'&&
+      x.src.endsWith('/site/audio/violet-heart-post-welcome.mp3')&&x.event==='ended'));
     assert.deepEqual(errors,[]);
     mkdirSync('artifacts',{recursive:true});
-    writeFileSync('artifacts/headtts-heart-name-actual.json',
-      JSON.stringify({status:'actual-browser-synthesis',...result},null,2)+'\n');
-    console.log('ACTUAL HEART NAME GENERATED:',JSON.stringify(result));
+    writeFileSync('artifacts/heart-named-flow-observed.json',
+      JSON.stringify({status:'qualified-Chromium-name-route',
+        inferenceAndPlaybackDelayMs:Math.round(initializationElapsed),
+        ...result},null,2)+'\n');
+    console.log('ACTUAL NAMED HEART FLOW:',JSON.stringify({
+      status:result.speechStatus,poses:result.posesSeen,
+      audioEventCount:result.audioEvents.length,
+      deviceTTS:result.deviceVoiceInvocations,
+      inferenceAndPlaybackDelayMs:Math.round(initializationElapsed)
+    }));
     await page.close();
   }finally{await browser.close();}
 }finally{server.kill();}

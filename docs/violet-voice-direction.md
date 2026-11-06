@@ -1,61 +1,77 @@
-# Violet — Approved Voice and Revision 2 Delivery
+# Violet — approved Heart voice and Revision 2 execution
 
-**Voice:** Kokoro `af_heart` (American female), inventor-selected on November 6, 2026.
-Soft, light and airy with a natural, comfortable pitch; not exaggerated or
-cartoonishly high. Other audition candidates were not selected.
+**Approved voice:** Kokoro `af_heart` (American female), selected by the inventor
+on November 6, 2026. Light, soft and airy, natural comfortable pitch.
+The alternate Nicole and Emma auditions are not selected.
 
-**Cost:** Zero ongoing synthesis cost for static, locally generated narration.
-Kokoro-82M model and voice assets are Apache 2.0 licensed;
-`kokoro-onnx` inference is MIT licensed.
-Model: https://huggingface.co/hexgrad/Kokoro-82M
-Runtime: https://github.com/thewh1teagle/kokoro-onnx
+**Source of truth:** `site/opening-script.mjs` owns the exact spoken and
+visible Revision 2 text. No UI-specific alternative transcript or speech
+timers are allowed. TNOS (the native operating system), the Workbench,
+and the separate MCP server are accurately distinguished.
 
-## Approved words and source of truth
+## Actual visitor and audio state
 
-`site/opening-script.mjs` contains the exact Revision 2 dialogue approved by
-the inventor. It governs the audio generation text, visible captions and topic
-changes. Do not write a second, divergent script in the application code.
+1. Activation authorizes one prerecorded Heart opening with four paragraphs,
+   including Violet's purpose and the optional name question.
+2. The name question becomes interactive only when the real greeting audio
+   completes. A technical failure or interruption is **diagnostic only**;
+   it may not forge a completed name question or alternative presentation.
+3. Skipping the optional name plays the approved `after-name` recording.
+4. Entering a name authorizes **only that name** to be synthesized locally
+   using the same selected Kokoro Heart voice, through HeadTTS in-browser.
+   The actual generated WAV and its phoneme/viseme timing belong to the same
+   synthesis result. Playback must be observed before the presentation
+   can advance; no other device voice or made-up spoken completion is allowed.
+5. After the *actual* generated welcome ends, the approved prerecorded
+   `violet-heart-post-welcome.mp3` continues at the first orientation subject,
+   so a visitor does not hear the generic greeting repeated.
+6. Captions and approved topic changes follow the observed audio clock,
+   not speculative timeouts. The actual viseme evidence drives Violet's
+   existing A2 mouth textures during generated speech.
+7. The scripted experience stops at its approved final sentence about
+   the operating system. The projection apparatus and subsequent narrative
+   are outside this implementation.
 
-The script has 4 initial greeting and name-question segments, and 17
-post-name segments comprising welcome, orientation and the opening of the
-TED-style presentation. The Workbench is introduced as something Violet
-will explain before its contribution to engineering is discussed. The
-separate MCP server is not presented as a native TNOS runtime dependency.
+## Real capabilities and qualifications
 
-## Authoritative execution
+- `tools/generate_approved_opening.py` creates the main prerecorded
+  Kokoro Heart narration offline, without per-visitor usage charges.
+- `site/violet-dynamic-name.mjs` supports on-demand, in-browser Heart
+  synthesis. The selected runtime is based on observed browser capability;
+  no alternate presenter voice is configured.
+- The HeadTTS runtime provides timed Oculus visemes which are rendered
+  using the already-approved four A2 mouth poses. Four poses do **not**
+  constitute full phoneme-level facial fidelity; further qualification
+  and visual review are required.
+- Actual Chromium synthesis of `Welcome, Morgan. I'm glad you're here.`
+  was observed, producing 2.95 seconds of audio and 23 timed visemes.
+  Initial model synthesis was measured at approximately 28 seconds
+  in that browser test. Other device speeds and iPhone Safari remain
+  **unverified** until actually tested.
+- Dynamic speech generated on the visitor's device requires browser
+  inference resources. The module is requested only for a provided name.
+  This is a resource consequence, not a new fictional presentation state.
+- The current prerecorded narration still needs its own qualified
+  audio-to-face alignment. Observed generated-name visemes alone do
+  not establish full-narration lip synchronization.
 
-- The visitor activates Violet. One continuous Heart recording delivers the
-  complete informative greeting and optional name question.
-- Only after an actual completed or failed/interrupted greeting can the
-  visitor enter a name or continue without one.
-- The visitor's name choice authorizes one continuous post-name recording.
-- Genuine audio playback positions, compared with boundaries measured from
-  the generated Heart audio, update captions and distinguish welcome,
-  orientation and presentation. Independent text timers are forbidden.
-- The scripted experience ends at the approved line about the operating
-  system itself. Future presentation material requires separate approval.
-- The visitor's name can be shown in a personalized caption, but no fixed
-  recording may falsely be said to pronounce an arbitrary name. Dynamic
-  name rendering will require qualified same-voice synthesis.
-- A playback request is not evidence of success. A missing asset or
-  interrupted playback must be reported truthfully, without silently
-  selecting a different device voice.
-
-## Actual free audio assets
-
-The existing `main` workflow `.github/workflows/publish-heart-audio.yml`
-calls `tools/generate_approved_opening.py` using the approved single
-script source, then publishes:
+## Media and provenance
 
 - `site/audio/violet-heart-asking-name.mp3`
-- `site/audio/violet-heart-after-name.mp3`
-- `site/audio/heart-timeline.json` (measured caption boundaries)
-- `site/audio/heart-provenance.json`
-- `site/audio/heart-sha256.txt`
+- `site/audio/violet-heart-after-name.mp3` (skip-name path)
+- `site/audio/violet-heart-post-welcome.mp3` (named continuation)
+- `site/audio/heart-timeline.json` (actual measured paragraph timing)
+- `site/audio/heart-continuation-provenance.json` and SHA-256 evidence
 
-The two audio tracks are approximately 24 and 101 seconds, respectively.
-They do not include later, unapproved TED-style content.
+Kokoro model/voices: Apache 2.0
+https://huggingface.co/hexgrad/Kokoro-82M
 
-No separate branches, pull requests, conventional navigation or alternate
-character design are introduced. Violet's accepted Structured Bloom A2
-appearance remains the opening's visual authority.
+The `kokoro-onnx` inference runtime: MIT
+https://github.com/thewh1teagle/kokoro-onnx
+
+HeadTTS browser implementation: MIT
+https://github.com/met4citizen/HeadTTS
+
+All work is committed directly to the existing `main` branch. Violet's
+approved Structured Bloom A2 artwork, the written introductory script,
+and the existing visitor-facing name/skip controls are retained.
