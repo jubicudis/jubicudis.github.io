@@ -36,6 +36,7 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
         return;
       const cue=cueAtObservedPosition(timeline,selected.track,observation.elapsedMs+offset);
       if(!cue)return;
+      const previousCueIndex=store.getState().cueIndex;
       store.dispatch({
         type:'SPEECH_CUE_OBSERVED',token:state.speechToken,
         evidence:{...observation,track:selected.track,cueIndex:cue.index,
@@ -43,7 +44,7 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
       });
       if(state.nameDecision==='provided'&&!nameInsertionDone&&
          !nameInsertionActive&&preparedName&&cue.index>=4&&
-         cue.index>state.cueIndex)
+         cue.index>previousCueIndex)
         insertPreparedName(state,observation.elapsedMs);
 
     }
