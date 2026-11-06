@@ -65,6 +65,11 @@ export function reduceOpening(state,event){
       if(event.token===state.speechToken&&state.phase!=='dormant'&&state.speechStatus==='pending')
         patch={speaking:false,speechStatus:'unavailable'};
       break;
+    case 'SPEECH_INTERRUPTED':
+      if(event.token===state.speechToken&&state.phase!=='dormant'
+          &&(state.speechStatus==='speaking'||state.speechStatus==='pending'))
+        patch={speaking:false,speechStatus:'interrupted'};
+      break;
   }
   if(!patch)return state;
   const next={...state,...patch};

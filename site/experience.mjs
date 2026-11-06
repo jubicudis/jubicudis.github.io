@@ -1,4 +1,5 @@
 import {createOpeningStore,openingMessage} from './opening-state.mjs';
+import {createVioletVoiceEngine} from './violet-voice.mjs';
 
 const stage=document.getElementById('environment');
 const activate=document.getElementById('violet-activate');
@@ -8,37 +9,19 @@ const form=document.getElementById('name-form');
 const nameInput=document.getElementById('visitor-name');
 const skip=document.getElementById('name-skip');
 const failure=document.getElementById('render-failure');
-let scene=null,currentUtterance=null;
+let scene=null;
 const store=createOpeningStore(render);
+const voice=createVioletVoiceEngine();
 activate.disabled=true;
 
 function beginSpeech(state){
-  const token=state.speechToken;
-  if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window)){
-    store.dispatch({type:'SPEECH_UNAVAILABLE',token});return;
-  }
-  try{
-    speechSynthesis.cancel();
-    const utterance=new SpeechSynthesisUtterance(openingMessage(state));
-    utterance.lang='en-US';utterance.rate=.95;utterance.pitch=1.12;utterance.volume=1;
-    utterance.onstart=()=>{
-      if(currentUtterance===utterance)store.dispatch({type:'SPEECH_STARTED',token});
-    };
-    const ended=()=>{
-      if(currentUtterance===utterance){
-        currentUtterance=null;store.dispatch({type:'SPEECH_ENDED',token});
-      }
-    };
-    utterance.onend=ended;
-    utterance.onerror=()=>{
-      if(currentUtterance===utterance){
-        currentUtterance=null;store.dispatch({type:'SPEECH_FAILED',token});
-      }
-    };
-    currentUtterance=utterance;speechSynthesis.speak(utterance);
-  }catch{
-    currentUtterance=null;store.dispatch({type:'SPEECH_FAILED',token});
-  }
+  // The existing opening phase is the sole authority deciding when speech
+  // begins. Voice capabilities never choose a moment or presentation route.
+  voice.speakBrowser({
+    text:openingMessage(state),
+    token:state.speechToken,
+    emit:event=>store.dispatch(event)
+  });
 }
 function render(state,previous){
   scene?.update(state);
@@ -69,7 +52,7 @@ form.addEventListener('submit',event=>{
 });
 skip.addEventListener('click',()=>store.dispatch({type:'SKIP_NAME'}));
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden&&'speechSynthesis' in window)speechSynthesis.cancel();
+  if(document.hidden)voice.cancel('page-hidden');
 });
 
 store.dispatch({type:'RENDER_STARTED'});

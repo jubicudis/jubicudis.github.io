@@ -55,3 +55,14 @@ test('voice token prevents stale completion',()=>{
   assert.equal(step(speaking,'SPEECH_ENDED',{token:-1}),speaking);
   assert.equal(step(speaking,'SPEECH_ENDED',{token:s.speechToken}).speaking,false);
 });
+
+test('cancelled narration is an interruption and never a successful completion',()=>{
+  const state=step(observed(),'ACTIVATE');
+  const speaking=step(state,'SPEECH_STARTED',{token:state.speechToken});
+  const interrupted=step(speaking,'SPEECH_INTERRUPTED',{token:state.speechToken});
+  assert.equal(interrupted.speaking,false);
+  assert.equal(interrupted.speechStatus,'interrupted');
+  assert.equal(step(interrupted,'SPEECH_ENDED',{token:state.speechToken}),interrupted);
+  assert.equal(step(interrupted,'SPEECH_INTERRUPTED',{token:-1}),interrupted);
+  assert.equal(step(state,'SPEECH_INTERRUPTED',{token:state.speechToken}).speechStatus,'interrupted');
+});

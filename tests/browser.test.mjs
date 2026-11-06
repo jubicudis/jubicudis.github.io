@@ -57,6 +57,15 @@ try{
     assert.equal(await page.locator('nav, select, .card, .panel').count(),0);
     const bounds=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:window.innerWidth}));
     assert.ok(bounds.scroll<=bounds.viewport+2,'horizontal overflow: '+JSON.stringify(bounds));
+    // The delivered engine is available on both viewports; the established
+    // opening still selects when to speak, not the voice renderer.
+    const voiceAudit=await page.evaluate(async()=>{
+      const m=await import('./site/violet-voice.mjs');
+      return {profile:m.BROWSER_VOICE_PROFILE,
+        chosen:m.chooseAvailableVoice([{name:'Enhanced demo',lang:'en-US',voiceURI:'en-test',default:false}])?.voiceURI};
+    });
+    assert.equal(voiceAudit.profile.pitch,1);
+    assert.equal(voiceAudit.chosen,'en-test');
     assert.deepEqual(errors,[],'browser errors on '+label);
     await page.screenshot({path:'artifacts/'+label+'-welcome.png'});
     await page.close();
