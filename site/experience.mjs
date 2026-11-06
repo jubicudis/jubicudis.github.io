@@ -17,6 +17,7 @@ const failure=document.getElementById('render-failure');
 const audioFailure=document.getElementById('audio-failure');
 let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameAudio=null;
 let preparedName=null,nameSynthesisError=null,nameInsertionActive=false,nameInsertionDone=false;
+let deferredNameBoundaryMs=null;
 const store=createOpeningStore(render);
 const voice=createVioletVoiceEngine();
 activate.disabled=true;
@@ -43,9 +44,12 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
           elapsedMs:observation.elapsedMs+offset}
       });
       if(state.nameDecision==='provided'&&!nameInsertionDone&&
-         !nameInsertionActive&&preparedName&&cue.index>=4&&
-         cue.index>previousCueIndex)
-        insertPreparedName(state,timeline.tracks[selected.track].cues[cue.index].startMs);
+         !nameInsertionActive&&cue.index>=4&&
+         cue.index>previousCueIndex){
+        const boundary=timeline.tracks[selected.track].cues[cue.index].startMs;
+        if(preparedName)insertPreparedName(state,boundary);
+        else deferredNameBoundaryMs=boundary;
+      }
 
     }
   });
@@ -83,6 +87,7 @@ async function beginSpeech(state){
   nameInsertionDone=false;
   preparedName=null;
   nameSynthesisError=null;
+  deferredNameBoundaryMs=null;
   playApprovedTrack(state);
   if(state.nameDecision!=='provided')return;
   const token=state.speechToken;
@@ -93,6 +98,13 @@ async function beginSpeech(state){
        ['failed','interrupted','completed'].includes(current.speechStatus)||
        document.hidden)return;
     preparedName=generated;
+    // The observed later paragraph boundary may already have passed while
+    // on-device Heart synthesis was running. Never discard the visitor name.
+    if(deferredNameBoundaryMs!==null&&!nameInsertionActive&&!nameInsertionDone&&
+       current.speechStatus==='speaking'&&voice.activeSource()==='authored'){
+      const observed=voice.sampleAuthoredClock(token);
+      if(observed)insertPreparedName(current,observed.elapsedMs);
+    }
   }catch(error){
     // Do not interrupt an actual Heart recording because optional
     // personalization failed; do not pretend the name was spoken.
@@ -184,7 +196,7 @@ document.addEventListener('visibilitychange',()=>{
   const current=store.getState();
   if(current.speechStatus==='pending'&&current.nameDecision==='provided')
     store.dispatch({type:'SPEECH_INTERRUPTED',token:current.speechToken});
-  activeNameAudio=null;preparedName=null;
+  activeNameAudio=null;preparedName=null;deferredNameBoundaryMs=null;
   voice.cancel('page-hidden');
 });
 
