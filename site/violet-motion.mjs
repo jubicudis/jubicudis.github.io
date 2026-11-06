@@ -53,7 +53,11 @@ export function createBloomMotionCapabilities({structureSurface,artWidth,artHeig
     const active=input.some(p=>p.x!==0||p.y!==0);
     const radius=Math.min(artWidth,artHeight)*.27;
     const radiusSq=radius*radius;
-    for(let i=0;i<attr.count;i++){
+    if(!active){
+      // Bit-exact restoration matters: preserve source vertex signs and
+      // -0 coordinates, rather than recomputing x + 0 for a neutral pose.
+      attr.array.set(base);
+    }else for(let i=0;i<attr.count;i++){
       const x=base[i*3],y=base[i*3+1];
       let dx=0,dy=0,sum=0;
       for(let j=0;j<4;j++){
