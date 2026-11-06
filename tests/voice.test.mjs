@@ -83,3 +83,36 @@ test('authored audio is an explicit asset transport and never silently falls bac
   assert.equal(events.at(-1).type,'SPEECH_FAILED');
   assert.equal(calls.spoken,0,'never substituted device speech after failed authored request');
 });
+
+test('authored speech timing derives from observed playback clock, never a guessed timer',()=>{
+  let audioInstance=null;
+  class Playback{
+    constructor(url){this.src=url;this.currentTime=0;this.paused=true;this.ended=false;
+      this.handlers={};audioInstance=this;}
+    addEventListener(name,fn){this.handlers[name]=fn;}
+    play(){return Promise.resolve();}
+    pause(){this.paused=true;}
+    removeAttribute(){}load(){}
+    observePlay(){this.paused=false;this.handlers.playing?.();}
+    finish(){this.ended=true;this.handlers.ended?.();}
+  }
+  const events=[];
+  const engine=createVioletVoiceEngine({
+    synthesis:{speak(){},cancel(){},getVoices:()=>[]},
+    Utterance:class {},AudioCtor:Playback,
+    baseURL:'https://jubicudis.github.io/'
+  });
+  engine.playAuthored({src:'/site/audio/selected-opening.mp3',
+    token:12,emit:e=>events.push(e)});
+  assert.equal(engine.sampleAuthoredClock(12),null,'play request has no playback evidence');
+  audioInstance.observePlay();
+  audioInstance.currentTime=.24;
+  const observed=engine.sampleAuthoredClock(12);
+  assert.equal(observed.elapsedMs,240);
+  assert.equal(observed.type,'authored-playback-position-observed');
+  assert.equal(observed.assetId,'/site/audio/selected-opening.mp3');
+  assert.equal(engine.sampleAuthoredClock(11),null);
+  audioInstance.finish();
+  assert.equal(engine.sampleAuthoredClock(12),null);
+  assert.deepEqual(events.map(x=>x.type),['SPEECH_STARTED','SPEECH_ENDED']);
+});

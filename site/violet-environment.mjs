@@ -5,6 +5,8 @@
 // If any required art or WebGL rendering fails, no replacement character is fabricated.
 import * as THREE from './vendor/three.module.js';
 import {createVioletAppearanceCapabilities} from './violet-appearance.mjs';
+import {createBloomMotionCapabilities} from './violet-motion.mjs';
+import {captureWebGLRegion,compareWebGLObservations,compareWithOpenCV} from './violet-observation.mjs';
 
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 function createGlowTexture(){
@@ -108,14 +110,18 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
     renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
     const artworkURL=new URL('./violet-a2-art.webp',import.meta.url);
     const faceURL=new URL('./violet-face.svg',import.meta.url);
-    const [art,rest,ask,talk,blink]=await Promise.all([
+    const [art,rest,ask,talk,blink,visemeClosed,visemeOpen,visemeWide,visemeRound]=await Promise.all([
       loadRequiredImage(artworkURL,'Structured Bloom artwork'),
       svgTexture(faceURL,'rest'),svgTexture(faceURL,'ask'),
-      svgTexture(faceURL,'talk'),svgTexture(faceURL,'blink')
+      svgTexture(faceURL,'talk'),svgTexture(faceURL,'blink'),
+      svgTexture(faceURL,'viseme-closed'),svgTexture(faceURL,'viseme-open'),
+      svgTexture(faceURL,'viseme-wide'),svgTexture(faceURL,'viseme-round')
     ]);
     // The art is an authored material of the selected character, not a substitute
     // if a procedural renderer fails. Its presence and decoding are required.
-    const faces={rest,ask,talk,blink};
+    const faces={rest,ask,talk,blink,
+      'viseme-closed':visemeClosed,'viseme-open':visemeOpen,
+      'viseme-wide':visemeWide,'viseme-round':visemeRound};
     const scene=new THREE.Scene();scene.background=new THREE.Color(0x070b1d);
     const camera=new THREE.OrthographicCamera(-4,4,4,-4,.1,50);
     camera.position.set(0,0,8);camera.lookAt(0,0,0);
@@ -139,6 +145,21 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
     const visualCapabilities=createVioletAppearanceCapabilities({
       character,main,expression,art,artWidth,faceMaps:faces,backgroundGroup
     });
+    const motionCapabilities=createBloomMotionCapabilities({
+      structureSurface:visualCapabilities.getStructureSurface(),
+      artWidth,artHeight,
+      onActiveChange:visualCapabilities.setStructuralWarpActive
+    });
+    // Explicit observation requests are served after a real WebGL draw.
+    // No independent timer decides when to inspect the scene.
+    const pendingObservations=[];
+    function observeNextFrame(options){
+      if(!live||failed)return Promise.reject(new Error('Violet renderer is not rendering'));
+      return new Promise((resolve,reject)=>pendingObservations.push({options,resolve,reject}));
+    }
+    function rejectObservations(reason){
+      for(const item of pendingObservations.splice(0))item.reject(reason);
+    }
     let state={phase:'dormant',speaking:false},live=true,observed=false,failed=false,frameCount=0,previousExpression='';
     const start=performance.now(),reduced=matchMedia('(prefers-reduced-motion: reduce)');
     const resize=()=>{
@@ -150,7 +171,11 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
       camera.updateProjectionMatrix();renderer.setSize(width,height,false);
     };
     resize();const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(canvas);
-    const loss=event=>{event.preventDefault();if(!failed){failed=true;live=false;onFailure?.(new Error('Violet WebGL context lost'));}};
+    const loss=event=>{event.preventDefault();if(!failed){
+      failed=true;live=false;
+      rejectObservations(new Error('Violet WebGL context lost'));
+      onFailure?.(new Error('Violet WebGL context lost'));
+    }};
     canvas.addEventListener('webglcontextlost',loss);
     function frame(now){
       if(!live)return;
@@ -159,12 +184,19 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
       character.rotation.z=reduced.matches?0:.008*Math.sin(t*.39);
       const expansion=1+(reduced.matches?0:.004*Math.sin(t*.74));
       character.scale.setScalar(expansion);
-      const mode=state.speaking&&Math.sin(t*8.6)>-.16?'talk':
+      // Speech state, not an independent mouth timer, controls the base pose.
+      // Authored viseme evidence may override it through visualCapabilities.
+      const mode=state.speaking?'talk':
         !reduced.matches&&Math.sin(t*.49+.8)>.998?'blink':
         state.phase==='asking-name'&&!state.speaking?'ask':'rest';
       const visualMode=visualCapabilities.desiredExpression(mode);
       if(visualMode!==previousExpression){expression.material.map=faces[visualMode];expression.material.needsUpdate=true;previousExpression=visualMode;}
       renderer.render(scene,camera);frameCount++;
+      for(const observation of pendingObservations.splice(0)){
+        try{observation.resolve(captureWebGLRegion({
+          renderer,canvas,...observation.options
+        }));}catch(error){observation.reject(error);}
+      }
       if(!observed&&frameCount>1){
         const evidence=observedFrame(renderer,canvas);
         if(evidence){observed=true;onObserved?.(evidence);}
@@ -176,9 +208,18 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
       update(next){state=next;},
       // The caller may explicitly propagate a visual snapshot in a later approved pass.
       // No visitor control, state transition or automatic time-based trigger invokes it now.
-      visualCapabilities,
-      dispose(){live=false;resizeObserver.disconnect();canvas.removeEventListener('webglcontextlost',loss);
-        visualCapabilities.dispose();scene.traverse(o=>{o.geometry?.dispose();});renderer.dispose();},
+      visualCapabilities,motionCapabilities,
+      visualObservation:Object.freeze({
+        captureNextFrame:observeNextFrame,
+        compare:compareWebGLObservations,
+        compareWithOpenCV
+      }),
+      dispose(){
+        live=false;
+        rejectObservations(new Error('Violet renderer disposed'));
+        resizeObserver.disconnect();canvas.removeEventListener('webglcontextlost',loss);
+        visualCapabilities.dispose();scene.traverse(o=>{o.geometry?.dispose();});renderer.dispose();
+      },
       get observed(){return observed&&!failed;}
     };
   }catch(error){console.error('Violet required render failed',error);renderer?.dispose();onFailure?.(error);throw error;}

@@ -101,13 +101,13 @@ export function createVioletVoiceEngine({
     try{
       const audio=new AudioCtor(url.href);
       audio.preload='auto';
-      const session={kind:'authored',audio,token,emit,src:url.pathname};
+      const session={kind:'authored',audio,token,emit,src:url.pathname,playing:false};
       active=session;
       audio.addEventListener('playing',()=>{
-        if(active===session)emitSafely(emit,{type:'SPEECH_STARTED',token});
+        if(active===session){session.playing=true;emitSafely(emit,{type:'SPEECH_STARTED',token});}
       },{once:true});
       audio.addEventListener('ended',()=>{
-        if(active===session){active=null;emitSafely(emit,{type:'SPEECH_ENDED',token});}
+        if(active===session){session.playing=false;active=null;emitSafely(emit,{type:'SPEECH_ENDED',token});}
       },{once:true});
       audio.addEventListener('error',()=>{
         if(active===session){active=null;emitSafely(emit,{type:'SPEECH_FAILED',token,reason:'authored audio failed to load'});}
@@ -123,8 +123,20 @@ export function createVioletVoiceEngine({
       return null;
     }
   }
+  // This reads a qualified browser audio clock; no timer guesses how far
+  // speech progressed, and browser TTS has no fabricated phoneme timestamps.
+  function sampleAuthoredClock(token){
+    if(!active||active.kind!=='authored'||active.token!==token||
+      !active.playing||active.audio.paused===true||active.audio.ended===true)
+      return null;
+    const seconds=active.audio.currentTime;
+    if(!Number.isFinite(seconds)||seconds<0)return null;
+    return Object.freeze({type:'authored-playback-position-observed',
+      source:'observed-authored-audio',assetId:active.src,
+      token,playing:true,elapsedMs:Math.floor(seconds*1000)});
+  }
   return Object.freeze({
-    speakBrowser,playAuthored,cancel,
+    speakBrowser,playAuthored,cancel,sampleAuthoredClock,
     availableVoices:()=>typeof synthesis?.getVoices==='function'
       ?synthesis.getVoices().map(voiceDescriptor):[],
     selectedBrowserVoice:()=>voiceDescriptor(

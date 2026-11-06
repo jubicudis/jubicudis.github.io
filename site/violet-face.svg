@@ -4,12 +4,17 @@
   <linearGradient id="lumen" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fffaff"/><stop offset=".55" stop-color="#f2d7ff"/><stop offset="1" stop-color="#dda6ff"/></linearGradient>
 </defs>
 <style>
-  #eye-smile,#eye-open,#eye-blink,#mouth-smile,#mouth-speak{display:none}
+  #eye-smile,#eye-open,#eye-blink,#mouth-smile,#mouth-speak,#mouth-viseme-open,#mouth-viseme-wide,#mouth-viseme-round,#mouth-viseme-closed{display:none}
   svg[data-mode="rest"] #eye-smile,svg[data-mode="talk"] #eye-smile{display:inline}
   svg[data-mode="ask"] #eye-open{display:inline}
   svg[data-mode="blink"] #eye-blink{display:inline}
   svg[data-mode="rest"] #mouth-smile,svg[data-mode="ask"] #mouth-smile,svg[data-mode="blink"] #mouth-smile{display:inline}
   svg[data-mode="talk"] #mouth-speak{display:inline}
+  svg[data-mode^="viseme-"] #eye-smile{display:inline}
+  svg[data-mode="viseme-closed"] #mouth-viseme-closed{display:inline}
+  svg[data-mode="viseme-open"] #mouth-viseme-open{display:inline}
+  svg[data-mode="viseme-wide"] #mouth-viseme-wide{display:inline}
+  svg[data-mode="viseme-round"] #mouth-viseme-round{display:inline}
   .illuminated{stroke:url(#lumen);stroke-linecap:round;stroke-linejoin:round;fill:none}
   .glow{stroke:#c77cff;stroke-width:26;opacity:.7;filter:url(#bloom)}
 </style>
@@ -33,5 +38,25 @@
   <path d="M284 287 Q320 264 356 287 Q357 325 320 336 Q284 326 284 287Z" fill="#dca8ff"/>
   <path d="M292 290 Q320 278 348 290 Q349 311 320 322 Q291 311 292 290Z" fill="#4b1b73"/>
   <path d="M301 311 Q320 309 339 311 Q331 322 320 323 Q308 321 301 311Z" fill="#ffdcff"/>
+</g>
+<g id="mouth-viseme-closed">
+  <path d="M281 302 Q320 310 359 302" stroke="#e3b8ff" stroke-width="12"
+        fill="none" stroke-linecap="round"/>
+</g>
+<g id="mouth-viseme-open">
+  <ellipse cx="320" cy="307" rx="24" ry="31" fill="#ddb0ff" opacity=".6" filter="url(#bloom)"/>
+  <ellipse cx="320" cy="306" rx="23" ry="29" fill="url(#lumen)"/>
+  <ellipse cx="320" cy="305" rx="13" ry="20" fill="#4c1a73"/>
+</g>
+<g id="mouth-viseme-round">
+  <circle cx="320" cy="305" r="23" fill="#d6a1ff" opacity=".6" filter="url(#bloom)"/>
+  <circle cx="320" cy="304" r="20" fill="url(#lumen)"/>
+  <circle cx="320" cy="304" r="11" fill="#4c1a73"/>
+</g>
+<g id="mouth-viseme-wide">
+  <path d="M267 302 Q320 271 373 302 Q356 334 320 329 Q282 336 267 302Z"
+    fill="#d7a2ff" opacity=".6" filter="url(#bloom)"/>
+  <path d="M267 300 Q320 282 373 300 Q344 321 320 318 Q294 321 267 300Z" fill="url(#lumen)"/>
+  <path d="M292 300 Q320 291 348 300 Q339 314 320 315 Q301 314 292 300Z" fill="#652881"/>
 </g>
 </svg>

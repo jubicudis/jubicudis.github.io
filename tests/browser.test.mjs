@@ -155,6 +155,61 @@ try{
   const restored=await probe.screenshot({path:'artifacts/renderer-capability-restored-a2.png'});
   assert.equal(restored.equals(baseline),true,
     'A2 full presence must remain unchanged pixel-for-pixel');
+
+  // Explicit renderer capability requests. No presentation event, mood, or
+  // visitor action may be created by these calls.
+  const baselineObserved=await probe.evaluate(async()=>{
+    const sample=await window.__visualProbe.visualObservation.captureNextFrame({
+      token:1001,columns:32,rows:32
+    });
+    window.__captureBeforeMotion=sample;
+    return {type:sample.type,saturatedSamples:sample.saturatedSamples};
+  });
+  assert.equal(baselineObserved.type,'bounded-webgl-pixels');
+  assert.ok(baselineObserved.saturatedSamples>1);
+
+  const deformed=await probe.evaluate(()=>{
+    const rig=window.__visualProbe.motionCapabilities;
+    const result=rig.apply([
+      {x:.19,y:-.06},{x:0,y:.16},{x:-.07,y:0},{x:.02,y:-.10}
+    ]);
+    return {active:result.active,length:rig.readRequested().length};
+  });
+  assert.deepEqual(deformed,{active:true,length:4});
+  await probe.waitForTimeout(200);
+  const deformedScreenshot=await probe.screenshot({
+    path:'artifacts/renderer-capability-quad-deformation.png'});
+  assert.equal(deformedScreenshot.equals(restored),false,
+    'coupled four-strand deformation must alter actual rendered geometry');
+
+  const evidence=await probe.evaluate(async()=>{
+    const obs=window.__visualProbe.visualObservation;
+    const moved=await obs.captureNextFrame({token:1002,columns:32,rows:32});
+    return obs.compare(window.__captureBeforeMotion,moved,{
+      threshold:6,minimumDifferent:2
+    });
+  });
+  assert.equal(evidence.type,'webgl-change-observed');
+  assert.equal(evidence.qualified,true,'observed pixels must differ after geometry deformation');
+  assert.equal(evidence.fromToken,1001);
+  assert.equal(evidence.toToken,1002);
+
+  await probe.evaluate(()=>window.__visualProbe.motionCapabilities.reset());
+  await probe.waitForTimeout(200);
+  const rigReset=await probe.screenshot({path:'artifacts/renderer-capability-rig-restored.png'});
+  assert.equal(rigReset.equals(restored),true,
+    'resetting the four-strand rig must preserve the approved A2 appearance');
+
+  await probe.evaluate(()=>window.__visualProbe.visualCapabilities.setExpressionOverride('viseme-round'));
+  await probe.waitForTimeout(200);
+  const viseme=await probe.screenshot({path:'artifacts/renderer-capability-authored-viseme.png'});
+  assert.equal(viseme.equals(restored),false,'real authored viseme SVG must render');
+  await probe.evaluate(()=>window.__visualProbe.visualCapabilities.setExpressionOverride(null));
+  await probe.waitForTimeout(200);
+  assert.equal((await probe.screenshot()).equals(restored),true,
+    'removing the viseme request must restore the approved original expression');
+  assert.equal(await probe.locator('#environment').getAttribute('data-phase'),'dormant',
+    'capabilities may not select presentation behaviors');
   assert.deepEqual(probeErrors,[],'capability renderer must not throw browser errors');
   await probe.evaluate(()=>window.__visualProbe.dispose());
   await probe.close();

@@ -129,7 +129,8 @@ export function createVioletAppearanceCapabilities({
   const textureMaps=makeMaterialTextures(art);
   const surfaces={};
   for(const [i,part] of ['environment','structure','center'].entries()){
-    const surface=new THREE.Mesh(new THREE.PlaneGeometry(width,height),
+    const surface=new THREE.Mesh(new THREE.PlaneGeometry(width,height,
+      part==='structure'?88:1,part==='structure'?64:1),
       new THREE.MeshBasicMaterial({
         map:textureMaps[part],transparent:true,opacity:1,depthWrite:false,
         toneMapped:false,side:THREE.DoubleSide
@@ -142,23 +143,32 @@ export function createVioletAppearanceCapabilities({
   const lighting=environmentMaterials(backgroundGroup);
   let requested=FULL_A2_APPEARANCE;
   let expressionOverride=null;
+  let structuralWarpActive=false;
 
-  function apply(snapshot){
-    const next=validateAppearanceSnapshot(snapshot);
-    const full=CHANNELS.every(key=>next[key]===1);
+  function syncMaterialView(){
+    const full=CHANNELS.every(key=>requested[key]===1)&&!structuralWarpActive;
     // Untouched full rendering uses the exact approved art asset.
     main.visible=full;
     for(const part of ['environment','structure','center']){
-      surfaces[part].visible=!full&&next[part]>0;
-      surfaces[part].material.opacity=next[part];
+      surfaces[part].visible=!full&&requested[part]>0;
+      surfaces[part].material.opacity=requested[part];
     }
-    expression.visible=next.features>0;
-    expression.material.opacity=next.features;
+    expression.visible=requested.features>0;
+    expression.material.opacity=requested.features;
     for(const {material,originalOpacity} of lighting){
-      material.opacity=originalOpacity*next.environment;
+      material.opacity=originalOpacity*requested.environment;
     }
-    requested=next; // Requested state only. Render evidence belongs to the scene.
   }
+  function apply(snapshot){
+    requested=validateAppearanceSnapshot(snapshot);
+    syncMaterialView(); // Requested state only; pixels are verified elsewhere.
+  }
+  function setStructuralWarpActive(active){
+    if(typeof active!=='boolean')throw new TypeError('Structural deformation activation must be boolean');
+    structuralWarpActive=active;
+    syncMaterialView();
+  }
+  function getStructureSurface(){return surfaces.structure;}
   function setExpressionOverride(mode){
     if(mode!==null&&!(typeof mode==='string'&&Object.prototype.hasOwnProperty.call(faceMaps,mode)))
       throw new TypeError('Unrecognized authored Violet expression');
@@ -170,7 +180,7 @@ export function createVioletAppearanceCapabilities({
     }
   }
   return Object.freeze({
-    apply,setExpressionOverride,
+    apply,setExpressionOverride,setStructuralWarpActive,getStructureSurface,
     desiredExpression:defaultMode=>expressionOverride??defaultMode,
     readRequested:()=>requested,
     readExpressionOverride:()=>expressionOverride,
