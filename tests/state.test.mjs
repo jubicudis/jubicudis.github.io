@@ -4,6 +4,9 @@ import {initialState,reduceOpening,openingMessage} from '../site/opening-state.m
 const step=(s,type,data={})=>reduceOpening(s,{type,at:100,...data});
 test('dormant is the entire initial experience; unauthorized transitions are inert',()=>{
  assert.equal(initialState.phase,'dormant');
+ assert.equal(initialState.voiceSupported,null);
+ assert.equal(step(initialState,'VOICE_AVAILABLE',{value:false}).voiceSupported,false);
+ assert.equal(step(initialState,'VOICE_AVAILABLE',{value:true}).voiceSupported,true);
  assert.equal(openingMessage(initialState),'');
  assert.equal(step(initialState,'GIVE_NAME',{name:'Alex'}),initialState);
  assert.equal(step(initialState,'NEXT'),initialState);
@@ -41,4 +44,17 @@ test('actual voice events are scoped to the current cue',()=>{
  assert.equal(speaking.speaking,true);
  assert.equal(step(speaking,'SPEECH_ENDED',{token:-1}),speaking);
  assert.equal(step(speaking,'SPEECH_ENDED',{token:s.speechToken}).speaking,false);
+});
+
+test('a failed or unavailable voice does not become a fabricated completed narration',()=>{
+ const cue=step(initialState,'ACTIVATE');
+ assert.equal(cue.speechStatus,'pending');
+ const failed=step(cue,'SPEECH_FAILED',{token:cue.speechToken});
+ assert.equal(failed.speechStatus,'failed');
+ assert.equal(failed.speaking,false);
+ assert.equal(step(failed,'SPEECH_ENDED',{token:cue.speechToken}),failed);
+ const unavailable=step(cue,'SPEECH_UNAVAILABLE',{token:cue.speechToken});
+ assert.equal(unavailable.speechStatus,'unavailable');
+ assert.equal(unavailable.speaking,false);
+ assert.equal(step(failed,'SPEECH_STARTED',{token:-1}),failed);
 });

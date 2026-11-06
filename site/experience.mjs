@@ -11,9 +11,13 @@ const skip=document.getElementById('name-skip');
 const scene=createVioletEnvironment(document.getElementById('world'));
 const store=createOpeningStore(render);
 let currentUtterance=null;
+store.dispatch({type:'VOICE_AVAILABLE',value:('speechSynthesis' in window)&&('SpeechSynthesisUtterance' in window)});
 
 function beginSpeech(state){
-  if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window))return;
+  if(!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window)){
+    store.dispatch({type:'SPEECH_UNAVAILABLE',token:state.speechToken});
+    return;
+  }
   try{
     speechSynthesis.cancel();
     const token=state.speechToken;
@@ -21,11 +25,18 @@ function beginSpeech(state){
     u.lang='en-US';u.rate=.95;u.pitch=1.12;u.volume=1;
     u.onstart=()=>{if(currentUtterance===u)store.dispatch({type:'SPEECH_STARTED',token});};
     const ended=()=>{if(currentUtterance===u){currentUtterance=null;store.dispatch({type:'SPEECH_ENDED',token});}};
-    u.onend=ended;u.onerror=ended;
+    u.onend=ended;
+    u.onerror=()=>{
+      if(currentUtterance===u){
+        currentUtterance=null;
+        store.dispatch({type:'SPEECH_FAILED',token});
+      }
+    };
     currentUtterance=u;
     speechSynthesis.speak(u);
   }catch{
-    currentUtterance=null; // Captions remain independently available.
+    currentUtterance=null;
+    store.dispatch({type:'SPEECH_FAILED',token:state.speechToken});
   }
 }
 function render(state,previous){

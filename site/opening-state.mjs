@@ -1,7 +1,7 @@
 // Public website presentation state. This is not TNOS native cognition or TranquilSpeak execution.
 export const initialState=Object.freeze({
   phase:'dormant',visitorName:null,nameDecision:null,
-  speaking:false,speechToken:0,voiceSupported:false,
+  speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
   enteredAt:0,
   context:Object.freeze({who:'unidentified visitor',what:'Violet',when:'unstarted',where:'TNOS website opening',why:'visit',how:'await activation',extent:'not started'})
 });
@@ -19,27 +19,35 @@ export function openingMessage(state){
 }
 export function reduceOpening(state,event){
   if(!event||typeof event.type!=='string')return state;
-  const when=Number.isFinite(event.at)?event.at:0;
+  const when=Number.isFinite(event.at)?event.at:null;
   let patch=null;
   switch(event.type){
     case 'ACTIVATE':
-      if(state.phase==='dormant')patch={phase:'asking-name',enteredAt:when,speaking:false,speechToken:state.speechToken+1};
+      if(state.phase==='dormant')patch={phase:'asking-name',enteredAt:when,speaking:false,speechStatus:'pending',speechToken:state.speechToken+1};
       break;
     case 'GIVE_NAME':
       if(state.phase!=='asking-name'||typeof event.name!=='string')break;
       {const name=event.name.replace(/[\u0000-\u001F\u007F<>]/g,'').trim().replace(/\s+/g,' ').slice(0,48);
-       if(name)patch={phase:'welcome',visitorName:name,nameDecision:'provided',enteredAt:when,speaking:false,speechToken:state.speechToken+1};}
+       if(name)patch={phase:'welcome',visitorName:name,nameDecision:'provided',enteredAt:when,speaking:false,speechStatus:'pending',speechToken:state.speechToken+1};}
       break;
     case 'SKIP_NAME':
-      if(state.phase==='asking-name')patch={phase:'welcome',visitorName:null,nameDecision:'skipped',enteredAt:when,speaking:false,speechToken:state.speechToken+1};
+      if(state.phase==='asking-name')patch={phase:'welcome',visitorName:null,nameDecision:'skipped',enteredAt:when,speaking:false,speechStatus:'pending',speechToken:state.speechToken+1};
       break;
     case 'VOICE_AVAILABLE':
-      patch={voiceSupported:!!event.value};break;
+      patch={voiceSupported:event.value===true};break;
     case 'SPEECH_STARTED':
-      if(event.token===state.speechToken&&state.phase!=='dormant')patch={speaking:true};
+      if(event.token===state.speechToken&&state.phase!=='dormant')patch={speaking:true,speechStatus:'speaking'};
       break;
     case 'SPEECH_ENDED':
-      if(event.token===state.speechToken&&state.speaking)patch={speaking:false};
+      if(event.token===state.speechToken&&state.speaking)patch={speaking:false,speechStatus:'completed'};
+      break;
+    case 'SPEECH_FAILED':
+      if(event.token===state.speechToken&&state.phase!=='dormant'&&state.speechStatus!=='completed'&&state.speechStatus!=='failed')
+        patch={speaking:false,speechStatus:'failed'};
+      break;
+    case 'SPEECH_UNAVAILABLE':
+      if(event.token===state.speechToken&&state.phase!=='dormant'&&state.speechStatus==='pending')
+        patch={speaking:false,speechStatus:'unavailable'};
       break;
   }
   if(!patch)return state;
