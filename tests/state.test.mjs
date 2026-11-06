@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initialState,reduceOpening,openingMessage,nameChoiceReady}
   from '../site/opening-state.mjs';
-import {OPENING_TRACKS,VISITOR_NAME_SLOT} from '../site/opening-script.mjs';
+import {OPENING_TRACKS,VISITOR_NAME_SLOT,NAMED_VISITOR_SCRIPT} from '../site/opening-script.mjs';
 
 const step=(state,type,data={})=>reduceOpening(state,{type,at:100,...data});
 function ready(){
@@ -229,6 +229,8 @@ test('actual named audio failure never advances to generic welcome or name-skipp
 
 test('approved script reserves a later actual spoken-name slot, not the immediate welcome',()=>{
   assert.equal(VISITOR_NAME_SLOT.track,'after-name');
+  assert.equal(NAMED_VISITOR_SCRIPT[4],VISITOR_NAME_SLOT);
+  assert.equal(NAMED_VISITOR_SCRIPT.length,OPENING_TRACKS['after-name'].length+1);
   assert.equal(VISITOR_NAME_SLOT.afterCueIndex,3);
   assert.equal(VISITOR_NAME_SLOT.beforeCueIndex,4);
   assert.equal(VISITOR_NAME_SLOT.text('Morgan'),"Morgan, let's continue.");
