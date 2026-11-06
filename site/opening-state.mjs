@@ -2,7 +2,7 @@
 // Approved Revision 2 is the only authority for text and sequential subjects.
 // The rendered scene and audio are qualified independently; no narration timer
 // can advance the presentation without a real audio playback observation.
-import {OPENING_TRACKS,openingTrackForPhase,visibleOpeningSegment}
+import {OPENING_TRACKS,VISITOR_NAME_SLOT,openingTrackForPhase,visibleOpeningSegment}
   from './opening-script.mjs';
 
 export const initialState=Object.freeze({
@@ -24,7 +24,7 @@ export function openingMessage(state){
   if(state.phase==='dormant')return '';
   const track=state.track||openingTrackForPhase(state.phase);
   if(state.nameAudioPlaying&&state.nameDecision==='provided')
-    return state.visitorName+", let's continue.";
+    return VISITOR_NAME_SLOT.text(state.visitorName);
   return visibleOpeningSegment(track,state.cueIndex,null);
 }
 export function nameChoiceReady(state){
@@ -74,7 +74,7 @@ export function reduceOpening(state,event){
           visitorName:name,nameDecision:'provided',enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-          observedSpeechPose:null,nameAudioCompleted:false};
+          observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false};
       }
       break;
     case 'SKIP_NAME':
@@ -93,7 +93,7 @@ export function reduceOpening(state,event){
     case 'GENERATED_VISEME_OBSERVED':
       {
         const proof=event.evidence;
-        if(state.nameDecision!=='provided'||state.phase!=='welcome'||
+        if(state.nameDecision!=='provided'||!state.nameAudioPlaying||
           state.speechStatus!=='speaking'||event.token!==state.speechToken||
           proof?.type!=='generated-viseme-audio-observed'||
           proof.source!=='observed-generated-heart-audio'||
