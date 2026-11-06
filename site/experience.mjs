@@ -45,7 +45,7 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
       if(state.nameDecision==='provided'&&!nameInsertionDone&&
          !nameInsertionActive&&preparedName&&cue.index>=4&&
          cue.index>previousCueIndex)
-        insertPreparedName(state,observation.elapsedMs);
+        insertPreparedName(state,timeline.tracks[selected.track].cues[cue.index].startMs);
 
     }
   });
