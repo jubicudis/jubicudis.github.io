@@ -33,10 +33,19 @@ export const AFTER_NAME_SEGMENTS=Object.freeze([
 // Skipped names do not use this slot.
 export const VISITOR_NAME_SLOT=Object.freeze({
   track:'after-name',
+  phase:'orientation',
+  kind:'generated-visitor-name',
   afterCueIndex:3,
   beforeCueIndex:4,
   text:visitorName=>visitorName+", let's continue."
 });
+// The actual named-visitor script includes this required dynamic speech line.
+// The prerecorded Heart media still contains only the static paragraphs.
+export const NAMED_VISITOR_SCRIPT=Object.freeze([
+  ...AFTER_NAME_SEGMENTS.slice(0,VISITOR_NAME_SLOT.beforeCueIndex),
+  VISITOR_NAME_SLOT,
+  ...AFTER_NAME_SEGMENTS.slice(VISITOR_NAME_SLOT.beforeCueIndex)
+]);
 export const OPENING_TRACKS=Object.freeze({
   'asking-name':Object.freeze(INTRO_SEGMENTS.map(text=>Object.freeze({phase:'asking-name',text}))),
   'after-name':AFTER_NAME_SEGMENTS
