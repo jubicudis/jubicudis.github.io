@@ -112,14 +112,14 @@ async function svgTexture(url,mode){
     ctx.drawImage(image,0,0,canvas.width,canvas.height);
     assertVisibleExpression(ctx,mode);
     const texture=new THREE.CanvasTexture(canvas);
-    texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=8;
+    texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=1;
     return texture;
   }finally{URL.revokeObjectURL(objectURL);}
 }
 function textureFromImage(image){
   const texture=new THREE.Texture(image);
   texture.colorSpace=THREE.SRGBColorSpace;
-  texture.anisotropy=8;
+  texture.anisotropy=1;
   texture.needsUpdate=true;
   return texture;
 }
@@ -164,7 +164,10 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance',preserveDrawingBuffer:false});
     renderer.outputColorSpace=THREE.SRGBColorSpace;
     renderer.toneMapping=THREE.NoToneMapping; // keep reference artwork colorimetry, no pastel wash-out
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+    // On touch-sized WebKit surfaces, a 2x framebuffer quadruples GPU memory.
+    // Preserve the same authored scene while limiting its framebuffer cost.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,
+      window.innerWidth<=620?1:2));
     const artworkURL=new URL('./violet-a2-art.webp',import.meta.url);
     const faceURL=new URL('./violet-face.svg',import.meta.url);
     const [art,rest,ask,talk,blink,visemeClosed,visemeOpen,visemeWide,visemeRound]=await Promise.all([
