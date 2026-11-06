@@ -14,8 +14,8 @@
   .glow{stroke:#c77cff;stroke-width:26;opacity:.7;filter:url(#bloom)}
 </style>
 <g id="eye-smile">
-  <g class="illuminated glow"><path d="M174 215 Q219 164 264 212"/><path d="M376 212 Q421 164 466 215"/></g>
-  <g class="illuminated" stroke-width="17"><path d="M174 215 Q219 164 264 212"/><path d="M376 212 Q421 164 466 215"/></g>
+  <g class="illuminated glow"><path d="M165 216 Q219 149 273 215"/><path d="M367 215 Q421 149 475 216"/></g>
+  <g class="illuminated" stroke-width="17"><path d="M165 216 Q219 149 273 215"/><path d="M367 215 Q421 149 475 216"/></g>
 </g>
 <g id="eye-open">
   <g fill="#e0a4ff" opacity=".55" filter="url(#bloom)"><ellipse cx="219" cy="209" rx="31" ry="43"/><ellipse cx="421" cy="209" rx="31" ry="43"/></g>
@@ -25,8 +25,8 @@
 </g>
 <g id="eye-blink" stroke="url(#lumen)" stroke-width="12" stroke-linecap="round"><path d="M193 216 Q220 222 248 216"/><path d="M393 216 Q420 222 448 216"/></g>
 <g id="mouth-smile">
-  <path d="M278 290 Q319 334 362 289 Q318 307 278 290Z" fill="#d59afc" opacity=".6" filter="url(#bloom)"/>
-  <path d="M278 290 Q319 334 362 289 Q318 307 278 290Z" fill="url(#lumen)"/>
+  <path d="M272 291 C295 300 345 301 368 290 C363 320 341 342 320 342 C298 341 278 324 272 291Z" fill="#d59afc" opacity=".6" filter="url(#bloom)"/>
+  <path d="M272 291 C295 300 345 301 368 290 C363 320 341 342 320 342 C298 341 278 324 272 291Z" fill="url(#lumen)"/>
 </g>
 <g id="mouth-speak">
   <ellipse cx="320" cy="303" rx="30" ry="32" fill="#dba4ff" opacity=".7" filter="url(#bloom)"/>

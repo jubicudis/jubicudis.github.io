@@ -72,5 +72,14 @@ try{
   assert.match(await failedPage.locator('#render-failure').innerText(),/Violet could not be rendered/);
   assert.equal(await failedPage.locator('#environment').getAttribute('data-phase'),'dormant');
   await failedPage.close();
-  console.log('Verified Three.js/WebGL+SVG appearance, opening interaction, and explicit failure with missing required SVG (no successful fallback).');
+  const failedArt=await browser.newPage({viewport:{width:390,height:844}});
+  await failedArt.route('**/site/violet-a2-art.webp',route=>route.abort('failed'));
+  await failedArt.goto(base,{waitUntil:'domcontentloaded'});
+  await failedArt.waitForFunction(()=>document.querySelector('#environment').dataset.renderStatus==='failed',null,{timeout:12000});
+  assert.equal(await failedArt.locator('#violet-activate').isEnabled(),false);
+  assert.equal(await failedArt.locator('#visitor-dialogue').isVisible(),false);
+  assert.equal(await failedArt.locator('#render-failure').isVisible(),true);
+  assert.equal(await failedArt.locator('#environment').getAttribute('data-phase'),'dormant');
+  await failedArt.close();
+  console.log('Verified Three.js+SVG opening and explicit failures for missing face and required A2 artwork.');
 }finally{await browser.close();server.kill();}
