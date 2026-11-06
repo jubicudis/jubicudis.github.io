@@ -30,15 +30,21 @@ try{
       window.__heartPoses=[];
       window.__unexpectedBrowserTTS=0;
       const OriginalAudio=window.Audio;
+      window.__audioPlayersConstructed=0;
       window.Audio=function(src){
         const media=new OriginalAudio(src);
-        // Accelerate only static authored files, preserving actual browser
-        // ended events. Play the real synthesized name at natural speed.
-        if(!String(src).startsWith('blob:'))media.playbackRate=12;
+        window.__audioPlayersConstructed++;
+        // The app retains one gesture-authorized audio element. Rate and
+        // source identity must be evaluated at playback, not construction.
+        const nativePlay=media.play.bind(media);
+        media.play=function(){
+          media.playbackRate=String(media.src).startsWith('blob:')?1:12;
+          return nativePlay();
+        };
         for(const event of ['playing','ended','error']){
           media.addEventListener(event,()=>window.__heartEvents.push({
-            event,src:String(src),currentTime:media.currentTime,
-            duration:media.duration
+            event,src:media.currentSrc||media.src,
+            currentTime:media.currentTime,duration:media.duration
           }));
         }
         return media;
@@ -131,6 +137,8 @@ try{
     assert.equal(result.caption,
       'Because the real difference begins with the operating system itself.');
     assert.equal(result.unexpectedBrowserTTS,0);
+    assert.equal(await page.evaluate(()=>window.__audioPlayersConstructed),1,
+      'real named visitor journey must reuse the already authorized media element');
     assert.equal(result.events.filter(x=>
       x.src.includes('violet-heart-after-name.mp3')).length,0);
     assert.ok(result.events.some(x=>x.src.startsWith('blob:')&&x.event==='ended'));
