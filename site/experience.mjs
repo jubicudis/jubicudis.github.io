@@ -73,6 +73,12 @@ function insertPreparedName(state,resumeAtMs){
   const session=voice.playGenerated({
     wav:generated.wav,token,insertAfterAuthored:true,
     emit:event=>store.dispatch(event),
+    onPosition:observation=>{
+      if(observation?.source==='observed-generated-heart-audio'&&
+         observation.playing===true)
+        store.dispatch({type:'NAME_AUDIO_STARTED',token,
+          evidence:{type:'observed-generated-heart-playing'}});
+    },
     onEnded:()=>{
       const observed=store.getState();
       if(observed.speechToken!==token)return;
