@@ -81,7 +81,7 @@ try{
     await page.locator('#visitor-name').fill('Morgan');
     await page.locator('#name-confirm').click();
     assert.equal(await page.locator('#violet-caption').innerText(),
-      "Welcome, Morgan. I'm glad you're here.");
+      "Welcome. I'm glad you're here.");
     assert.equal(await page.locator('#environment').getAttribute('data-name-audio-completed'),'false');
     const synthesisStarted=performance.now();
     await page.waitForFunction(()=>window.__realHeartEvents.some(e=>
@@ -94,7 +94,7 @@ try{
         s.dataset.nameAudioCompleted==='true';
     },null,{timeout:15000});
     await page.waitForFunction(()=>window.__realHeartEvents.some(x=>
-      x.kind==='approved-recording'&&x.src.endsWith('/site/audio/violet-heart-post-welcome.mp3')&&
+      x.kind==='approved-recording'&&x.src.endsWith('/site/audio/violet-heart-after-name.mp3')&&
       x.event==='playing'),null,{timeout:12000});
     await page.waitForFunction(()=>
       document.getElementById('environment').dataset.phase==='orientation',
@@ -125,7 +125,7 @@ try{
       'Actual synthesized Heart audio must produce multiple observed mouth poses');
     assert.ok(result.audioEvents.some(x=>x.kind==='generated-name'&&x.event==='ended'));
     assert.ok(result.audioEvents.some(x=>x.kind==='approved-recording'&&
-      x.src.endsWith('/site/audio/violet-heart-post-welcome.mp3')&&x.event==='ended'));
+      x.src.endsWith('/site/audio/violet-heart-after-name.mp3')&&x.event==='ended'));
     assert.deepEqual(errors,[]);
     mkdirSync('artifacts',{recursive:true});
     writeFileSync('artifacts/heart-named-flow-observed.json',
