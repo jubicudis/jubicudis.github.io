@@ -3,6 +3,7 @@
 // The returned audio and timed visemes originate from the SAME synthesis.
 // No alternate speaker, inferred speech completion, or presentation state.
 import {VIOLET_SELECTED_VOICE} from './violet-selected-voice.mjs';
+import {VISITOR_NAME_SLOT} from './opening-script.mjs';
 
 export const HEADTTS_MODULE='https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/+esm';
 export const HEADTTS_WORKER='https://cdn.jsdelivr.net/npm/@met4citizen/headtts@1.3/modules/worker-tts.mjs';
@@ -23,7 +24,7 @@ export function pronunciationText(visitorName){
     visitorName.length>48||/[\u0000-\u001f\u007f<>]/.test(visitorName)||
     visitorName!==visitorName.trim())
     throw new TypeError('Name must be the authorized, normalized visitor input');
-  return visitorName+", let's continue.";
+  return VISITOR_NAME_SLOT.text(visitorName);
 }
 
 export async function observedInferenceBackend(browser=typeof navigator==='undefined'?null:navigator){
