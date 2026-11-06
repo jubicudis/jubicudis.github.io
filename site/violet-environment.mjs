@@ -36,12 +36,62 @@ async function loadRequiredImage(url,label){
     return image;
   }finally{URL.revokeObjectURL(objectUrl);}
 }
+// One deterministic facial expression is baked into each authored SVG
+// texture before rendering. This avoids relying on WebKit to resolve
+// data-attribute stylesheet selectors inside an SVG used as an image.
+const EXPRESSION_PARTS=Object.freeze({
+  rest:['eye-smile','mouth-smile'],
+  ask:['eye-open','mouth-smile'],
+  talk:['eye-smile','mouth-speak'],
+  blink:['eye-blink','mouth-smile'],
+  'viseme-closed':['eye-smile','mouth-viseme-closed'],
+  'viseme-open':['eye-smile','mouth-viseme-open'],
+  'viseme-wide':['eye-smile','mouth-viseme-wide'],
+  'viseme-round':['eye-smile','mouth-viseme-round']
+});
+function qualifiedExpressionSvg(xml,mode){
+  const active=EXPRESSION_PARTS[mode];
+  if(!active)throw new Error('Unrecognized required Violet expression: '+mode);
+  const doc=new DOMParser().parseFromString(xml,'image/svg+xml');
+  const root=doc.documentElement;
+  if(doc.querySelector('parsererror')||root.localName!=='svg')
+    throw new Error('Required Violet expression SVG could not be parsed');
+  root.setAttribute('data-mode',mode);
+  const stylesheet=doc.querySelector('style');
+  if(!stylesheet)throw new Error('Required Violet expression style is missing');
+  const css=stylesheet.textContent;
+  const start=css.indexOf('#eye-smile'),end=css.indexOf('.illuminated');
+  if(start<0||end<=start)
+    throw new Error('Required Violet expression visibility definitions changed');
+  // The original color, glow, paths and geometry remain authored by this SVG.
+  // Visibility is fixed explicitly for each texture, not selected by CSS
+  // rules whose matching differs between SVG-image browser implementations.
+  stylesheet.textContent=css.slice(0,start)+css.slice(end);
+  const all=new Set(Object.values(EXPRESSION_PARTS).flat());
+  for(const id of all){
+    const group=doc.querySelector('#'+id);
+    if(!group)throw new Error('Required Violet expression part missing: '+id);
+    group.setAttribute('style','display:'+(active.includes(id)?'inline':'none'));
+  }
+  return new XMLSerializer().serializeToString(doc);
+}
+function assertVisibleExpression(ctx,mode){
+  function visibleInk(x,y,width,height){
+    const pixels=ctx.getImageData(x,y,width,height).data;
+    let count=0;
+    for(let i=0;i<pixels.length;i+=4){
+      if(pixels[i+3]>96&&pixels[i]+pixels[i+1]+pixels[i+2]>230)count++;
+    }
+    return count>35;
+  }
+  if(!visibleInk(140,145,360,110)||!visibleInk(260,270,120,100))
+    throw new Error('Required Violet '+mode+' expression rendered without eyes or mouth');
+}
+
 async function svgTexture(url,mode){
   const response=await fetch(url,{cache:'force-cache'});
   if(!response.ok)throw new Error('Required Violet SVG unavailable: '+response.status+' '+url);
-  let xml=await response.text();
-  if(!xml.includes('<svg'))throw new Error('Invalid Violet SVG: '+url);
-  xml=xml.replace('data-mode="rest"','data-mode="'+mode+'"');
+  const xml=qualifiedExpressionSvg(await response.text(),mode);
   const blob=new Blob([xml],{type:'image/svg+xml'});
   const objectURL=URL.createObjectURL(blob);
   const image=new Image();
@@ -54,6 +104,7 @@ async function svgTexture(url,mode){
     const canvas=document.createElement('canvas');canvas.width=640;canvas.height=440;
     const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Violet expression texture canvas unavailable');
     ctx.drawImage(image,0,0,canvas.width,canvas.height);
+    assertVisibleExpression(ctx,mode);
     const texture=new THREE.CanvasTexture(canvas);
     texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=8;
     return texture;
