@@ -1,0 +1,74 @@
+name: Prepare Heart continuation after personalized greeting
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/prepare-heart-continuation.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish-continuation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate approved audio and measured boundary
+        run: |
+          sha256sum -c site/audio/heart-sha256.txt
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {OPENING_TRACKS} from './site/opening-script.mjs';
+          const t=JSON.parse(fs.readFileSync('site/audio/heart-timeline.json'));
+          if(t.voiceId!=='af_heart'||t.version!==2||
+             t.tracks['after-name'].cues.length!==OPENING_TRACKS['after-name'].length||
+             t.tracks['after-name'].cues[0].endMs!==1977||
+             t.tracks['after-name'].cues[1].startMs!==2177)
+            throw Error('Unapproved Heart audio or greeting boundary');
+          NODE
+      - name: Obtain FFmpeg
+        run: |
+          python3 -m pip install --disable-pip-version-check 'imageio-ffmpeg>=0.5.1,<1'
+          python3 - <<'PY'
+          import os,imageio_ffmpeg
+          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('FFMPEG_BIN='+imageio_ffmpeg.get_ffmpeg_exe()+'\n')
+          PY
+      - name: Cut actual approved Heart track after the prerecorded welcome
+        run: |
+          "$FFMPEG_BIN" -hide_banner -nostdin -loglevel error -y \
+            -ss 1.977 -i site/audio/violet-heart-after-name.mp3 \
+            -map 0:a:0 -c:a libmp3lame -q:a 2 \
+            site/audio/violet-heart-post-welcome.mp3
+          test "$(stat -c%s site/audio/violet-heart-post-welcome.mp3)" -gt 200000
+          "$FFMPEG_BIN" -hide_banner -nostdin -loglevel error \
+            -i site/audio/violet-heart-post-welcome.mp3 -f null -
+          sha256sum site/audio/violet-heart-post-welcome.mp3 \
+            > site/audio/heart-continuation-sha256.txt
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {createHash} from 'node:crypto';
+          const src='site/audio/violet-heart-after-name.mp3';
+          const out='site/audio/violet-heart-post-welcome.mp3';
+          const provenance={
+            sourceVoice:'af_heart',source:src,
+            sourceSha256:createHash('sha256').update(fs.readFileSync(src)).digest('hex'),
+            output:out,
+            outputSha256:createHash('sha256').update(fs.readFileSync(out)).digest('hex'),
+            cutFromObservedTimelineMs:1977,
+            firstOrientationCueInSourceMs:2177,
+            purpose:'Continue exact approved orientation after the observed personalized Heart welcome'
+          };
+          fs.writeFileSync('site/audio/heart-continuation-provenance.json',
+            JSON.stringify(provenance,null,2)+'\n');
+          NODE
+      - name: Commit exact continuation media to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/audio/violet-heart-post-welcome.mp3 site/audio/heart-continuation-sha256.txt site/audio/heart-continuation-provenance.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish Heart continuation after personalized welcome"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
