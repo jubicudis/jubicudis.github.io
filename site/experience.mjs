@@ -1,8 +1,8 @@
-import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs';
-import {createVioletVoiceEngine} from './violet-voice.mjs';
+import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261106-name-03';
+import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261106-name-03';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
-  VIOLET_TIMELINE_URL,VIOLET_HEART_CONTINUATION} from './violet-selected-voice.mjs';
-import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs';
+  VIOLET_TIMELINE_URL,VIOLET_HEART_CONTINUATION} from './violet-selected-voice.mjs?v=20261106-name-03';
+import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs?v=20261106-name-03';
 import {HEART_ENVELOPE_URL,validateHeartEnvelope,sampleMeasuredHeartEnvelope}
   from './violet-heart-envelope.mjs';
 
@@ -215,7 +215,7 @@ const narrationReady=(async()=>{
 })();
 store.dispatch({type:'RENDER_STARTED'});
 try{
-  const {createVioletEnvironment}=await import('./violet-environment.mjs?v=20261106-face-02');
+  const {createVioletEnvironment}=await import('./violet-environment.mjs?v=20261106-name-03');
   scene=await createVioletEnvironment(document.getElementById('world'),{
     onObserved:evidence=>store.dispatch({type:'RENDER_OBSERVED',evidence}),
     onFailure:error=>store.dispatch({type:'RENDER_FAILED',reason:error.message||String(error)}),
