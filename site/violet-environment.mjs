@@ -65,11 +65,12 @@ function textureFromImage(image){
   return texture;
 }
 function addBackground(scene){
+  const layer=new THREE.Group();scene.add(layer);
   const glow=new THREE.Sprite(new THREE.SpriteMaterial({
     map:createGlowTexture(),transparent:true,opacity:.34,depthWrite:false,
     blending:THREE.AdditiveBlending
   }));
-  glow.scale.set(9.4,7.0,1);glow.position.set(0,0,-1.2);scene.add(glow);
+  glow.scale.set(9.4,7.0,1);glow.position.set(0,0,-1.2);layer.add(glow);
   const stars=[];
   for(let i=0;i<45;i++){
     const x=Math.sin((i+1)*117.441)*291.82;
@@ -78,9 +79,10 @@ function addBackground(scene){
   }
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(stars,3));
-  scene.add(new THREE.Points(geometry,new THREE.PointsMaterial({
+  layer.add(new THREE.Points(geometry,new THREE.PointsMaterial({
     color:0xa18ce7,size:.024,transparent:true,opacity:.20,depthWrite:false
   })));
+  return layer;
 }
 function observedFrame(renderer,canvas){
   const gl=renderer.getContext();
@@ -117,7 +119,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
     const scene=new THREE.Scene();scene.background=new THREE.Color(0x070b1d);
     const camera=new THREE.OrthographicCamera(-4,4,4,-4,.1,50);
     camera.position.set(0,0,8);camera.lookAt(0,0,0);
-    addBackground(scene);
+    const backgroundGroup=addBackground(scene);
     const character=new THREE.Group();scene.add(character);
     const artWidth=6.65,artHeight=artWidth*art.naturalHeight/art.naturalWidth;
     const main=new THREE.Mesh(new THREE.PlaneGeometry(artWidth,artHeight),new THREE.MeshBasicMaterial({
@@ -135,7 +137,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
     character.add(expression);
     // Render capabilities are addressable but are NOT scheduled or activated by this opening.
     const visualCapabilities=createVioletAppearanceCapabilities({
-      character,main,expression,art,artWidth,faceMaps:faces
+      character,main,expression,art,artWidth,faceMaps:faces,backgroundGroup
     });
     let state={phase:'dormant',speaking:false},live=true,observed=false,failed=false,frameCount=0,previousExpression='';
     const start=performance.now(),reduced=matchMedia('(prefers-reduced-motion: reduce)');

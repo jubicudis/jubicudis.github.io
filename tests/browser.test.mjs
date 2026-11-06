@@ -96,28 +96,56 @@ try{
     window.__visualProbe=await createVioletEnvironment(canvas);
     return window.__visualProbe.visualCapabilities.readRequested();
   });
-  assert.deepEqual(accepted,{structure:1,center:1,features:1});
+  assert.deepEqual(accepted,{structure:1,center:1,environment:1,features:1});
   await probe.waitForTimeout(200);
   const baseline=await probe.screenshot({path:'artifacts/renderer-capability-approved-a2.png'});
   const requested=await probe.evaluate(()=>{
     const v=window.__visualProbe.visualCapabilities;
-    v.apply({structure:0,center:1,features:0});
+    v.apply({structure:0,center:1,environment:1,features:0});
     return v.readRequested();
   });
-  assert.deepEqual(requested,{structure:0,center:1,features:0});
+  assert.deepEqual(requested,{structure:0,center:1,environment:1,features:0});
   assert.equal(await probe.locator('#environment').getAttribute('data-phase'),'dormant',
     'capability calls must never advance website behavior');
   await probe.waitForTimeout(200);
   const separated=await probe.screenshot({path:'artifacts/renderer-capability-separated-center.png'});
   assert.equal(baseline.equals(separated),false,
     'the actual rendered scene must change under an explicit channel request');
+  // Renderer-only material selection; no user control or timing/behavior is assigned.
+  await probe.evaluate(()=>window.__visualProbe.visualCapabilities.apply({
+    structure:0,center:0,environment:1,features:0
+  }));
+  await probe.waitForTimeout(250);
+  const environmentOnly=await probe.screenshot({path:'artifacts/renderer-capability-environment-only.png'});
+  await probe.evaluate(()=>window.__visualProbe.visualCapabilities.apply({
+    structure:0,center:0,environment:0,features:0
+  }));
+  await probe.waitForTimeout(250);
+  const allOff=await probe.screenshot({path:'artifacts/renderer-capability-all-materials-hidden.png'});
+  assert.equal(environmentOnly.equals(allOff),false,
+    'visible environmental artwork and lights require a separate render channel');
+  await probe.evaluate(()=>window.__visualProbe.visualCapabilities.apply({
+    structure:1,center:1,environment:0,features:1
+  }));
+  await probe.waitForTimeout(250);
+  const withoutEnvironment=await probe.screenshot({
+    path:'artifacts/renderer-capability-character-without-floor.png'
+  });
+  assert.equal(withoutEnvironment.equals(baseline),false,
+    'floor lighting must actually disappear without removing Violet');
+  assert.equal(withoutEnvironment.equals(allOff),false,
+    'character remains on screen independently of floor lighting');
+  assert.equal(await probe.locator('#environment').getAttribute('data-phase'),'dormant',
+    'direct renderer changes must not advance presentation state');
   await probe.evaluate(()=>{
     window.__visualProbe.visualCapabilities.apply({
-      structure:1,center:1,features:1
+      structure:1,center:1,environment:1,features:1
     });
   });
   await probe.waitForTimeout(200);
-  await probe.screenshot({path:'artifacts/renderer-capability-restored-a2.png'});
+  const restored=await probe.screenshot({path:'artifacts/renderer-capability-restored-a2.png'});
+  assert.equal(restored.equals(baseline),true,
+    'A2 full presence must remain unchanged pixel-for-pixel');
   assert.deepEqual(probeErrors,[],'capability renderer must not throw browser errors');
   await probe.evaluate(()=>window.__visualProbe.dispose());
   await probe.close();
