@@ -12,21 +12,29 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+      - name: Obtain standalone FFmpeg without system package installation
+        run: |
+          python3 -m pip install --disable-pip-version-check 'imageio-ffmpeg>=0.5.1,<1'
+          python3 - <<'PY'
+          import os, imageio_ffmpeg
+          path=imageio_ffmpeg.get_ffmpeg_exe()
+          with open(os.environ['GITHUB_ENV'],'a',encoding='utf8') as f:
+              f.write('FFMPEG_BIN='+path+'\n')
+          PY
       - name: Verify selected source recordings and available decoder
         run: |
-          ffmpeg -hide_banner -version | head -n 1
+          "${FFMPEG_BIN}" -hide_banner -version >/dev/null
           sha256sum -c site/audio/heart-sha256.txt
           test -f site/audio/violet-heart-asking-name.m4a
           test -f site/audio/violet-heart-after-name.m4a
       - name: Transcode the existing approved audio without resynthesis
         run: |
           for track in asking-name after-name; do
-            ffmpeg -hide_banner -nostdin -loglevel error -y \
+            "${FFMPEG_BIN}" -hide_banner -nostdin -loglevel error -y \
               -i "site/audio/violet-heart-$track.m4a" \
               -codec:a libmp3lame -q:a 2 "site/audio/violet-heart-$track.mp3"
             test "$(stat -c%s "site/audio/violet-heart-$track.mp3")" -gt 30000
-            ffprobe -v error -select_streams a:0 -show_entries stream=codec_name \
-              -of default=nw=1 "site/audio/violet-heart-$track.mp3" | grep -qx 'codec_name=mp3'
+            "${FFMPEG_BIN}" -hide_banner -nostdin -loglevel error -i "site/audio/violet-heart-$track.mp3" -f null -
           done
           python3 - <<'PY'
           from pathlib import Path
