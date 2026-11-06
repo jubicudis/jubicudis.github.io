@@ -17,7 +17,7 @@ function box(svg,x,y,w,h,title,sub,secondary=false){
 function line(svg,x1,y1,x2,y2,feedback=false){
   el(svg,'path',{d:'M'+x1+' '+y1+' L'+x2+' '+y2,class:feedback?'study-feedback':'study-line'});
   const a=Math.atan2(y2-y1,x2-x1);const r=12;
-  el(svg,'polygon',{points:[x2,y2,x2-r*Math.cos(a-.5),y2-r*Math.sin(a-.5),x2-r*Math.cos(a+.5),y2-r*Math.sin(a+.5)].map(p=>p.join(',')).join(' '),fill:feedback?'#e8ba78':'#8b89dd'});
+  el(svg,'polygon',{points:[[x2,y2],[x2-r*Math.cos(a-.5),y2-r*Math.sin(a-.5)],[x2-r*Math.cos(a+.5),y2-r*Math.sin(a+.5)]].map(p=>p.join(',')).join(' '),fill:feedback?'#e8ba78':'#8b89dd'});
 }
 function annotate(svg,text){tiny(svg,460,380,text);}
 function origin(svg){
