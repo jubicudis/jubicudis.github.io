@@ -17,7 +17,7 @@ const failure=document.getElementById('render-failure');
 const audioFailure=document.getElementById('audio-failure');
 let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameAudio=null;
 let preparedName=null,nameSynthesisError=null,nameInsertionActive=false,nameInsertionDone=false;
-let deferredNameBoundaryMs=null;
+let deferredNameBoundaryMs=null,authoredNarrationEnded=false;
 const store=createOpeningStore(render);
 const voice=createVioletVoiceEngine();
 activate.disabled=true;
@@ -30,7 +30,15 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
   voice.playAuthored({
     src:source,
     token:state.speechToken,startAtMs:resumeAtMs,
-    emit:event=>store.dispatch(event),
+    emit:event=>{
+      if(event.type==='SPEECH_ENDED'&&state.nameDecision==='provided'&&
+         !nameInsertionDone){
+        authoredNarrationEnded=true;
+        if(preparedName)insertPreparedName(store.getState(),null);
+        return;
+      }
+      store.dispatch(event);
+    },
     onPosition:observation=>{
       if(observation.assetId!==source||
          observation.source!=='observed-authored-audio'||!observation.playing)
@@ -73,8 +81,11 @@ function insertPreparedName(state,resumeAtMs){
       nameInsertionActive=false;
       nameInsertionDone=true;
       activeNameAudio=null;
-      if(observed.speechStatus==='speaking')
-        playApprovedTrack(store.getState(),{resumeAtMs});
+      if(observed.speechStatus==='speaking'){
+        if(resumeAtMs===null)
+          store.dispatch({type:'SPEECH_ENDED',token});
+        else playApprovedTrack(store.getState(),{resumeAtMs});
+      }
     }
   });
   if(!session)nameInsertionActive=false;
@@ -88,6 +99,7 @@ async function beginSpeech(state){
   preparedName=null;
   nameSynthesisError=null;
   deferredNameBoundaryMs=null;
+  authoredNarrationEnded=false;
   playApprovedTrack(state);
   if(state.nameDecision!=='provided')return;
   const token=state.speechToken;
@@ -100,11 +112,8 @@ async function beginSpeech(state){
     preparedName=generated;
     // The observed later paragraph boundary may already have passed while
     // on-device Heart synthesis was running. Never discard the visitor name.
-    if(deferredNameBoundaryMs!==null&&!nameInsertionActive&&!nameInsertionDone&&
-       current.speechStatus==='speaking'&&voice.activeSource()==='authored'){
-      const observed=voice.sampleAuthoredClock(token);
-      if(observed)insertPreparedName(current,observed.elapsedMs);
-    }
+    if(authoredNarrationEnded&&!nameInsertionActive&&!nameInsertionDone&&
+       current.speechStatus==='speaking')insertPreparedName(current,null);
   }catch(error){
     // Do not interrupt an actual Heart recording because optional
     // personalization failed; do not pretend the name was spoken.
