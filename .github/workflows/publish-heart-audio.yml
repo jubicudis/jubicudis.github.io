@@ -1,0 +1,61 @@
+name: Publish inventor-selected Heart audio on main
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/publish-heart-audio.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish-heart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Read authoritative existing opening
+        run: |
+          mkdir -p site/audio
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {initialState,openingMessage} from './site/opening-state.mjs';
+          const greeting=openingMessage({...initialState,phase:'asking-name'});
+          const welcome=openingMessage({...initialState,phase:'welcome',nameDecision:'skipped'});
+          if (!greeting || !welcome) throw new Error('Opening text unavailable');
+          fs.writeFileSync('/tmp/heart-text.json',JSON.stringify({'asking-name':greeting,welcome}));
+          NODE
+      - name: Install free local synthesizer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq espeak-ng ffmpeg
+          python -m pip install --disable-pip-version-check 'kokoro-onnx==0.6.1' 'soundfile==0.13.1'
+      - name: Download licensed Kokoro weights
+        run: |
+          curl -fLsS --retry 3 -o /tmp/kokoro-v1.0.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/kokoro-v1.0.onnx
+          curl -fLsS --retry 3 -o /tmp/voices-v1.0.bin https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/voices-v1.0.bin
+          test "$(stat -c%s /tmp/kokoro-v1.0.onnx)" -gt 200000000
+          test "$(stat -c%s /tmp/voices-v1.0.bin)" -gt 20000000
+      - name: Create and validate selected voice clips
+        run: |
+          python tools/generate_selected_heart.py --model /tmp/kokoro-v1.0.onnx --voices /tmp/voices-v1.0.bin --transcripts /tmp/heart-text.json --output /tmp/heart-generated
+          for phase in asking-name welcome; do
+            ffmpeg -hide_banner -nostdin -loglevel error -y -i "/tmp/heart-generated/violet-heart-$phase.wav" -c:a aac -b:a 128k "site/audio/violet-heart-$phase.m4a"
+            test "$(stat -c%s "site/audio/violet-heart-$phase.m4a")" -gt 10000
+            ffprobe -v error -show_entries format=duration -of default=nw=1 "site/audio/violet-heart-$phase.m4a"
+          done
+          cp /tmp/heart-generated/heart-provenance.json site/audio/heart-provenance.json
+          sha256sum site/audio/violet-heart-asking-name.m4a site/audio/violet-heart-welcome.m4a > site/audio/heart-sha256.txt
+      - name: Commit selected media directly to existing main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/audio/violet-heart-asking-name.m4a site/audio/violet-heart-welcome.m4a site/audio/heart-provenance.json site/audio/heart-sha256.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish selected Heart opening audio"
+            git push origin HEAD:main
+          fi
