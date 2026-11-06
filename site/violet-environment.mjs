@@ -29,7 +29,9 @@ function colored(r,g,b){return new THREE.Color(r,g,b);}
 function pathGeometry(points){return new THREE.BufferGeometry().setFromPoints(points);}
 function curveFor(form){return new THREE.CatmullRomCurve3(form.knots.map(p=>new THREE.Vector3(...p)),true,'centripetal');}
 function frameAt(curve,t){
-  const tangent=curve.getTangentAt(t).normalize();
+  // Closed curves need periodic tangents; t=1 is the same point as t=0.
+  const u=((t%1)+1)%1;
+  const tangent=curve.getTangentAt(u).normalize();
   // Stabilized camera-facing band frame: the front face has a gentle crown, and
   // actual path Z supplies the depth-order changes, not painter's-order guesses.
   const facing=new THREE.Vector3(-.075*tangent.y,.075*tangent.x,1).normalize();
