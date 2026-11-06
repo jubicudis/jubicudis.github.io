@@ -47,8 +47,8 @@ The existing `main` workflow `.github/workflows/publish-heart-audio.yml`
 calls `tools/generate_approved_opening.py` using the approved single
 script source, then publishes:
 
-- `site/audio/violet-heart-asking-name.m4a`
-- `site/audio/violet-heart-after-name.m4a`
+- `site/audio/violet-heart-asking-name.mp3`
+- `site/audio/violet-heart-after-name.mp3`
 - `site/audio/heart-timeline.json` (measured caption boundaries)
 - `site/audio/heart-provenance.json`
 - `site/audio/heart-sha256.txt`

@@ -9,8 +9,8 @@ export const VIOLET_SELECTED_VOICE=Object.freeze({
   locale:'en-US',playback:'authored-same-origin'
 });
 export const VIOLET_HEART_CLIPS=Object.freeze({
-  'asking-name':'/site/audio/violet-heart-asking-name.m4a',
-  'after-name':'/site/audio/violet-heart-after-name.m4a'
+  'asking-name':'/site/audio/violet-heart-asking-name.mp3',
+  'after-name':'/site/audio/violet-heart-after-name.mp3'
 });
 export const VIOLET_TIMELINE_URL='/site/audio/heart-timeline.json';
 

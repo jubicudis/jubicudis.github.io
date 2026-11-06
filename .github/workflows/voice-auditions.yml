@@ -1,11 +1,7 @@
 name: Violet voice auditions (free Kokoro)
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/voice-auditions.yml'
-      - 'tools/generate_voice_auditions.py'
-      - 'site/opening-state.mjs'
+  # Auditions are preserved as an explicit free capability, but Heart
+  # is already approved. Refrain from auto-synthesizing unselected voices.
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,9 +22,9 @@ jobs:
           mkdir -p auditions .voice-model
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          import {initialState, openingMessage} from './site/opening-state.mjs';
-          const greeting=openingMessage({...initialState,phase:'asking-name'});
-          const welcome=openingMessage({...initialState,phase:'welcome',nameDecision:'skipped'});
+          import {OPENING_TRACKS} from './site/opening-script.mjs';
+          const greeting=OPENING_TRACKS['asking-name'].map(x=>x.text).join(' ');
+          const welcome=OPENING_TRACKS['after-name'].slice(0,3).map(x=>x.text).join(' ');
           if (!greeting || !welcome) throw new Error('Authoritative opening text unavailable');
           fs.writeFileSync('auditions/script.json',JSON.stringify({greeting,welcome},null,2));
           NODE

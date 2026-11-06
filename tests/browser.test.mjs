@@ -59,14 +59,17 @@ try{
     assert.equal(await page.locator('nav, select, [role="tablist"], .card, .panel').count(),0);
     const rendering=await page.evaluate(()=>{
       const c=document.querySelector('#world'),gl=c.getContext('webgl2');
-      return {webgl:!!gl&&!gl.isContextLost(),width:c.width,height:c.height};
+      const supported=document.createElement('audio').canPlayType('audio/mpeg');
+      return {webgl:!!gl&&!gl.isContextLost(),width:c.width,height:c.height,
+        selectedCodecSupported:supported!==''};
     });
     assert.equal(rendering.webgl,true);
+    assert.equal(rendering.selectedCodecSupported,true,'Selected Heart audio must use a decodable browser codec');
     assert.ok(rendering.width>0&&rendering.height>0);
     await page.screenshot({path:'artifacts/'+label+'-initial.png'});
 
     const greetingMedia=page.waitForResponse(response=>
-      response.url().endsWith('/site/audio/violet-heart-asking-name.m4a') &&
+      response.url().endsWith('/site/audio/violet-heart-asking-name.mp3') &&
       [200,206].includes(response.status()),{timeout:15000});
     await page.locator('#violet-activate').click();
     await greetingMedia;
@@ -80,7 +83,20 @@ try{
       const audio=window.__heartAudioSessions.at(-1);
       return stage.dataset.speechStatus==='speaking' && audio &&
         !audio.paused && Number.isFinite(audio.duration) && audio.duration>10;
-    },null,{timeout:12000});
+    },null,{timeout:12000}).catch(async error=>{
+      const diagnostic=await page.evaluate(()=>({
+        stage:{phase:document.querySelector('#environment').dataset.phase,
+          status:document.querySelector('#environment').dataset.speechStatus},
+        alert:document.querySelector('#audio-failure')?.textContent,
+        audio:(window.__heartAudioSessions||[]).map(a=>({
+          src:a.currentSrc,paused:a.paused,readyState:a.readyState,
+          networkState:a.networkState,duration:a.duration,currentTime:a.currentTime,
+          playbackRate:a.playbackRate,errorCode:a.error?.code||null,
+          errorMessage:a.error?.message||null
+        }))
+      }));
+      throw new Error('Qualified audio did not start: '+JSON.stringify(diagnostic)+' '+error.message);
+    });
     // Seek on the actual decoded media, not a fabricated speech-complete event.
     // QA checks audio-clock propagation without waiting 125 seconds per browser.
     await page.evaluate(()=>{
@@ -99,7 +115,7 @@ try{
     await page.screenshot({path:'artifacts/'+label+'-name-question.png'});
 
     const afterMedia=page.waitForResponse(response=>
-      response.url().endsWith('/site/audio/violet-heart-after-name.m4a')&&
+      response.url().endsWith('/site/audio/violet-heart-after-name.mp3')&&
       [200,206].includes(response.status()),{timeout:15000});
     if(named){
       await page.locator('#visitor-name').fill('Morgan');
