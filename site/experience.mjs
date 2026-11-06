@@ -43,7 +43,7 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
       });
       if(state.nameDecision==='provided'&&!nameInsertionDone&&
          !nameInsertionActive&&preparedName&&cue.index>=4&&
-         cue.index>store.getState().cueIndex)
+         cue.index>state.cueIndex)
         insertPreparedName(state,observation.elapsedMs);
 
     }
