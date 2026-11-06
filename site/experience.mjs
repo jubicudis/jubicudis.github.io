@@ -1,4 +1,5 @@
 import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261106-name-04';
+import {VISITOR_NAME_SLOT} from './opening-script.mjs';
 import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261106-name-04';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
   VIOLET_TIMELINE_URL,VIOLET_HEART_CONTINUATION} from './violet-selected-voice.mjs?v=20261106-name-04';
@@ -52,7 +53,7 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
           elapsedMs:observation.elapsedMs+offset}
       });
       if(state.nameDecision==='provided'&&!nameInsertionDone&&
-         !nameInsertionActive&&cue.index>=4&&
+         !nameInsertionActive&&cue.index>=VISITOR_NAME_SLOT.beforeCueIndex&&
          cue.index>previousCueIndex){
         const boundary=timeline.tracks[selected.track].cues[cue.index].startMs;
         if(preparedName)insertPreparedName(state,boundary);
@@ -124,7 +125,8 @@ async function beginSpeech(state){
     // Do not interrupt an actual Heart recording because optional
     // personalization failed; do not pretend the name was spoken.
     nameSynthesisError=String(error?.message||error);
-    console.error('Optional Heart name synthesis failed',error);
+    console.error('Selected Heart name synthesis failed',error);
+    render(store.getState(),store.getState());
   }
 }
 
@@ -180,12 +182,13 @@ function render(state,previous){
   if(state.renderStatus==='failed')
     failure.textContent='Violet could not be rendered on this device. '+state.renderFailure;
   const speechFailed=['failed','unavailable','interrupted'].includes(state.speechStatus);
-  audioFailure.hidden=!narrationLoadFailure&&!speechFailed;
+  audioFailure.hidden=!narrationLoadFailure&&!speechFailed&&!nameSynthesisError;
   if(!audioFailure.hidden)
     audioFailure.textContent=narrationLoadFailure
       ?'Heart narration is unavailable. '+narrationLoadFailure
-      :'Heart narration '+(state.speechStatus==='interrupted'
-        ?'was interrupted.':'could not be played.');
+      :speechFailed?'Heart narration '+(state.speechStatus==='interrupted'
+        ?'was interrupted.':'could not be played.')
+      :'The selected Heart voice could not synthesize your name on this device. '+nameSynthesisError;
   dialogue.hidden=state.phase==='dormant';
   if(state.phase==='dormant')return;
   // Captions remain inside the shared presentation, not a separate chat UI.
