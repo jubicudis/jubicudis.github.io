@@ -1,0 +1,69 @@
+name: Encode approved Heart tracks as MP3 on main
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/encode-heart-mp3.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  encode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Convert existing inventor-approved Heart recordings, preserving their spoken words
+        run: |
+          set -euo pipefail
+          ffmpeg -version | head -n 1
+          for track in asking-name after-name; do
+            test -s "site/audio/violet-heart-$track.m4a"
+            ffmpeg -hide_banner -nostdin -loglevel error -y \
+              -i "site/audio/violet-heart-$track.m4a" \
+              -map 0:a:0 -c:a libmp3lame -q:a 2 \
+              "site/audio/violet-heart-$track.mp3"
+            test "$(stat -c%s "site/audio/violet-heart-$track.mp3")" -gt 20000
+            ffprobe -v error -show_entries format=duration \
+              -of default=nw=1 "site/audio/violet-heart-$track.mp3"
+          done
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {OPENING_TRACKS} from './site/opening-script.mjs';
+          const path='site/audio/heart-timeline.json';
+          const timeline=JSON.parse(fs.readFileSync(path,'utf8'));
+          const provenancePath='site/audio/heart-provenance.json';
+          const provenance=JSON.parse(fs.readFileSync(provenancePath,'utf8'));
+          if(timeline.version!==2||timeline.voiceId!=='af_heart'||provenance.voice_id!=='af_heart')
+            throw Error('Source audio has no approved Heart provenance');
+          for(const track of ['asking-name','after-name']){
+            const cues=timeline.tracks?.[track]?.cues;
+            if(cues?.length!==OPENING_TRACKS[track].length)throw Error('Cue count mismatch '+track);
+            for(let i=0;i<cues.length;i++)
+              if(cues[i].text!==OPENING_TRACKS[track][i].text)
+                throw Error('Transcript mismatch: '+track+' '+i);
+            timeline.tracks[track].file='/site/audio/violet-heart-'+track+'.mp3';
+          }
+          provenance.distribution_format='mp3';
+          provenance.encoded_from='original inventor-approved Heart AAC recordings';
+          fs.writeFileSync(path,JSON.stringify(timeline,null,2)+'\n');
+          fs.writeFileSync(provenancePath,JSON.stringify(provenance,null,2)+'\n');
+          NODE
+          sha256sum site/audio/violet-heart-asking-name.mp3 \
+            site/audio/violet-heart-after-name.mp3 > site/audio/heart-sha256.txt
+      - name: Commit exact media and measured timeline directly to main only
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/audio/violet-heart-asking-name.mp3 site/audio/violet-heart-after-name.mp3 \
+            site/audio/heart-timeline.json site/audio/heart-provenance.json site/audio/heart-sha256.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish approved Heart MP3 audio and matching measured timeline"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
