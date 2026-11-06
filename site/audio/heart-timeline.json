@@ -4,7 +4,7 @@
   "source": "approved-revision-2",
   "tracks": {
     "asking-name": {
-      "file": "/site/audio/violet-heart-asking-name.m4a",
+      "file": "/site/audio/violet-heart-asking-name.mp3",
       "durationMs": 24243,
       "cues": [
         {
@@ -38,7 +38,7 @@
       ]
     },
     "after-name": {
-      "file": "/site/audio/violet-heart-after-name.m4a",
+      "file": "/site/audio/violet-heart-after-name.mp3",
       "durationMs": 100597,
       "cues": [
         {
