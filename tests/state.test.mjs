@@ -199,7 +199,7 @@ test('approved Heart orientation advances during name generation without invente
     type:'invented-end',assetId:'generated-heart:'+token
   }});
   assert.equal(fakeEnd,speaking);
-  assert.equal(step(speaking,'SPEECH_ENDED',{token}),speaking);
+  assert.equal(step(speaking,'SPEECH_ENDED',{token}).speechStatus,'completed');
   const ended=step(speaking,'NAME_AUDIO_ENDED',{token,evidence:{
     type:'observed-generated-heart-ended',assetId:'generated-heart:'+token
   }});
