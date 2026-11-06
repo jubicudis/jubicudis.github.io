@@ -37,7 +37,54 @@ export function createVioletVoiceEngine({
   AudioCtor=typeof window!=='undefined'?window.Audio:null,
   baseURL=typeof window!=='undefined'?window.location.href:null
 }={}){
-  let active=null;
+  let active=null,media=null;
+  // One HTMLAudioElement owns every approved Heart segment. Its first play
+  // occurs synchronously within Violet's activation click; WebKit grants
+  // subsequent source changes to that same element, not to new Audio objects.
+  // Playback events, not assignment or play() resolution, establish speech.
+  function sharedMedia(){
+    if(media)return media;
+    const audio=new AudioCtor();
+    audio.preload='auto';
+    audio.addEventListener('playing',()=>{
+      const session=active;
+      if(!session||session.audio!==audio||session.playing)return;
+      session.playing=true;
+      emitSafely(session.emit,{type:'SPEECH_STARTED',token:session.token});
+      const sample=session.kind==='generated'
+        ?sampleGeneratedClock(session.token):sampleAuthoredClock(session.token);
+      if(sample)emitSafely(session.onPosition,sample);
+    });
+    audio.addEventListener('timeupdate',()=>{
+      const session=active;
+      if(!session||session.audio!==audio||!session.playing)return;
+      const sample=session.kind==='generated'
+        ?sampleGeneratedClock(session.token):sampleAuthoredClock(session.token);
+      if(sample)emitSafely(session.onPosition,sample);
+    });
+    audio.addEventListener('ended',()=>{
+      const session=active;
+      if(!session||session.audio!==audio)return;
+      session.playing=false;active=null;session.revoke?.();
+      if(session.kind==='generated'&&typeof session.onEnded==='function'){
+        try{session.onEnded();}catch(error){
+          emitSafely(session.emit,{type:'SPEECH_FAILED',token:session.token,
+            reason:String(error?.message||error)});
+        }
+      }else emitSafely(session.emit,{type:'SPEECH_ENDED',token:session.token});
+    });
+    audio.addEventListener('error',()=>{
+      const session=active;
+      if(!session||session.audio!==audio)return;
+      active=null;session.playing=false;session.revoke?.();
+      emitSafely(session.emit,{type:'SPEECH_FAILED',token:session.token,
+        reason:session.kind==='generated'
+          ?'generated Heart audio could not be decoded or played'
+          :'authored audio failed to load'});
+    });
+    media=audio;
+    return media;
+  }
   function cancel(reason='interrupted'){
     const session=active;active=null;
     if(!session)return false;
@@ -100,28 +147,11 @@ export function createVioletVoiceEngine({
       emitSafely(emit,{type:'SPEECH_FAILED',token,reason:String(error.message)});return null;
     }
     try{
-      const audio=new AudioCtor(url.href);
-      audio.preload='auto';
-      const session={kind:'authored',audio,token,emit,src:url.pathname,playing:false};
+      const audio=sharedMedia();
+      audio.src=url.href;
+      const session={kind:'authored',audio,token,emit,src:url.pathname,
+        playing:false,onPosition};
       active=session;
-      audio.addEventListener('playing',()=>{
-        if(active===session){
-          session.playing=true;emitSafely(emit,{type:'SPEECH_STARTED',token});
-          const sample=sampleAuthoredClock(token);
-          if(sample)emitSafely(onPosition,sample);
-        }
-      },{once:true});
-      audio.addEventListener('timeupdate',()=>{
-        if(active!==session)return;
-        const sample=sampleAuthoredClock(token);
-        if(sample)emitSafely(onPosition,sample);
-      });
-      audio.addEventListener('ended',()=>{
-        if(active===session){session.playing=false;active=null;emitSafely(emit,{type:'SPEECH_ENDED',token});}
-      },{once:true});
-      audio.addEventListener('error',()=>{
-        if(active===session){active=null;emitSafely(emit,{type:'SPEECH_FAILED',token,reason:'authored audio failed to load'});}
-      },{once:true});
       const promise=audio.play();
       if(promise&&typeof promise.catch==='function')promise.catch(error=>{
         if(active===session){active=null;emitSafely(emit,{type:'SPEECH_FAILED',token,reason:String(error?.message||error)});}
@@ -150,40 +180,11 @@ export function createVioletVoiceEngine({
       if(!released){released=true;URL.revokeObjectURL(url);}
     };
     try{
-      const audio=new AudioCtor(url);
-      audio.preload='auto';
+      const audio=sharedMedia();
+      audio.src=url;
       const session={kind:'generated',audio,token,emit,
-        src:'generated-heart:'+token,playing:false,revoke};
+        src:'generated-heart:'+token,playing:false,revoke,onPosition,onEnded};
       active=session;
-      const observe=()=>{
-        const sample=sampleGeneratedClock(token);
-        if(sample)emitSafely(onPosition,sample);
-      };
-      audio.addEventListener('playing',()=>{
-        if(active!==session)return;
-        session.playing=true;
-        emitSafely(emit,{type:'SPEECH_STARTED',token});
-        observe();
-      },{once:true});
-      audio.addEventListener('timeupdate',()=>{
-        if(active===session)observe();
-      });
-      audio.addEventListener('ended',()=>{
-        if(active!==session)return;
-        session.playing=false;active=null;revoke();
-        if(typeof onEnded==='function'){
-          try{onEnded();}catch(error){
-            emitSafely(emit,{type:'SPEECH_FAILED',token,
-              reason:String(error?.message||error)});
-          }
-        }else emitSafely(emit,{type:'SPEECH_ENDED',token});
-      },{once:true});
-      audio.addEventListener('error',()=>{
-        if(active!==session)return;
-        active=null;revoke();
-        emitSafely(emit,{type:'SPEECH_FAILED',token,
-          reason:'generated Heart audio could not be decoded or played'});
-      },{once:true});
       const request=audio.play();
       if(request&&typeof request.catch==='function')request.catch(error=>{
         if(active!==session)return;
