@@ -21,12 +21,18 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Verify the real opening in Chromium
         run: node tests/browser.test.mjs
+      - name: Verify null shader precision does not prevent real Chromium rendering
+        run: node tests/webgl-null-precision.test.mjs
       - name: Install WebKit browser engine
         run: npx playwright install --with-deps webkit
       - name: Verify opening in WebKit
         env:
           VIOLET_BROWSER: webkit
         run: node tests/browser.test.mjs
+      - name: Verify null shader precision does not prevent real WebKit rendering
+        env:
+          VIOLET_BROWSER: webkit
+        run: node tests/webgl-null-precision.test.mjs
       - name: Preserve rendered screenshots for review
         if: always()
         uses: actions/upload-artifact@v4
