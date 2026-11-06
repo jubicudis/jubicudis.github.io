@@ -169,3 +169,61 @@ test('generated audio interruption cannot manufacture successful speech completi
   assert.deepEqual(events.map(x=>x.type),['SPEECH_INTERRUPTED']);
   assert.equal(engine.activeSource(),null);
 });
+
+
+test('one gesture-authorized Heart player serves authored, generated, and continued audio without fallback',()=>{
+  let constructed=0,player;
+  class GesturePolicyAudio{
+    constructor(){
+      constructed++;player=this;this.src='';
+      this.currentTime=0;this.paused=true;this.ended=false;
+      this.handlers={};
+    }
+    addEventListener(type,handler){this.handlers[type]=handler;}
+    play(){
+      if(constructed!==1)return Promise.reject(new Error('NotAllowedError: new player blocked'));
+      return Promise.resolve();
+    }
+    pause(){this.paused=true;}
+    removeAttribute(name){if(name==='src')this.src='';}
+    load(){this.paused=true;this.currentTime=0;this.ended=false;}
+    observe(type,position=0){
+      this.currentTime=position;this.paused=type!=='playing';this.ended=type==='ended';
+      this.handlers[type]?.();
+    }
+  }
+  const events=[],positions=[];
+  const engine=createVioletVoiceEngine({
+    AudioCtor:GesturePolicyAudio,baseURL:'https://jubicudis.github.io/',
+    synthesis:{speak(){throw Error('fallback TTS prohibited');},cancel(){}}
+  });
+  const emit=event=>events.push(event);
+  engine.playAuthored({src:'/site/audio/violet-heart-asking-name.mp3',
+    token:1,emit,onPosition:sample=>positions.push(sample)});
+  assert.equal(constructed,1);
+  assert.equal(events.length,0,'media request is not speech observation');
+  player.observe('playing',.3);
+  assert.equal(events.at(-1).type,'SPEECH_STARTED');
+  assert.equal(positions.at(-1).assetId,'/site/audio/violet-heart-asking-name.mp3');
+  player.observe('ended',4);
+  assert.equal(events.at(-1).type,'SPEECH_ENDED');
+
+  engine.playGenerated({wav:new ArrayBuffer(128),token:2,emit,
+    onEnded:()=>engine.playAuthored({
+      src:'/site/audio/violet-heart-post-welcome.mp3',token:2,emit,
+      onPosition:sample=>positions.push(sample)
+    })});
+  assert.equal(constructed,1,'async name synthesis must not allocate a new locked media element');
+  player.observe('playing',.2);
+  assert.equal(engine.activeSource(),'generated');
+  player.observe('ended',2);
+  assert.equal(engine.activeSource(),'authored',
+    'actual generated audio ending authorizes only the approved continuation');
+  player.observe('playing',.4);
+  assert.equal(positions.at(-1).assetId,'/site/audio/violet-heart-post-welcome.mp3');
+  player.observe('ended',3);
+  assert.equal(events.at(-1).type,'SPEECH_ENDED');
+  assert.equal(constructed,1);
+  assert.equal(engine.activeSource(),null);
+  assert.equal(events.filter(event=>event.type==='SPEECH_STARTED').length,3);
+});
