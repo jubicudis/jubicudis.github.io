@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d20">
+  <meta name="description" content="Meet Violet and explore the Tranquility Neuro Operating System, the TNOS Workbench, and the separate MCP server.">
+  <title>TNOS · Meet Violet</title>
+  <link rel="stylesheet" href="./site/styles.css">
+</head>
+<body>
+  <main class="experience" id="experience" data-phase="idle" data-presence="full">
+    <div class="space" aria-hidden="true"><div class="space-glow"></div></div>
+    <section class="stage" aria-label="TNOS interactive presentation">
+      <div class="story" id="story" hidden>
+        <p class="story-kicker" id="story-kicker"></p>
+        <h1 id="story-title"></h1>
+        <div class="story-visual" id="story-visual" role="img" aria-label="Current TNOS explanation"></div>
+        <p class="story-copy" id="story-copy" aria-live="polite"></p>
+        <p class="story-evidence" id="story-evidence"></p>
+        <div class="story-controls">
+          <button type="button" class="text-button" id="previous">Previous</button>
+          <span id="progress" class="progress" aria-label="Presentation progress"></span>
+          <button type="button" class="primary-button" id="next">Continue</button>
+          <button type="button" class="text-button" id="explore">Explore this subject</button>
+        </div>
+      </div>
+
+      <button type="button" class="violet-button" id="violet" aria-label="Meet Violet" data-presence="full">
+        <svg class="violet-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 400" role="img" aria-hidden="true">
+          <defs>
+            <linearGradient id="violet-purple" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e1a9ff"/><stop offset=".52" stop-color="#8c46f9"/><stop offset="1" stop-color="#4a35ae"/></linearGradient>
+            <linearGradient id="violet-blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#93f2ff"/><stop offset=".5" stop-color="#159df6"/><stop offset="1" stop-color="#3d46de"/></linearGradient>
+            <linearGradient id="violet-gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0ac"/><stop offset=".5" stop-color="#ffb84f"/><stop offset="1" stop-color="#e063af"/></linearGradient>
+            <radialGradient id="violet-core" cx=".39" cy=".18" r=".96"><stop stop-color="#34305f"/><stop offset=".55" stop-color="#11142f"/><stop offset="1" stop-color="#130d33"/></radialGradient>
+            <filter id="violet-glow" x="-40%" y="-60%" width="180%" height="220%"><feGaussianBlur stdDeviation="5"/></filter>
+          </defs>
+          <g class="strand-system">
+            <g class="strand strand-a">
+              <path class="strand-shine" d="M91 237 C119 74 328 28 399 139 C454 226 315 321 133 285" stroke="url(#violet-purple)"/>
+              <path class="strand-line" d="M91 237 C119 74 328 28 399 139 C454 226 315 321 133 285"/>
+            </g>
+            <g class="strand strand-b">
+              <path class="strand-shine" d="M128 106 C225 22 395 95 397 228 C396 323 213 357 93 230" stroke="url(#violet-blue)"/>
+              <path class="strand-line" d="M128 106 C225 22 395 95 397 228 C396 323 213 357 93 230"/>
+            </g>
+            <g class="strand strand-c">
+              <path class="strand-shine" d="M84 155 C151 280 313 346 394 251 C455 178 359 73 238 80" stroke="url(#violet-gold)"/>
+              <path class="strand-line" d="M84 155 C151 280 313 346 394 251 C455 178 359 73 238 80"/>
+            </g>
+            <g class="strand strand-d">
+              <path class="strand-shine" d="M182 71 C83 116 90 300 219 330 C348 355 399 217 332 94" stroke="url(#violet-purple)"/>
+              <path class="strand-line" d="M182 71 C83 116 90 300 219 330 C348 355 399 217 332 94"/>
+            </g>
+          </g>
+          <g class="face-group">
+            <ellipse class="face-glow" cx="241" cy="204" rx="114" ry="80"/>
+            <ellipse class="face-core" cx="241" cy="204" rx="103" ry="70"/>
+            <path class="face-highlight" d="M157 182 Q225 131 306 168"/>
+            <g class="features">
+              <path class="eye eye-left" d="M181 201 Q198 178 216 200"/>
+              <path class="eye eye-right" d="M268 200 Q286 178 304 201"/>
+              <path class="mouth" d="M223 230 Q241 251 260 229"/>
+            </g>
+          </g>
+        </svg>
+      </button>
+
+      <section class="conversation" id="conversation" hidden aria-label="Talk with Violet">
+        <p class="violet-message" id="violet-message" aria-live="polite"></p>
+        <form id="name-form" class="name-form" hidden>
+          <label for="visitor-name">Your name</label>
+          <div class="name-fields">
+            <input id="visitor-name" name="visitor-name" maxlength="48" autocomplete="given-name" placeholder="What should I call you?">
+            <button type="submit" class="primary-button">Continue</button>
+          </div>
+          <button type="button" class="text-button" id="skip-name">Continue without a name</button>
+        </form>
+        <div class="welcome-actions" id="welcome-actions" hidden>
+          <button type="button" id="begin" class="primary-button">Begin exploring TNOS</button>
+        </div>
+      </section>
+
+      <section class="exploration" id="exploration" hidden aria-label="Explore TNOS">
+        <p class="story-kicker">Explore the invention</p>
+        <h1 id="explore-title"></h1>
+        <p id="explore-description" class="explore-description"></p>
+        <div class="explore-visual" id="explore-visual" role="img" aria-label="Subject illustration"></div>
+        <div id="explore-detail" class="explore-detail"></div>
+        <div class="explore-actions" id="explore-actions"></div>
+        <button type="button" class="primary-button" id="return">Return to the presentation</button>
+      </section>
+      <section class="ending" id="ending" hidden>
+        <p class="story-kicker">The work continues</p>
+        <h1>Explore further or support TNOS</h1>
+        <p>TNOS remains under development. The Workbench is the immediate engineering priority. Supporting the project helps provide development equipment, programming assistance, and time for continued work.</p>
+        <div class="ending-actions">
+          <button type="button" class="primary-button" id="explore-all">Explore TNOS</button>
+          <a class="sponsor-link" href="https://github.com/sponsors/jubicudis" rel="noopener noreferrer">View GitHub sponsorship</a>
+        </div>
+      </section>
+    </section>
+    <div class="utility" id="utility" hidden>
+      <button type="button" id="voice-toggle" class="text-button" aria-pressed="true">Voice on</button>
+      <button type="button" id="presence-toggle" class="text-button">Let Violet step back</button>
+    </div>
+  </main>
+  <script type="module" src="./site/app.mjs"></script>
+</body>
+</html>
