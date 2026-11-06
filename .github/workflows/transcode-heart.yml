@@ -1,0 +1,61 @@
+name: Re-encode approved Heart media for interoperable playback
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/transcode-heart.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  transcode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify selected source recordings and available decoder
+        run: |
+          ffmpeg -hide_banner -version | head -n 1
+          sha256sum -c site/audio/heart-sha256.txt
+          test -f site/audio/violet-heart-asking-name.m4a
+          test -f site/audio/violet-heart-after-name.m4a
+      - name: Transcode the existing approved audio without resynthesis
+        run: |
+          for track in asking-name after-name; do
+            ffmpeg -hide_banner -nostdin -loglevel error -y \
+              -i "site/audio/violet-heart-$track.m4a" \
+              -codec:a libmp3lame -q:a 2 "site/audio/violet-heart-$track.mp3"
+            test "$(stat -c%s "site/audio/violet-heart-$track.mp3")" -gt 30000
+            ffprobe -v error -select_streams a:0 -show_entries stream=codec_name \
+              -of default=nw=1 "site/audio/violet-heart-$track.mp3" | grep -qx 'codec_name=mp3'
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          target=Path('site/audio/heart-timeline.json')
+          data=json.loads(target.read_text(encoding='utf8'))
+          if data.get('version')!=2 or data.get('voiceId')!='af_heart':
+              raise ValueError('Unapproved source audio timeline')
+          for name,entry in data['tracks'].items():
+              if name not in ('asking-name','after-name'):
+                  raise ValueError('Unapproved track '+name)
+              previous=f'/site/audio/violet-heart-{name}.m4a'
+              if entry['file']!=previous:
+                  raise ValueError('Original audio source does not match timeline')
+              entry['file']=f'/site/audio/violet-heart-{name}.mp3'
+          target.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n',encoding='utf8')
+          PY
+          sha256sum site/audio/violet-heart-asking-name.mp3 \
+            site/audio/violet-heart-after-name.mp3 > site/audio/heart-sha256.txt
+      - name: Commit qualified MP3 assets directly to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/audio/violet-heart-asking-name.mp3 \
+            site/audio/violet-heart-after-name.mp3 \
+            site/audio/heart-timeline.json site/audio/heart-sha256.txt
+          if ! git diff --cached --quiet; then
+            git commit -m "Transcode approved Heart recordings into interoperable MP3 media"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
