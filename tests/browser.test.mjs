@@ -96,15 +96,15 @@ try{
     window.__visualProbe=await createVioletEnvironment(canvas);
     return window.__visualProbe.visualCapabilities.readRequested();
   });
-  assert.deepEqual(accepted,{structure:1,center:1,environment:1,features:1});
+  assert.deepEqual(accepted,{structure:1,center:1,features:1});
   await probe.waitForTimeout(200);
   const baseline=await probe.screenshot({path:'artifacts/renderer-capability-approved-a2.png'});
   const requested=await probe.evaluate(()=>{
     const v=window.__visualProbe.visualCapabilities;
-    v.apply({structure:0,center:1,environment:1,features:0});
+    v.apply({structure:0,center:1,features:0});
     return v.readRequested();
   });
-  assert.deepEqual(requested,{structure:0,center:1,environment:1,features:0});
+  assert.deepEqual(requested,{structure:0,center:1,features:0});
   assert.equal(await probe.locator('#environment').getAttribute('data-phase'),'dormant',
     'capability calls must never advance website behavior');
   await probe.waitForTimeout(200);
@@ -113,7 +113,7 @@ try{
     'the actual rendered scene must change under an explicit channel request');
   await probe.evaluate(()=>{
     window.__visualProbe.visualCapabilities.apply({
-      structure:1,center:1,environment:1,features:1
+      structure:1,center:1,features:1
     });
   });
   await probe.waitForTimeout(200);

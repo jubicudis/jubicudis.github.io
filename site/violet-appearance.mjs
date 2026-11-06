@@ -7,7 +7,6 @@ import * as THREE from './vendor/three.module.js';
 export const FULL_A2_APPEARANCE=Object.freeze({
   structure:1,
   center:1,
-  environment:1,
   features:1
 });
 const CHANNELS=Object.freeze(Object.keys(FULL_A2_APPEARANCE));
@@ -15,7 +14,7 @@ const CHANNELS=Object.freeze(Object.keys(FULL_A2_APPEARANCE));
 export function validateAppearanceSnapshot(request){
   if(!request||typeof request!=='object'||Array.isArray(request))throw new TypeError('An explicit visual-channel snapshot is required');
   const keys=Object.keys(request);
-  if(keys.length!==CHANNELS.length||keys.some(key=>!CHANNELS.includes(key)))throw new TypeError('Visual-channel snapshot must contain only structure, center, environment, features');
+  if(keys.length!==CHANNELS.length||keys.some(key=>!CHANNELS.includes(key)))throw new TypeError('Visual-channel snapshot must contain only structure, center, features');
   for(const key of CHANNELS){
     if(!Number.isFinite(request[key])||request[key]<0||request[key]>1)
       throw new RangeError('Invalid '+key+' opacity: requires a finite number from 0 through 1');
@@ -32,19 +31,14 @@ function filteredArt(image,part){
   // Partition the actual approved A2 artwork. No invented replacement art.
   // Its image has an intentionally featureless central face beneath the SVG.
   const cx=517,cy=320,rx=232,ry=144,tilt=-.09;
-  const groundStart=583;
   if(part==='center'){
     ctx.save();
     ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,tilt,0,Math.PI*2);ctx.clip();
-    ctx.drawImage(image,0,0);ctx.restore();
-  }else if(part==='environment'){
-    ctx.save();ctx.beginPath();ctx.rect(0,groundStart,canvas.width,canvas.height-groundStart);ctx.clip();
     ctx.drawImage(image,0,0);ctx.restore();
   }else if(part==='structure'){
     ctx.drawImage(image,0,0);
     ctx.globalCompositeOperation='destination-out';
     ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,tilt,0,Math.PI*2);ctx.fill();
-    ctx.clearRect(0,groundStart,canvas.width,canvas.height-groundStart);
   }else throw new TypeError('Unknown artwork region');
   const map=new THREE.CanvasTexture(canvas);
   map.colorSpace=THREE.SRGBColorSpace;
@@ -60,7 +54,7 @@ function filteredArt(image,part){
 export function createVioletAppearanceCapabilities({character,main,expression,art,artWidth,faceMaps}){
   const width=artWidth,height=artWidth*art.naturalHeight/art.naturalWidth;
   const surfaces={};
-  for(const [i,part] of ['environment','structure','center'].entries()){
+  for(const [i,part] of ['structure','center'].entries()){
     const surface=new THREE.Mesh(new THREE.PlaneGeometry(width,height),new THREE.MeshBasicMaterial({
       map:filteredArt(art,part),transparent:true,opacity:1,depthWrite:false,
       toneMapped:false,side:THREE.DoubleSide
@@ -79,7 +73,7 @@ export function createVioletAppearanceCapabilities({character,main,expression,ar
     const next=validateAppearanceSnapshot(snapshot);
     const untouched=CHANNELS.every(key=>next[key]===1);
     main.visible=untouched;
-    for(const part of ['environment','structure','center']){
+    for(const part of ['structure','center']){
       const surface=surfaces[part];
       surface.visible=!untouched&&next[part]>0;
       surface.material.opacity=next[part];
