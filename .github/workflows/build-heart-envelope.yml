@@ -1,0 +1,56 @@
+name: Measure actual approved Heart audio for Violet expression
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-heart-envelope.yml'
+      - 'tools/generate_heart_envelope.py'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  envelope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify existing inventor-approved sources
+        run: |
+          sha256sum -c site/audio/heart-sha256.txt
+          sha256sum -c site/audio/heart-continuation-sha256.txt
+      - name: Get local FFmpeg
+        run: |
+          python3 -m pip install --disable-pip-version-check 'imageio-ffmpeg>=0.5.1,<1'
+          python3 - <<'PY'
+          import os,imageio_ffmpeg
+          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('FFMPEG_BIN='+imageio_ffmpeg.get_ffmpeg_exe()+'\n')
+          PY
+      - name: Decode and measure the actual published Heart audio
+        run: |
+          for track in asking-name after-name post-welcome; do
+            "$FFMPEG_BIN" -hide_banner -nostdin -loglevel error -y \
+              -i "site/audio/violet-heart-$track.mp3" -ar 8000 -ac 1 \
+              -acodec pcm_s16le "/tmp/heart-envelope-$track.wav"
+          done
+          python3 tools/generate_heart_envelope.py
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const x=JSON.parse(fs.readFileSync('site/audio/heart-envelope.json'));
+          if(x.version!==1||x.voiceId!=='af_heart'||
+             Object.keys(x.tracks).sort().join(',')!=='after-name,asking-name,post-welcome')
+            throw Error('Unqualified recorded Heart envelope');
+          for(const v of Object.values(x.tracks))
+            if(!v.levels.length||v.levels.some(n=>!Number.isInteger(n)||n<0||n>255))
+              throw Error('Unqualified measured intensity');
+          NODE
+      - name: Commit measured metadata to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/audio/heart-envelope.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish measured Heart acoustic envelope for real-audio facial motion"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
