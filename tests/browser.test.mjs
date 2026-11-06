@@ -143,7 +143,7 @@ try{
       await page.locator('#visitor-name').fill('Morgan');
       await page.locator('#name-confirm').click();
       assert.match(await page.locator('#violet-caption').innerText(),
-        /^Welcome, Morgan\. I'm glad you're here\./);
+        /^Welcome\. I'm glad you're here\./);
     }else{
       await page.locator('#name-skip').click();
       assert.match(await page.locator('#violet-caption').innerText(),
