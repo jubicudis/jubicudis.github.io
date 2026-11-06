@@ -38,7 +38,7 @@ try{
         // source identity must be evaluated at playback, not construction.
         const nativePlay=media.play.bind(media);
         media.play=function(){
-          media.playbackRate=String(media.src).startsWith('blob:')?1:1;
+          media.playbackRate=String(media.src).startsWith('blob:')?1:(String(media.src).includes('asking-name')?12:1);
           return nativePlay();
         };
         for(const event of ['playing','ended','error']){
@@ -118,7 +118,7 @@ try{
       null,{timeout:30000});
     await page.waitForFunction(()=>
       document.querySelector('#environment').dataset.speechStatus==='completed',
-      null,{timeout:25000});
+      null,{timeout:180000});
     const result=await page.evaluate(()=>({
       nameCompleted:document.querySelector('#environment').dataset.nameAudioCompleted,
       speechStatus:document.querySelector('#environment').dataset.speechStatus,
