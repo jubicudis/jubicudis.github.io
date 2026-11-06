@@ -62,7 +62,7 @@ def main():
         complete=np.concatenate(parts)
         filename=f"violet-heart-{track}.wav"
         sf.write(a.output/filename,complete,sample_rate,subtype="PCM_16")
-        timeline["tracks"][track]={"file":f"/site/audio/violet-heart-{track}.m4a",
+        timeline["tracks"][track]={"file":f"/site/audio/violet-heart-{track}.mp3",
             "durationMs":round(complete.size*1000/sample_rate),
             "cues":cues}
     (a.output/"heart-timeline.json").write_text(

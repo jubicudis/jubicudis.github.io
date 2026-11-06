@@ -47,20 +47,21 @@ jobs:
           mkdir -p site/audio
           python tools/generate_approved_opening.py --model /tmp/kokoro-v1.0.onnx --voices /tmp/voices-v1.0.bin --source /tmp/revision2-text.json --output /tmp/heart-generated
           for track in asking-name after-name; do
-            ffmpeg -hide_banner -nostdin -loglevel error -y -i "/tmp/heart-generated/violet-heart-$track.wav" -c:a aac -b:a 128k "site/audio/violet-heart-$track.m4a"
-            test "$(stat -c%s "site/audio/violet-heart-$track.m4a")" -gt 10000
-            ffprobe -v error -show_entries format=duration -of default=nw=1 "site/audio/violet-heart-$track.m4a"
+            ffmpeg -hide_banner -nostdin -loglevel error -y -i "/tmp/heart-generated/violet-heart-$track.wav" -c:a libmp3lame -q:a 2 "site/audio/violet-heart-$track.mp3"
+            test "$(stat -c%s "site/audio/violet-heart-$track.mp3")" -gt 10000
+            ffprobe -v error -show_entries format=duration -of default=nw=1 "site/audio/violet-heart-$track.mp3"
           done
           cp /tmp/heart-generated/heart-provenance.json site/audio/heart-provenance.json
           cp /tmp/heart-generated/heart-timeline.json site/audio/heart-timeline.json
-          sha256sum site/audio/violet-heart-asking-name.m4a site/audio/violet-heart-after-name.m4a > site/audio/heart-sha256.txt
+          sha256sum site/audio/violet-heart-asking-name.mp3 site/audio/violet-heart-after-name.mp3 > site/audio/heart-sha256.txt
           # Superseded voice file is no longer an active presentation asset.
+          # Existing AAC assets remain until all consumers are verified on MP3.
           git rm -f --ignore-unmatch site/audio/violet-heart-welcome.m4a
       - name: Commit actual approved audio directly to main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/audio/heart-provenance.json site/audio/heart-timeline.json site/audio/heart-sha256.txt site/audio/violet-heart-asking-name.m4a site/audio/violet-heart-after-name.m4a
+          git add site/audio/heart-provenance.json site/audio/heart-timeline.json site/audio/heart-sha256.txt site/audio/violet-heart-asking-name.mp3 site/audio/violet-heart-after-name.mp3
           if ! git diff --cached --quiet; then
             git commit -m "Publish approved Revision 2 Heart tracks and measured caption timeline"
             git fetch origin main
