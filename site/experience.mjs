@@ -16,18 +16,19 @@ const skip=document.getElementById('name-skip');
 const failure=document.getElementById('render-failure');
 const audioFailure=document.getElementById('audio-failure');
 let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameAudio=null;
+let preparedName=null,nameSynthesisError=null,nameInsertionActive=false,nameInsertionDone=false;
 const store=createOpeningStore(render);
 const voice=createVioletVoiceEngine();
 activate.disabled=true;
 
-function playApprovedTrack(state,{afterObservedName=false}={}){
+function playApprovedTrack(state,{resumeAtMs=0}={}){
   const selected=resolveVioletOpeningAudio(state);
   if(!selected||!timeline)throw new Error('No qualified Heart audio for authorized state');
-  const source=afterObservedName?VIOLET_HEART_CONTINUATION:selected.src;
-  const offset=afterObservedName?timeline.tracks['after-name'].cues[0].endMs:0;
+  const source=selected.src;
+  const offset=0;
   voice.playAuthored({
     src:source,
-    token:state.speechToken,
+    token:state.speechToken,startAtMs:resumeAtMs,
     emit:event=>store.dispatch(event),
     onPosition:observation=>{
       if(observation.assetId!==source||
@@ -40,55 +41,69 @@ function playApprovedTrack(state,{afterObservedName=false}={}){
         evidence:{...observation,track:selected.track,cueIndex:cue.index,
           elapsedMs:observation.elapsedMs+offset}
       });
+      if(state.nameDecision==='provided'&&!nameInsertionDone&&
+         !nameInsertionActive&&preparedName&&cue.index>=4&&
+         cue.index>store.getState().cueIndex)
+        insertPreparedName(state,observation.elapsedMs);
+
     }
   });
 }
 
+function insertPreparedName(state,resumeAtMs){
+  const generated=preparedName;
+  if(!generated||nameInsertionActive||nameInsertionDone)return;
+  nameInsertionActive=true;
+  preparedName=null;
+  const token=state.speechToken;
+  activeNameAudio={token,generated};
+  const session=voice.playGenerated({
+    wav:generated.wav,token,insertAfterAuthored:true,
+    emit:event=>store.dispatch(event),
+    onEnded:()=>{
+      const observed=store.getState();
+      if(observed.speechToken!==token)return;
+      store.dispatch({type:'NAME_AUDIO_ENDED',token,
+        evidence:{type:'observed-generated-heart-ended',assetId:'generated-heart:'+token}});
+      nameInsertionActive=false;
+      nameInsertionDone=true;
+      activeNameAudio=null;
+      if(observed.speechStatus==='speaking')
+        playApprovedTrack(store.getState(),{resumeAtMs});
+    }
+  });
+  if(!session)nameInsertionActive=false;
+}
+
 async function beginSpeech(state){
-  // A real name decision authorizes on-device Heart synthesis. The skipped
-  // path needs no model download and continues with the approved recording.
-  if(state.nameDecision!=='provided'){
-    playApprovedTrack(state);
-    return;
-  }
+  // The selected recorded Heart narration begins immediately after the
+  // name decision. Synthesis is concurrent, not a silent prerequisite.
+  nameInsertionActive=false;
+  nameInsertionDone=false;
+  preparedName=null;
+  nameSynthesisError=null;
+  playApprovedTrack(state);
+  if(state.nameDecision!=='provided')return;
   const token=state.speechToken;
   try{
     const generated=await synthesizeHeartName(state.visitorName);
     const current=store.getState();
     if(current.speechToken!==token||current.nameDecision!=='provided'||
-      current.speechStatus!=='pending'||document.hidden)return;
-    activeNameAudio={token,generated};
-    const session=voice.playGenerated({
-      wav:generated.wav,token,
-      emit:event=>store.dispatch(event),
-      onEnded:()=>{
-        const observed=store.getState();
-        if(observed.speechToken!==token||observed.speechStatus!=='speaking')return;
-        store.dispatch({type:'NAME_AUDIO_ENDED',token,
-          evidence:{type:'observed-generated-heart-ended',assetId:'generated-heart:'+token}});
-        activeNameAudio=null;
-        const continuing=store.getState();
-        if(continuing.nameAudioCompleted&&continuing.speechStatus==='speaking')
-          playApprovedTrack(continuing,{afterObservedName:true});
-      }
-    });
-    if(!session&&store.getState().speechToken===token &&
-       store.getState().speechStatus==='pending')
-      store.dispatch({type:'SPEECH_FAILED',token,
-        reason:'Qualified generated Heart audio could not be played'});
+       ['failed','interrupted','completed'].includes(current.speechStatus)||
+       document.hidden)return;
+    preparedName=generated;
   }catch(error){
-    activeNameAudio=null;
-    const current=store.getState();
-    if(current.speechToken===token&&current.speechStatus==='pending')
-      store.dispatch({type:'SPEECH_FAILED',token,
-        reason:String(error?.message||error)});
+    // Do not interrupt an actual Heart recording because optional
+    // personalization failed; do not pretend the name was spoken.
+    nameSynthesisError=String(error?.message||error);
+    console.error('Optional Heart name synthesis failed',error);
   }
 }
 
 function observeGeneratedSpeechFrame(){
   const state=store.getState();
   if(!activeNameAudio||activeNameAudio.token!==state.speechToken||
-    state.nameDecision!=='provided'||state.phase!=='welcome'||
+    state.nameDecision!=='provided'||
     state.speechStatus!=='speaking'||voice.activeSource()!=='generated')
     return;
   const observation=voice.sampleGeneratedClock(state.speechToken);
@@ -169,7 +184,7 @@ document.addEventListener('visibilitychange',()=>{
   const current=store.getState();
   if(current.speechStatus==='pending'&&current.nameDecision==='provided')
     store.dispatch({type:'SPEECH_INTERRUPTED',token:current.speechToken});
-  activeNameAudio=null;
+  activeNameAudio=null;preparedName=null;
   voice.cancel('page-hidden');
 });
 
