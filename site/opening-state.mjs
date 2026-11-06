@@ -26,7 +26,7 @@ export function openingMessage(state){
     state.nameDecision==='provided'?state.visitorName:null);
 }
 export function nameChoiceReady(state){
-  return state.phase==='asking-name' && finalSpeechStatuses.has(state.speechStatus)
+  return state.phase==='asking-name' && state.speechStatus==='completed'
     && state.cueIndex===OPENING_TRACKS['asking-name'].length-1;
 }
 
@@ -115,20 +115,17 @@ export function reduceOpening(state,event){
     case 'SPEECH_FAILED':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
           !finalSpeechStatuses.has(state.speechStatus))
-        patch={speaking:false,speechStatus:'failed',
-          cueIndex:state.track==='asking-name'?OPENING_TRACKS['asking-name'].length-1:state.cueIndex};
+        patch={speaking:false,speechStatus:'failed'};
       break;
     case 'SPEECH_UNAVAILABLE':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
           state.speechStatus==='pending')
-        patch={speaking:false,speechStatus:'unavailable',
-          cueIndex:state.track==='asking-name'?OPENING_TRACKS['asking-name'].length-1:state.cueIndex};
+        patch={speaking:false,speechStatus:'unavailable'};
       break;
     case 'SPEECH_INTERRUPTED':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
           ['speaking','pending'].includes(state.speechStatus))
-        patch={speaking:false,speechStatus:'interrupted',
-          cueIndex:state.track==='asking-name'?OPENING_TRACKS['asking-name'].length-1:state.cueIndex};
+        patch={speaking:false,speechStatus:'interrupted'};
       break;
   }
   if(!patch)return state;

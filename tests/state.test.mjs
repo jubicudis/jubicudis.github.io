@@ -127,17 +127,28 @@ test('stale, nonmonotonic and unqualified speech evidence never changes state',(
   assert.equal(step(at2,'SPEECH_ENDED',{token:-1}),at2);
 });
 
-test('genuine failure or interruption permits the name choice without falsely completing audio',()=>{
+test('observed failure or interruption never invents a spoken name question or permits name choice',()=>{
   let s=step(ready(),'ACTIVATE');
   s=step(s,'SPEECH_STARTED',{token:s.speechToken});
   const interrupted=step(s,'SPEECH_INTERRUPTED',{token:s.speechToken});
   assert.equal(interrupted.speechStatus,'interrupted');
   assert.equal(interrupted.speaking,false);
-  assert.equal(nameChoiceReady(interrupted),true);
+  assert.equal(nameChoiceReady(interrupted),false);
+  assert.equal(interrupted.cueIndex,0);
+  assert.equal(step(interrupted,'SKIP_NAME'),interrupted);
+  assert.equal(step(interrupted,'GIVE_NAME',{name:'Morgan'}),interrupted);
   assert.equal(step(interrupted,'SPEECH_ENDED',{token:interrupted.speechToken}),interrupted);
   const failed=step(s,'SPEECH_FAILED',{token:s.speechToken});
   assert.equal(failed.speechStatus,'failed');
-  assert.equal(nameChoiceReady(failed),true);
+  assert.equal(failed.cueIndex,0);
+  assert.equal(nameChoiceReady(failed),false);
+  assert.equal(step(failed,'SKIP_NAME'),failed);
+  const unavailable=step(step(ready(),'ACTIVATE'),'SPEECH_UNAVAILABLE',{
+    token:s.speechToken
+  });
+  assert.equal(unavailable.speechStatus,'unavailable');
+  assert.equal(unavailable.cueIndex,0);
+  assert.equal(nameChoiceReady(unavailable),false);
 });
 
 test('approved opening covers all three distinct products without invented claims',()=>{
