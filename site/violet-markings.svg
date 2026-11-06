@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 100">
-<defs><filter id="shine" x="-50%" y="-70%" width="200%" height="240%"><feGaussianBlur stdDeviation="5"/></filter></defs>
-<g fill="#fff3ff" opacity=".5" filter="url(#shine)"><path d="M40 74 L68 26 L91 26 L63 74Z M99 74 L127 26 L150 26 L122 74Z M158 74 L186 26 L209 26 L181 74Z"/></g>
-<g fill="#fef4ff"><path d="M40 74 L68 26 L91 26 L63 74Z M99 74 L127 26 L150 26 L122 74Z M158 74 L186 26 L209 26 L181 74Z"/></g>
-</svg>

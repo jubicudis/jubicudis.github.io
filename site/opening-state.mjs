@@ -28,7 +28,7 @@ export function reduceOpening(state,event){
       break;
     case 'RENDER_OBSERVED':
       if(state.renderStatus==='initializing' && event.evidence?.type==='webgl-pixel-observed'
-          && event.evidence.nonBackgroundPixel===true && event.evidence.drawCalls>10)
+          && event.evidence.nonBackgroundPixel===true && event.evidence.drawCalls>=2)
         patch={renderStatus:'observed',renderEvidence:Object.freeze({
           type:event.evidence.type,drawCalls:event.evidence.drawCalls,
           nonBackgroundPixel:true
