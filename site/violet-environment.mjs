@@ -59,10 +59,11 @@ function qualifiedExpressionSvg(xml,mode){
     throw new Error('Required Violet expression SVG root is invalid');
   const all=new Set(Object.values(EXPRESSION_PARTS).flat());
   for(const id of all){
-    const exact=new RegExp('<g\\s+id="'+id+'"(?=[\\s>])','g');
-    const count=Array.from(xml.matchAll(exact)).length;
-    if(count!==1)
-      throw new Error('Required Violet expression part '+(count?'duplicated: ':'missing: ')+id);
+    const opening='<g id="'+id+'"';
+    const first=xml.indexOf(opening);
+    if(first<0)throw new Error('Required Violet expression part missing: '+id);
+    if(xml.indexOf(opening,first+opening.length)>=0)
+      throw new Error('Duplicate required Violet expression part: '+id);
   }
   const start=xml.indexOf('#eye-smile'),end=xml.indexOf('.illuminated');
   if(start<0||end<=start)
@@ -94,7 +95,7 @@ function assertVisibleExpression(ctx,mode){
 }
 
 async function svgTexture(url,mode){
-  const response=await fetch(url,{cache:'force-cache'});
+  const response=await fetch(url,{cache:'no-cache'});
   if(!response.ok)throw new Error('Required Violet SVG unavailable: '+response.status+' '+url);
   const xml=qualifiedExpressionSvg(await response.text(),mode);
   const blob=new Blob([xml],{type:'image/svg+xml'});
