@@ -29,6 +29,12 @@ export function pronunciationText(visitorName){
 export async function observedInferenceBackend(browser=typeof navigator==='undefined'?null:navigator){
   // Choose ONE backend from actual browser capability; no retry chain and
   // no change to the presentation if a runtime operation fails.
+  // iOS WebKit shares GPU resources with Violet's active WebGL scene.
+  // Keep the single approved Heart voice, but run its model on CPU/WASM
+  // rather than competing for the same GPU and losing Violet's context.
+  const agent=String(browser?.userAgent||'');
+  const iosWebKit=/iPhone|iPad|iPod/.test(agent)&&/AppleWebKit/.test(agent);
+  if(iosWebKit)return 'wasm';
   if(typeof browser?.gpu?.requestAdapter==='function'){
     const adapter=await browser.gpu.requestAdapter();
     if(adapter)return 'webgpu';
