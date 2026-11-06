@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdirSync} from 'node:fs';
-import {chromium} from 'playwright';
+import {chromium,webkit} from 'playwright';
 
 const server=spawn('python3',['-m','http.server','4174','--bind','127.0.0.1'],{stdio:'ignore'});
 const base='http://127.0.0.1:4174/';
@@ -13,7 +13,10 @@ for(let i=0;i<50;i++){
   await sleep(200);
 }
 assert.equal(response?.ok,true,'Static website must serve its index');
-const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+const browserName=process.env.VIOLET_BROWSER||'chromium';
+const browser=browserName==='webkit'
+  ?await webkit.launch({headless:true})
+  :await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 try{
   for(const [label,width,height,named] of [
     ['desktop',1440,900,false],['mobile',390,844,false]
