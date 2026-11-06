@@ -28,12 +28,22 @@ try{
       window.__realHeartEvents=[];
       window.__spokenByBrowserDevice=0;
       const ActualAudio=window.Audio;
+      window.__audioPlayersConstructed=0;
       window.Audio=function(src){
         const media=new ActualAudio(src);
-        const kind=String(src).startsWith('blob:')?'generated-name':'approved-recording';
-        media.playbackRate=kind==='generated-name'?1:12;
-        media.addEventListener('playing',()=>window.__realHeartEvents.push({kind,event:'playing',src:String(src)}));
-        media.addEventListener('ended',()=>window.__realHeartEvents.push({kind,event:'ended',src:String(src)}));
+        window.__audioPlayersConstructed++;
+        const nativePlay=media.play.bind(media);
+        media.play=function(){
+          media.playbackRate=String(media.src).startsWith('blob:')?1:12;
+          return nativePlay();
+        };
+        const record=event=>{
+          const src=media.currentSrc||media.src;
+          const kind=String(src).startsWith('blob:')?'generated-name':'approved-recording';
+          window.__realHeartEvents.push({kind,event,src});
+        };
+        media.addEventListener('playing',()=>record('playing'));
+        media.addEventListener('ended',()=>record('ended'));
         return media;
       };
       if(window.speechSynthesis){
@@ -106,6 +116,8 @@ try{
       nameAudioCompleted:document.getElementById('environment').dataset.nameAudioCompleted
     }));
     assert.equal(result.deviceVoiceInvocations,0);
+    assert.equal(await page.evaluate(()=>window.__audioPlayersConstructed),1,
+      'Heart name and continuation must share the authorized media element');
     assert.equal(result.nameAudioCompleted,'true');
     assert.equal(result.phase,'presentation');
     assert.equal(result.speechStatus,'completed');
