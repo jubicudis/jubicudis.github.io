@@ -68,8 +68,19 @@ function qualifiedExpressionSvg(xml,mode){
   // rules whose matching differs between SVG-image browser implementations.
   stylesheet.textContent=css.slice(0,start)+css.slice(end);
   const all=new Set(Object.values(EXPRESSION_PARTS).flat());
+  // Safari's XML/SVG selector behavior is not a reliable way to resolve
+  // authored SVG IDs. Inspect actual id attributes instead; absence remains
+  // a hard failure and never substitutes another facial part.
+  const parts=new Map();
+  for(const element of doc.getElementsByTagName('*')){
+    const id=element.getAttribute('id');
+    if(id&&all.has(id)){
+      if(parts.has(id))throw new Error('Duplicate required Violet expression part: '+id);
+      parts.set(id,element);
+    }
+  }
   for(const id of all){
-    const group=doc.querySelector('#'+id);
+    const group=parts.get(id);
     if(!group)throw new Error('Required Violet expression part missing: '+id);
     group.setAttribute('style','display:'+(active.includes(id)?'inline':'none'));
   }
