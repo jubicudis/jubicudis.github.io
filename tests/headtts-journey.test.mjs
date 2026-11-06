@@ -84,7 +84,7 @@ try{
     assert.match(caption,/may I ask what to call you/);
     await page.locator('#visitor-name').fill('Morgan');
     await page.locator('#name-confirm').click();
-    assert.match(await page.locator('#violet-caption').innerText(),/^Welcome\\. I'm glad you're here/);
+    assert.match(await page.locator('#violet-caption').innerText(),/^Welcome\. I'm glad you're here/);
     // The approved Heart track begins immediately while the name is
     // synthesized in parallel; no blank waiting screen is authorized.
     await page.waitForFunction(()=>window.__heartEvents.some(x=>
