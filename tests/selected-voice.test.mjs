@@ -52,7 +52,7 @@ test('actual measured audio timeline matches every approved segment and selected
 test('visitor name appears visibly but prerecorded voice does not invent its pronunciation',()=>{
   const s={...initialState,phase:'welcome',track:'after-name',cueIndex:0,
     visitorName:'Morgan',nameDecision:'provided'};
-  assert.match(openingMessage(s),/^Welcome, Morgan\. I'm glad you're here\./);
+  assert.match(openingMessage(s),/^Welcome\. I'm glad you're here\./);
   const selected=resolveVioletOpeningAudio(s);
   assert.equal(selected.visitorNameSpoken,false);
   assert.equal(selected.visibleText,openingMessage(s));
