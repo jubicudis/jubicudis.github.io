@@ -81,5 +81,45 @@ try{
   assert.equal(await failedArt.locator('#render-failure').isVisible(),true);
   assert.equal(await failedArt.locator('#environment').getAttribute('data-phase'),'dormant');
   await failedArt.close();
-  console.log('Verified Three.js+SVG opening and explicit failures for missing face and required A2 artwork.');
+  // Renderer-only capability probe. This test deliberately requests appearance
+  // channels without changing presentation state, creating visitor controls,
+  // choosing a trigger, or scripting animation duration.
+  const probe=await browser.newPage({viewport:{width:900,height:700},reducedMotion:'reduce'});
+  const probeErrors=[];
+  probe.on('pageerror',error=>probeErrors.push(error.message));
+  await probe.goto(base,{waitUntil:'domcontentloaded'});
+  const accepted=await probe.evaluate(async()=>{
+    const canvas=document.createElement('canvas');
+    canvas.style.cssText='position:fixed;inset:0;width:100vw;height:100vh;z-index:50;pointer-events:none';
+    document.body.append(canvas);
+    const {createVioletEnvironment}=await import('./site/violet-environment.mjs');
+    window.__visualProbe=await createVioletEnvironment(canvas);
+    return window.__visualProbe.visualCapabilities.readRequested();
+  });
+  assert.deepEqual(accepted,{structure:1,center:1,environment:1,features:1});
+  await probe.waitForTimeout(200);
+  const baseline=await probe.screenshot({path:'artifacts/renderer-capability-approved-a2.png'});
+  const requested=await probe.evaluate(()=>{
+    const v=window.__visualProbe.visualCapabilities;
+    v.apply({structure:0,center:1,environment:1,features:0});
+    return v.readRequested();
+  });
+  assert.deepEqual(requested,{structure:0,center:1,environment:1,features:0});
+  assert.equal(await probe.locator('#environment').getAttribute('data-phase'),'dormant',
+    'capability calls must never advance website behavior');
+  await probe.waitForTimeout(200);
+  const separated=await probe.screenshot({path:'artifacts/renderer-capability-separated-center.png'});
+  assert.equal(baseline.equals(separated),false,
+    'the actual rendered scene must change under an explicit channel request');
+  await probe.evaluate(()=>{
+    window.__visualProbe.visualCapabilities.apply({
+      structure:1,center:1,environment:1,features:1
+    });
+  });
+  await probe.waitForTimeout(200);
+  await probe.screenshot({path:'artifacts/renderer-capability-restored-a2.png'});
+  assert.deepEqual(probeErrors,[],'capability renderer must not throw browser errors');
+  await probe.evaluate(()=>window.__visualProbe.dispose());
+  await probe.close();
+  console.log('Verified A2 opening and independent render capabilities without any user trigger or scheduled behavior.');
 }finally{await browser.close();server.kill();}

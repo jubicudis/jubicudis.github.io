@@ -4,6 +4,7 @@
 // This opening scene is NOT TNOS cognition or a completed 3D soft-body simulation.
 // If any required art or WebGL rendering fails, no replacement character is fabricated.
 import * as THREE from './vendor/three.module.js';
+import {createVioletAppearanceCapabilities} from './violet-appearance.mjs';
 
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 function createGlowTexture(){
@@ -132,6 +133,10 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
     expression.position.set((faceCenterX-art.naturalWidth/2)*artPixelToWorld,
       (art.naturalHeight/2-faceCenterY)*artPixelToWorld,.05);
     character.add(expression);
+    // Render capabilities are addressable but are NOT scheduled or activated by this opening.
+    const visualCapabilities=createVioletAppearanceCapabilities({
+      character,main,expression,art,artWidth,faceMaps:faces
+    });
     let state={phase:'dormant',speaking:false},live=true,observed=false,failed=false,frameCount=0,previousExpression='';
     const start=performance.now(),reduced=matchMedia('(prefers-reduced-motion: reduce)');
     const resize=()=>{
@@ -155,7 +160,8 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
       const mode=state.speaking&&Math.sin(t*8.6)>-.16?'talk':
         !reduced.matches&&Math.sin(t*.49+.8)>.998?'blink':
         state.phase==='asking-name'&&!state.speaking?'ask':'rest';
-      if(mode!==previousExpression){expression.material.map=faces[mode];expression.material.needsUpdate=true;previousExpression=mode;}
+      const visualMode=visualCapabilities.desiredExpression(mode);
+      if(visualMode!==previousExpression){expression.material.map=faces[visualMode];expression.material.needsUpdate=true;previousExpression=visualMode;}
       renderer.render(scene,camera);frameCount++;
       if(!observed&&frameCount>1){
         const evidence=observedFrame(renderer,canvas);
@@ -166,8 +172,11 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
     requestAnimationFrame(frame);
     return {
       update(next){state=next;},
+      // The caller may explicitly propagate a visual snapshot in a later approved pass.
+      // No visitor control, state transition or automatic time-based trigger invokes it now.
+      visualCapabilities,
       dispose(){live=false;resizeObserver.disconnect();canvas.removeEventListener('webglcontextlost',loss);
-        scene.traverse(o=>{o.geometry?.dispose();});renderer.dispose();},
+        visualCapabilities.dispose();scene.traverse(o=>{o.geometry?.dispose();});renderer.dispose();},
       get observed(){return observed&&!failed;}
     };
   }catch(error){console.error('Violet required render failed',error);renderer?.dispose();onFailure?.(error);throw error;}
