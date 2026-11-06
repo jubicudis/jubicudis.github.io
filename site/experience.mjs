@@ -1,5 +1,6 @@
 import {createOpeningStore,openingMessage} from './opening-state.mjs';
 import {createVioletVoiceEngine} from './violet-voice.mjs';
+import {resolveVioletOpeningAudio} from './violet-selected-voice.mjs';
 
 const stage=document.getElementById('environment');
 const activate=document.getElementById('violet-activate');
@@ -15,10 +16,12 @@ const voice=createVioletVoiceEngine();
 activate.disabled=true;
 
 function beginSpeech(state){
-  // The existing opening phase is the sole authority deciding when speech
-  // begins. Voice capabilities never choose a moment or presentation route.
-  voice.speakBrowser({
-    text:openingMessage(state),
+  // Opening state owns when Violet speaks; the selected Heart recording
+  // is executed by the audio capability and qualified by actual playback.
+  const selected=resolveVioletOpeningAudio(state);
+  if(!selected)throw new Error('No approved Heart recording for opening state');
+  voice.playAuthored({
+    src:selected.src,
     token:state.speechToken,
     emit:event=>store.dispatch(event)
   });

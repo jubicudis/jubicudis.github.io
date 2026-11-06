@@ -18,6 +18,17 @@ try{
   for(const [label,width,height,named] of [['desktop',1440,900,true],['mobile',390,844,false]]){
     const page=await browser.newPage({viewport:{width,height},reducedMotion:'reduce'});
     const errors=[];
+    await page.addInitScript(()=>{
+      window.__unexpectedBrowserTTS=0;
+      const synthesizer=window.speechSynthesis;
+      if(synthesizer&&typeof synthesizer.speak==='function'){
+        const nativeSpeak=synthesizer.speak.bind(synthesizer);
+        synthesizer.speak=function(...args){
+          window.__unexpectedBrowserTTS++;
+          return nativeSpeak(...args);
+        };
+      }
+    });
     page.on('pageerror',error=>errors.push(error.message));
     page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
     await page.goto(base,{waitUntil:'domcontentloaded'});
@@ -37,10 +48,17 @@ try{
     assert.equal(rendering.webgl,true,'Real Three.js WebGL2 instead of a fallback');
     assert.ok(rendering.width>0&&rendering.height>0);
     await page.screenshot({path:'artifacts/'+label+'-initial.png'});
+    const greetingMedia=page.waitForResponse(r=>
+      r.url().endsWith('/site/audio/violet-heart-asking-name.m4a')&&r.status()>=200&&r.status()<300,
+      {timeout:15000});
     await page.locator('#violet-activate').click();
+    await greetingMedia;
     assert.equal(await page.locator('#violet-caption').innerText(),"Hello, I'm Violet. What is your name?");
     assert.ok(await page.locator('#name-form').isVisible());
     await page.screenshot({path:'artifacts/'+label+'-greeting.png'});
+    const welcomeMedia=page.waitForResponse(r=>
+      r.url().endsWith('/site/audio/violet-heart-welcome.m4a')&&r.status()>=200&&r.status()<300,
+      {timeout:15000});
     if(named){
       await page.locator('#visitor-name').fill('Morgan');
       await page.locator('#name-confirm').click();
@@ -49,6 +67,9 @@ try{
       await page.locator('#name-skip').click();
       assert.match(await page.locator('#violet-caption').innerText(),/^Welcome\./);
     }
+    await welcomeMedia;
+    assert.equal(await page.evaluate(()=>window.__unexpectedBrowserTTS),0,
+      'Violet must not silently substitute a different device voice');
     const welcome=await page.locator('#violet-caption').innerText();
     assert.match(welcome,/Tranquility Neuro Operating System/);
     assert.match(welcome,/Workbench/);
