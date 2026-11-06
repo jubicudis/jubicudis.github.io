@@ -274,5 +274,5 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
       dispose(){live=false;resizeObserver.disconnect();canvas.removeEventListener('webglcontextlost',loss);scene.traverse(o=>{o.geometry?.dispose();});renderer.dispose();},
       get observed(){return observed&&!failed;}
     };
-  }catch(error){renderer?.dispose();onFailure?.(error);throw error;}
+  }catch(error){console.error('Violet scene construction failed',error);renderer?.dispose();onFailure?.(error);throw error;}
 }
