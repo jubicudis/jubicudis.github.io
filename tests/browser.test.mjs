@@ -15,28 +15,43 @@ for(let i=0;i<50;i++){
 assert.equal(response?.ok,true,'Static website must serve its index');
 const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 try{
-  for(const [label,width,height,named] of [['desktop',1440,900,true],['mobile',390,844,false]]){
+  for(const [label,width,height,named] of [
+    ['desktop',1440,900,true],['mobile',390,844,false]
+  ]){
     const page=await browser.newPage({viewport:{width,height},reducedMotion:'reduce'});
     const errors=[];
+    // Browser QA uses real recorded Heart audio but a faster playback clock.
+    // This changes TEST TIME only; production delivery remains natural speed.
     await page.addInitScript(()=>{
       window.__unexpectedBrowserTTS=0;
-      const synthesizer=window.speechSynthesis;
-      if(synthesizer&&typeof synthesizer.speak==='function'){
-        const nativeSpeak=synthesizer.speak.bind(synthesizer);
-        synthesizer.speak=function(...args){
+      const OriginalAudio=window.Audio;
+      window.Audio=function(src){
+        const audio=new OriginalAudio(src);
+        audio.playbackRate=10;
+        return audio;
+      };
+      const synthesis=window.speechSynthesis;
+      if(synthesis&&typeof synthesis.speak==='function'){
+        const original=synthesis.speak.bind(synthesis);
+        synthesis.speak=function(...args){
           window.__unexpectedBrowserTTS++;
-          return nativeSpeak(...args);
+          return original(...args);
         };
       }
     });
-    page.on('pageerror',error=>errors.push(error.message));
-    page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
+    page.on('pageerror',e=>errors.push(e.message));
+    page.on('console',message=>{
+      if(message.type()==='error')errors.push(message.text());
+    });
     await page.goto(base,{waitUntil:'domcontentloaded'});
-    await page.waitForFunction(()=>['observed','failed'].includes(document.querySelector('#environment').dataset.renderStatus),null,{timeout:20000});
-    const actualStatus=await page.evaluate(()=>({status:document.querySelector('#environment').dataset.renderStatus,error:document.querySelector('#render-failure').textContent,canvas:{width:document.querySelector('#world').width,height:document.querySelector('#world').height}}));
-    assert.equal(actualStatus.status,'observed','Violet renderer must produce evidence: '+JSON.stringify(actualStatus)+' console: '+JSON.stringify(errors));
+    await page.waitForFunction(()=>
+      ['observed','failed'].includes(document.querySelector('#environment').dataset.renderStatus),
+      null,{timeout:20000});
+    const status=await page.locator('#environment').getAttribute('data-render-status');
+    assert.equal(status,'observed',JSON.stringify(errors));
+    await page.waitForFunction(()=>!document.querySelector('#violet-activate').disabled,null,{timeout:15000});
     assert.equal(await page.locator('#render-failure').isVisible(),false);
-    assert.equal(await page.locator('#violet-activate').isEnabled(),true);
+    assert.equal(await page.locator('#audio-failure').isVisible(),false);
     assert.equal(await page.locator('#violet-activate').isVisible(),true);
     assert.equal(await page.locator('#visitor-dialogue').isVisible(),false);
     assert.equal(await page.locator('button:visible').count(),1);
@@ -45,52 +60,82 @@ try{
       const c=document.querySelector('#world'),gl=c.getContext('webgl2');
       return {webgl:!!gl&&!gl.isContextLost(),width:c.width,height:c.height};
     });
-    assert.equal(rendering.webgl,true,'Real Three.js WebGL2 instead of a fallback');
+    assert.equal(rendering.webgl,true);
     assert.ok(rendering.width>0&&rendering.height>0);
     await page.screenshot({path:'artifacts/'+label+'-initial.png'});
-    const greetingMedia=page.waitForResponse(r=>
-      r.url().endsWith('/site/audio/violet-heart-asking-name.m4a')&&r.status()>=200&&r.status()<300,
-      {timeout:15000});
+
+    const greetingMedia=page.waitForResponse(response=>
+      response.url().endsWith('/site/audio/violet-heart-asking-name.m4a') &&
+      [200,206].includes(response.status()),{timeout:15000});
     await page.locator('#violet-activate').click();
     await greetingMedia;
-    assert.equal(await page.locator('#violet-caption').innerText(),"Hello, I'm Violet. What is your name?");
-    assert.ok(await page.locator('#name-form').isVisible());
+    assert.equal(await page.locator('#violet-caption').innerText(),"Hello, I'm Violet.");
+    assert.equal(await page.locator('#name-form').isVisible(),false,
+      'the visitor is not asked for a name before Violet has explained her role');
     await page.screenshot({path:'artifacts/'+label+'-greeting.png'});
-    const welcomeMedia=page.waitForResponse(r=>
-      r.url().endsWith('/site/audio/violet-heart-welcome.m4a')&&r.status()>=200&&r.status()<300,
-      {timeout:15000});
+
+    await page.waitForFunction(()=>{
+      const stage=document.querySelector('#environment');
+      return stage.dataset.phase==='asking-name' &&
+        stage.dataset.speechStatus==='completed' &&
+        !document.querySelector('#name-form').hidden;
+    },null,{timeout:20000});
+    assert.match(await page.locator('#violet-caption').innerText(),
+      /may I ask what to call you\?/);
+    assert.equal(await page.locator('#name-form').isVisible(),true);
+    await page.screenshot({path:'artifacts/'+label+'-name-question.png'});
+
+    const afterMedia=page.waitForResponse(response=>
+      response.url().endsWith('/site/audio/violet-heart-after-name.m4a')&&
+      [200,206].includes(response.status()),{timeout:15000});
     if(named){
       await page.locator('#visitor-name').fill('Morgan');
       await page.locator('#name-confirm').click();
-      assert.match(await page.locator('#violet-caption').innerText(),/^Welcome, Morgan\./);
+      assert.match(await page.locator('#violet-caption').innerText(),
+        /^Welcome, Morgan\. I'm glad you're here\./);
     }else{
       await page.locator('#name-skip').click();
-      assert.match(await page.locator('#violet-caption').innerText(),/^Welcome\./);
+      assert.match(await page.locator('#violet-caption').innerText(),
+        /^Welcome\. I'm glad you're here\./);
     }
-    await welcomeMedia;
-    assert.equal(await page.evaluate(()=>window.__unexpectedBrowserTTS),0,
-      'Violet must not silently substitute a different device voice');
-    const welcome=await page.locator('#violet-caption').innerText();
-    assert.match(welcome,/Tranquility Neuro Operating System/);
-    assert.match(welcome,/Workbench/);
-    assert.match(welcome,/separate MCP server/);
+    await afterMedia;
     assert.equal(await page.locator('#name-form').isVisible(),false);
-    assert.equal(await page.locator('nav, select, .card, .panel').count(),0);
-    const bounds=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:window.innerWidth}));
-    assert.ok(bounds.scroll<=bounds.viewport+2,'horizontal overflow: '+JSON.stringify(bounds));
-    // The delivered engine is available on both viewports; the established
-    // opening still selects when to speak, not the voice renderer.
-    const voiceAudit=await page.evaluate(async()=>{
-      const m=await import('./site/violet-voice.mjs');
-      return {profile:m.BROWSER_VOICE_PROFILE,
-        chosen:m.chooseAvailableVoice([{name:'Enhanced demo',lang:'en-US',voiceURI:'en-test',default:false}])?.voiceURI};
-    });
-    assert.equal(voiceAudit.profile.pitch,1);
-    assert.equal(voiceAudit.chosen,'en-test');
-    assert.deepEqual(errors,[],'browser errors on '+label);
     await page.screenshot({path:'artifacts/'+label+'-welcome.png'});
+
+    await page.waitForFunction(()=>document.querySelector('#environment').dataset.phase==='orientation',
+      null,{timeout:20000});
+    assert.match(await page.locator('#violet-caption').innerText(),
+      /TNOS is an experimental operating system/);
+    await page.screenshot({path:'artifacts/'+label+'-orientation.png'});
+
+    await page.waitForFunction(()=>document.querySelector('#environment').dataset.phase==='presentation',
+      null,{timeout:20000});
+    assert.match(await page.locator('#violet-caption').innerText(),
+      /Let's begin|Imagine turning on|usual desktop|interface much like|TNOS is being developed/);
+    await page.screenshot({path:'artifacts/'+label+'-presentation.png'});
+    await page.waitForFunction(()=>document.querySelector('#environment').dataset.speechStatus==='completed',
+      null,{timeout:20000});
+    assert.equal(await page.locator('#violet-caption').innerText(),
+      'Because the real difference begins with the operating system itself.');
+    assert.equal(await page.locator('#audio-failure').isVisible(),false);
+    assert.equal(await page.evaluate(()=>window.__unexpectedBrowserTTS),0);
+    assert.equal(await page.locator('nav, select, .card, .panel').count(),0);
+    const bounds=await page.evaluate(()=>
+      ({scroll:document.documentElement.scrollWidth,viewport:window.innerWidth}));
+    assert.ok(bounds.scroll<=bounds.viewport+2,'horizontal overflow: '+JSON.stringify(bounds));
+    assert.deepEqual(errors,[],'actual browser errors on '+label);
+    await page.screenshot({path:'artifacts/'+label+'-presentation-end.png'});
     await page.close();
   }
+  // A broken selected voice timeline does not invent narration success.
+  const noTimeline=await browser.newPage({viewport:{width:390,height:844}});
+  await noTimeline.route('**/site/audio/heart-timeline.json',route=>route.abort('failed'));
+  await noTimeline.goto(base,{waitUntil:'domcontentloaded'});
+  await noTimeline.waitForFunction(()=>document.querySelector('#environment').dataset.renderStatus==='observed',null,{timeout:20000});
+  await noTimeline.waitForFunction(()=>!document.querySelector('#audio-failure').hidden,null,{timeout:12000});
+  assert.equal(await noTimeline.locator('#violet-activate').isEnabled(),false);
+  assert.equal(await noTimeline.locator('#audio-failure').isVisible(),true);
+  await noTimeline.close();
   // A missing required SVG must not be silently replaced with another face or renderer.
   const failedPage=await browser.newPage({viewport:{width:390,height:844}});
   await failedPage.route('**/site/violet-face.svg',route=>route.abort('failed'));

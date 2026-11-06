@@ -83,7 +83,7 @@ export function createVioletVoiceEngine({
   // Premium recorded narration may be supplied as approved audio assets later.
   // The caller must explicitly request this transport; a missing or broken
   // file NEVER triggers silent substitution by browser text-to-speech.
-  function playAuthored({src,token,emit}){
+  function playAuthored({src,token,emit,onPosition}){
     cancel('replaced');
     if(typeof src!=='string'||!src||!Number.isSafeInteger(token))
       throw new TypeError('Authored narration requires an actual file URL and state token');
@@ -104,8 +104,17 @@ export function createVioletVoiceEngine({
       const session={kind:'authored',audio,token,emit,src:url.pathname,playing:false};
       active=session;
       audio.addEventListener('playing',()=>{
-        if(active===session){session.playing=true;emitSafely(emit,{type:'SPEECH_STARTED',token});}
+        if(active===session){
+          session.playing=true;emitSafely(emit,{type:'SPEECH_STARTED',token});
+          const sample=sampleAuthoredClock(token);
+          if(sample)emitSafely(onPosition,sample);
+        }
       },{once:true});
+      audio.addEventListener('timeupdate',()=>{
+        if(active!==session)return;
+        const sample=sampleAuthoredClock(token);
+        if(sample)emitSafely(onPosition,sample);
+      });
       audio.addEventListener('ended',()=>{
         if(active===session){session.playing=false;active=null;emitSafely(emit,{type:'SPEECH_ENDED',token});}
       },{once:true});

@@ -13,6 +13,7 @@
   <main class="environment" id="environment" data-phase="dormant" aria-label="TNOS opening experience">
     <canvas id="world" aria-hidden="true"></canvas>
     <p id="render-failure" class="render-failure" role="alert" hidden></p>
+    <p id="audio-failure" class="audio-failure" role="alert" hidden></p>
     <button id="violet-activate" class="violet-activate" type="button" aria-label="Activate Violet"></button>
     <div class="visitor-dialogue" id="visitor-dialogue" hidden>
       <p id="violet-caption" class="violet-caption" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -25,7 +26,7 @@
         <button id="name-skip" type="button" class="skip-name">Continue without a name</button>
       </form>
     </div>
-    <p class="sr-only" id="experience-description">Violet is a stylized interface character within an animated TNOS-inspired computer environment. Activate her to hear an introduction. The visitor may enter a name or skip.</p>
+    <p class="sr-only" id="experience-description">Violet is a stylized representation of the TNOS interface. She introduces herself, requests an optional name, orients visitors to the experimental operating system, Workbench, and separate MCP server, and begins a factual guided presentation.</p>
   </main>
   <script type="module" src="./site/experience.mjs"></script>
 </body>
