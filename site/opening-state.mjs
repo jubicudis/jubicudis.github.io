@@ -1,6 +1,7 @@
 // Public website presentation state. This is not TNOS native cognition or TranquilSpeak execution.
 export const initialState=Object.freeze({
   phase:'dormant',visitorName:null,nameDecision:null,
+  renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
   enteredAt:0,
   context:Object.freeze({who:'unidentified visitor',what:'Violet',when:'unstarted',where:'TNOS website opening',why:'visit',how:'await activation',extent:'not started'})
@@ -22,8 +23,23 @@ export function reduceOpening(state,event){
   const when=Number.isFinite(event.at)?event.at:null;
   let patch=null;
   switch(event.type){
+    case 'RENDER_STARTED':
+      if(state.renderStatus==='uninitialized')patch={renderStatus:'initializing'};
+      break;
+    case 'RENDER_OBSERVED':
+      if(state.renderStatus==='initializing' && event.evidence?.type==='webgl-pixel-observed'
+          && event.evidence.nonBackgroundPixel===true && event.evidence.drawCalls>10)
+        patch={renderStatus:'observed',renderEvidence:Object.freeze({
+          type:event.evidence.type,drawCalls:event.evidence.drawCalls,
+          nonBackgroundPixel:true
+        })};
+      break;
+    case 'RENDER_FAILED':
+      if(state.renderStatus!=='failed'&&typeof event.reason==='string')
+        patch={renderStatus:'failed',renderEvidence:null,renderFailure:event.reason.slice(0,240)};
+      break;
     case 'ACTIVATE':
-      if(state.phase==='dormant')patch={phase:'asking-name',enteredAt:when,speaking:false,speechStatus:'pending',speechToken:state.speechToken+1};
+      if(state.phase==='dormant'&&state.renderStatus==='observed')patch={phase:'asking-name',enteredAt:when,speaking:false,speechStatus:'pending',speechToken:state.speechToken+1};
       break;
     case 'GIVE_NAME':
       if(state.phase!=='asking-name'||typeof event.name!=='string')break;

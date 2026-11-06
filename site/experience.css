@@ -20,3 +20,8 @@
 @media(max-height:690px){.violet-activate{top:40%;height:52svh;width:min(54vw,510px)}.visitor-dialogue{top:68%}}
 @media(max-width:620px) and (max-height:690px){.violet-activate{top:36%;height:42svh;width:73vw}.visitor-dialogue{top:62%}}
 @media(prefers-reduced-motion:reduce){.enter-name,.name-entry{transition:none}}
+
+/* A renderer that has not actually produced Violet cannot be activated. */
+.violet-activate:disabled{cursor:default}
+.render-failure{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(580px,calc(100% - 48px));color:#f3c6dc;text-align:center;line-height:1.6}
+.render-failure[hidden]{display:none!important}

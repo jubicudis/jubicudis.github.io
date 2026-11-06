@@ -1,321 +1,331 @@
-// Violet, Structured Bloom. This is the website's interactive character, not TNOS cognition.
-// Four coupled, independently deformable continuous bands are projected and shaded in Canvas 2D.
-// The band surface is an actual mesh of wide polygonal panels, not a stack of glowing strokes.
-const TWO_PI=Math.PI*2;
-const COLORS=[
-  {light:'#efbaff',top:'#c47cff',base:'#8844e8',shade:'#3a1c8e',deep:'#160c43',rim:'#f1c1ff',glow:'#b047ff',chips:'#ffb7fa'},
-  {light:'#b2faff',top:'#56dcff',base:'#158fee',shade:'#183dba',deep:'#0c245e',rim:'#a6fbff',glow:'#21b9ff',chips:'#a5faff'},
-  {light:'#fff2b5',top:'#ffcf68',base:'#f4a641',shade:'#a45c91',deep:'#683668',rim:'#ffdfa1',glow:'#ffb347',chips:'#fff5c6'},
-  {light:'#dec1ff',top:'#b476ff',base:'#6736cc',shade:'#301a80',deep:'#170f47',rim:'#dfb8ff',glow:'#974bf5',chips:'#ffe59d'}
+// One continuous Violet environment. Three.js owns depth, materials and illumination;
+// authored SVGs supply the vector face and precise surface markings.
+// No synthetic renderer, stand-in character, or success-shaped fallback is permitted.
+import * as THREE from './vendor/three.module.js';
+
+const PI2=Math.PI*2;
+const BASE=[
+  {color:0x19baf5,edge:0x80ecff,angle:-.49,tilt:.19,turn:-.23,a:2.26,b:1.42,z:-.18,phase:0},
+  {color:0x934cf0,edge:0xf0aaff,angle:.44,tilt:-.28,turn:.28,a:2.19,b:1.49,z:-.13,phase:1.1},
+  {color:0xf0a744,edge:0xffe29b,angle:-.11,tilt:.36,turn:.16,a:2.25,b:.82,z:-.12,phase:2.3},
+  {color:0x7945dc,edge:0xe4b2ff,angle:.73,tilt:-.22,turn:-.32,a:1.75,b:1.91,z:.14,phase:3.4}
 ];
-// The original four-piece chassis is preserved. Each loop can respond separately,
-// but all four inherit the same bounded center-of-mass motion.
-const BANDS=[
-  {major:235,minor:147,rx:.39,ry:.10,rz:-.49,start:.06,bias:.35,width:51},
-  {major:227,minor:145,rx:-.30,ry:.35,rz:.79,start:1.16,bias:-.29,width:53},
-  {major:233,minor:130,rx:1.02,ry:-.12,rz:.03,start:2.52,bias:.51,width:50},
-  {major:221,minor:148,rx:.28,ry:.52,rz:-.73,start:3.26,bias:-.19,width:54}
-];
-function clamp(value,lo,hi){return Math.min(hi,Math.max(lo,value));}
-function mix(a,b,t){return a+(b-a)*t;}
-function ease(t){t=clamp(t,0,1);return 1-(1-t)*(1-t)*(1-t);}
-function ellipse(ctx,x,y,rx,ry,fill){ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TWO_PI);if(fill){ctx.fillStyle=fill;ctx.fill();}else{ctx.stroke();}}
-function pathPoints(ctx,points){ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(let i=1;i<points.length;i++)ctx.lineTo(points[i].x,points[i].y);}
-function pointOnBand(band,k,t,i,reduced){
-  const time=reduced?0:t;
-  const shared=.014*Math.sin(time*.63);
-  const local=.025*Math.sin(time*(.4+i*.075)+i*1.6);
-  const rx=band.rx+shared*.8+local*.35;
-  const ry=band.ry+local*.22;
-  const rz=band.rz+local*.55;
-  const theta=band.start+k*TWO_PI+(reduced?0:.008*Math.sin(time*.8+i*.6));
-  const breathe=1+(reduced?0:.010*Math.sin(2*theta+time*.7+i));
-  let x=Math.cos(theta)*band.major*breathe;
-  let y=Math.sin(theta)*band.minor;
-  let z=band.bias*42*Math.sin(theta*2+i);
-  let yy=y*Math.cos(rx)-z*Math.sin(rx),zz=y*Math.sin(rx)+z*Math.cos(rx);y=yy;z=zz;
-  let xx=x*Math.cos(ry)+z*Math.sin(ry);zz=-x*Math.sin(ry)+z*Math.cos(ry);x=xx;z=zz;
-  xx=x*Math.cos(rz)-y*Math.sin(rz);yy=x*Math.sin(rz)+y*Math.cos(rz);x=xx;y=yy;
-  const perspective=760/(760-z);
-  return {x:x*perspective,y:y*perspective,z,theta,k};
+const LIMIT=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
+const TEMP_Z=new THREE.Vector3(0,0,1);
+const EASE=x=>1-Math.pow(1-LIMIT(x,0,1),3);
+
+function buildParam(def){
+  const rot=new THREE.Euler(def.tilt,def.turn,def.angle,'XYZ');
+  return t=>{
+    const u=t*PI2;
+    const point=new THREE.Vector3(
+      Math.cos(u)*def.a,
+      Math.sin(u)*def.b,
+      .095*Math.sin(u*2+def.phase)
+    );
+    point.applyEuler(rot);point.z+=def.z;return point;
+  };
 }
-function fullBand(index,time,reduced){
- const band=BANDS[index],count=240,points=[];
- for(let j=0;j<=count;j++){const pt=pointOnBand(band,j/count,time,index,reduced);pt.step=j;pt.width=band.width*(.97+.04*Math.cos(pt.theta*2+index));points.push(pt);}
- return points;
+function axes(curve,t){
+  const delta=.0004;
+  const tangent=curve((t+delta)%1).sub(curve((t-delta+1)%1)).normalize();
+  // Broad structural material is oriented across the strand, not round rope.
+  const across=new THREE.Vector3().crossVectors(TEMP_Z,tangent).normalize();
+  const facing=new THREE.Vector3().crossVectors(tangent,across).normalize();
+  return {tangent,across,facing};
 }
-function sweepParts(index,time,reduced,front){
-  const ribbon=BANDS[index],points=[],result=[];
-  const count=240;
-  for(let j=0;j<=count;j++){
-    const pt=pointOnBand(ribbon,j/count,time,index,reduced);pt.step=j;
-    pt.width=ribbon.width*(.97+.04*Math.cos(pt.theta*2+index));
-    // Interpolate the 3D depth boundary within the polygon, avoiding abrupt ends.
-    if(points.length){
-      const old=points[points.length-1];
-      if((old.z>=0)!==(pt.z>=0)){
-        const fraction=clamp(Math.abs(old.z)/(Math.abs(old.z)+Math.abs(pt.z)||1),0,1);
-        const crossing={x:mix(old.x,pt.x,fraction),y:mix(old.y,pt.y,fraction),z:0,
-          step:mix(old.step,pt.step,fraction),width:mix(old.width,pt.width,fraction)};
-        points.push(crossing);result.push(points.splice(0));points.push(crossing);
-      }
+function surfacePoint(curve,t,u,v){
+  const p=curve(t),basis=axes(curve,t);
+  return p.addScaledVector(basis.across,u).addScaledVector(basis.facing,v);
+}
+function makeRibbonGeometry(curve){
+  const samples=196,w=.195,profile=[
+    [-w+.042,.064],[w-.042,.064],[w,.028],[w,-.031],
+    [w-.044,-.08],[-w+.044,-.08],[-w,-.031],[-w,.028]
+  ];
+  const positions=[],uv=[],indices=[];
+  for(let i=0;i<=samples;i++){
+    const t=(i%samples)/samples;
+    for(let j=0;j<profile.length;j++){
+      const [u,v]=profile[j],p=surfacePoint(curve,t,u,v);
+      positions.push(p.x,p.y,p.z);uv.push(t,j/profile.length);
     }
-    points.push(pt);
   }
-  if(points.length>1)result.push(points);
-  return result.filter(s=>s.length>1 && (s[Math.floor(s.length/2)].z>=0)===front);
+  const ring=profile.length;
+  for(let i=0;i<samples;i++)for(let j=0;j<ring;j++){
+    const a=i*ring+j,b=i*ring+(j+1)%ring,c=(i+1)*ring+j,d=(i+1)*ring+(j+1)%ring;
+    indices.push(a,c,b,b,c,d);
+  }
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
 }
-function edges(points,scale=1){
-  return points.map((p,i)=>{
-    const prev=points[Math.max(0,i-1)],next=points[Math.min(points.length-1,i+1)];
-    const dx=next.x-prev.x,dy=next.y-prev.y;
-    const len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len;
-    const radius=p.width*.5*scale;
-    return {...p,nx,ny,l:{x:p.x+nx*radius,y:p.y+ny*radius},r:{x:p.x-nx*radius,y:p.y-ny*radius}};
+function lineAt(curve,u,v,segments=240){
+  const points=[];
+  for(let i=0;i<=segments;i++)points.push(surfacePoint(curve,i/segments,u,v));
+  return new THREE.BufferGeometry().setFromPoints(points);
+}
+function addBand(threeScene,def,index,markTexture){
+  const movement=new THREE.Group();
+  const curve=buildParam(def);
+  const material=new THREE.MeshPhysicalMaterial({
+    color:def.color,metalness:.46,roughness:.235,clearcoat:1,
+    clearcoatRoughness:.13,side:THREE.DoubleSide,
+    emissive:def.color,emissiveIntensity:.045
   });
-}
-function strip(ctx,points,left,right){
-  if(points.length<2)return;
-  ctx.beginPath();
-  const first=points[0];
-  ctx.moveTo(first.x+first.nx*first.width*left,first.y+first.ny*first.width*left);
-  for(let i=1;i<points.length;i++){
-    const p=points[i];ctx.lineTo(p.x+p.nx*p.width*left,p.y+p.ny*p.width*left);
+  const mesh=new THREE.Mesh(makeRibbonGeometry(curve),material);
+  movement.add(mesh);
+  const edgeMat=new THREE.LineBasicMaterial({color:def.edge,transparent:true,opacity:.86,depthTest:true});
+  for(const u of [-.153,.153]){
+    const edge=new THREE.Line(lineAt(curve,u,.077),edgeMat);
+    movement.add(edge);
   }
-  for(let i=points.length-1;i>=0;i--){
-    const p=points[i];ctx.lineTo(p.x+p.nx*p.width*right,p.y+p.ny*p.width*right);
+  const innerMat=new THREE.LineBasicMaterial({color:0x201a59,transparent:true,opacity:.63});
+  const seamMat=new THREE.LineBasicMaterial({color:0xd7b8ff,transparent:true,opacity:.42});
+  for(let n=0;n<13;n++){
+    const t=(n+.4)/13;
+    const points=[];
+    for(let j=0;j<=8;j++)points.push(surfacePoint(curve,t,-.154+.308*j/8,.076));
+    movement.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),n%4===0?seamMat:innerMat));
   }
-  ctx.closePath();
-}
-function outline(ctx,points){
-  ctx.beginPath();ctx.moveTo(points[0].l.x,points[0].l.y);
-  for(let i=1;i<points.length;i++)ctx.lineTo(points[i].l.x,points[i].l.y);
-  for(let i=points.length-1;i>=0;i--)ctx.lineTo(points[i].r.x,points[i].r.y);
-  ctx.closePath();
-}
-function traceEdge(ctx,points,which){
-  ctx.beginPath();ctx.moveTo(points[0][which].x,points[0][which].y);
-  for(let i=1;i<points.length;i++)ctx.lineTo(points[i][which].x,points[i][which].y);
-}
-function surfaceGradient(ctx,palette,p,shadeFactor=1){
-  const half=p.width/2;
-  const g=ctx.createLinearGradient(p.x+p.nx*half,p.y+p.ny*half,p.x-p.nx*half,p.y-p.ny*half);
-  g.addColorStop(0,palette.light);
-  g.addColorStop(.075,palette.top);
-  g.addColorStop(.19,palette.base);
-  g.addColorStop(.43,palette.shade);
-  g.addColorStop(.68,palette.base);
-  g.addColorStop(.89,palette.deep);
-  g.addColorStop(1,palette.top);
-  return g;
-}
-function drawPanelSeam(ctx,points,index,palette,front){
-  const p=points[index];if(!p)return;
-  ctx.save();ctx.lineCap='round';
-  const cx=p.x,cy=p.y,nx=p.nx,ny=p.ny;
-  ctx.beginPath();ctx.moveTo(cx+nx*p.width*.43,cy+ny*p.width*.43);
-  ctx.lineTo(cx-nx*p.width*.43,cy-ny*p.width*.43);
-  ctx.strokeStyle=front?'rgba(25,13,74,.42)':'rgba(21,10,61,.28)';ctx.lineWidth=1.6;ctx.stroke();
-  ctx.translate(p.nx*2,p.ny*2);
-  ctx.strokeStyle=palette.rim;ctx.globalAlpha=front?.23:.09;ctx.lineWidth=.9;ctx.stroke();
-  ctx.restore();
-}
-function drawBand(ctx,index,raw,front){
-  if(raw.length<2)return;
-  const points=edges(raw),color=COLORS[index];
-  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
-  // Deep contact shadow creates separation where materials cross.
-  ctx.shadowBlur=front?25:15;ctx.shadowColor=color.glow;
-  outline(ctx,points);ctx.globalAlpha=front?.27:.15;ctx.fillStyle=color.glow;ctx.fill();
-  ctx.shadowBlur=0;ctx.globalAlpha=front?1:.86;
-  outline(ctx,points);ctx.fillStyle=color.deep;ctx.fill();
-  // Dense shaped surfaces rather than linear strokes: each panel has its own
-  // tangent-aware cross-band gradient, which rotates naturally around the loop.
-  const sectionSize=27;
-  for(let start=0;start<points.length-1;start+=sectionSize){
-    const end=Math.min(points.length,start+sectionSize+1),panel=points.slice(start,end);
-    if(panel.length<2)continue;
-    const mid=panel[Math.floor(panel.length/2)];
-    strip(ctx,panel,.485,-.485);
-    ctx.fillStyle=surfaceGradient(ctx,color,mid);
-    ctx.fill();
-    // An inset glossy ceramic/enamel panel. Narrow seams retain a solid band silhouette.
-    strip(ctx,panel,.32,-.28);
-    ctx.globalAlpha=front?.13:.09;ctx.fillStyle=color.rim;ctx.fill();
-    ctx.globalAlpha=front?1:.86;
+  const markMaterial=new THREE.MeshBasicMaterial({
+    map:markTexture,color:def.edge,transparent:true,opacity:.88,
+    depthWrite:false,side:THREE.DoubleSide,toneMapped:false
+  });
+  const patternPositions=index===2?[.09,.59]:[.12,.63,.87];
+  for(const t of patternPositions){
+    const {tangent,across,facing}=axes(curve,t);
+    const p=surfacePoint(curve,t,0,.086);
+    const m=new THREE.Matrix4().makeBasis(tangent,across,facing);
+    const decal=new THREE.Mesh(new THREE.PlaneGeometry(.28,.108),markMaterial);
+    decal.position.copy(p);decal.quaternion.setFromRotationMatrix(m);
+    movement.add(decal);
   }
-  // Rounded bevel, illuminated outer edge, and a dark inner contour.
-  strip(ctx,points,.50,.40);ctx.fillStyle=color.top;ctx.globalAlpha=front?.86:.5;ctx.fill();
-  strip(ctx,points,-.40,-.50);ctx.fillStyle=color.deep;ctx.globalAlpha=.84;ctx.fill();
-  ctx.globalAlpha=front?.92:.55;
-  traceEdge(ctx,points,'l');ctx.strokeStyle=color.rim;ctx.lineWidth=2.5;
-  ctx.shadowBlur=front?10:3;ctx.shadowColor=color.rim;ctx.stroke();ctx.shadowBlur=0;
-  ctx.globalAlpha=front?.54:.24;
-  traceEdge(ctx,points,'r');ctx.strokeStyle=color.top;ctx.lineWidth=1.45;ctx.stroke();
-  ctx.globalAlpha=front?1:.8;
-  for(let s=27;s<points.length-6;s+=27)drawPanelSeam(ctx,points,s,color,front);
-  // Short luminous interface marks sit on their own curved panel and move with it.
-  // These are material details, not extra floating strands.
-  for(let s=26;s<points.length-16;s+=90){
-    const p=points[s];
-    if(p.step%240>180)continue;
-    const dx=points[Math.min(s+2,points.length-1)].x-points[Math.max(s-2,0)].x;
-    const dy=points[Math.min(s+2,points.length-1)].y-points[Math.max(s-2,0)].y;
-    const len=Math.hypot(dx,dy)||1,tx=dx/len,ty=dy/len;
-    ctx.save();ctx.lineCap='round';ctx.strokeStyle=color.chips;ctx.lineWidth=3.6;ctx.shadowColor=color.chips;ctx.shadowBlur=7;
-    for(let j=0;j<3;j++){
-      const px=p.x+p.nx*(j-1)*8,py=p.y+p.ny*(j-1)*8;
-      ctx.beginPath();ctx.moveTo(px-tx*5,py-ty*5);ctx.lineTo(px+tx*5,py+ty*5);ctx.stroke();
+  threeScene.add(movement);
+  return {movement,curve,material};
+}
+function radialTexture(){
+  const c=document.createElement('canvas');c.width=c.height=256;
+  const ctx=c.getContext('2d');
+  if(!ctx)throw new Error('Unable to create Violet illumination texture');
+  const g=ctx.createRadialGradient(128,128,8,128,128,127);
+  g.addColorStop(0,'rgba(198,115,255,.45)');
+  g.addColorStop(.28,'rgba(113,62,210,.21)');
+  g.addColorStop(1,'rgba(55,36,155,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,256,256);
+  const tx=new THREE.CanvasTexture(c);tx.colorSpace=THREE.SRGBColorSpace;return tx;
+}
+async function svgTexture(url,mode){
+  const response=await fetch(url,{cache:'force-cache'});
+  if(!response.ok)throw new Error('Required Violet SVG unavailable: '+response.status+' '+url);
+  let xml=await response.text();
+  if(!xml.includes('<svg'))throw new Error('Invalid Violet SVG source: '+url);
+  if(mode)xml=xml.replace('data-mode="rest"','data-mode="'+mode+'"');
+  const blob=new Blob([xml],{type:'image/svg+xml'});
+  const objectUrl=URL.createObjectURL(blob);
+  const image=new Image();
+  try{
+    image.src=objectUrl;
+    await new Promise((resolve,reject)=>{
+      image.onload=resolve;
+      image.onerror=()=>reject(new Error('Violet SVG decoding failed: '+url));
+    });
+    const canvas=document.createElement('canvas');
+    canvas.width=640;canvas.height=String(url).includes('markings')?250:440;
+    const ctx=canvas.getContext('2d');
+    if(!ctx)throw new Error('SVG vector texture canvas unavailable');
+    ctx.drawImage(image,0,0,canvas.width,canvas.height);
+    const texture=new THREE.CanvasTexture(canvas);
+    texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4;
+    return texture;
+  }finally{URL.revokeObjectURL(objectUrl);}
+}
+function makeVisor(group,expressions){
+  const shell=new THREE.Mesh(
+    new THREE.SphereGeometry(1,80,56),
+    new THREE.MeshPhysicalMaterial({
+      color:0x10112a,metalness:.27,roughness:.17,
+      clearcoat:1,clearcoatRoughness:.12
+    })
+  );
+  shell.position.z=.18;shell.scale.set(1.59,1.01,.46);
+  group.add(shell);
+
+  // Separate structural edge and light-catching contour.
+  const contour=[];
+  for(let i=0;i<=160;i++){
+    const t=i/160*PI2;
+    contour.push(new THREE.Vector3(1.565*Math.cos(t),.985*Math.sin(t),.54));
+  }
+  const bevel=new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(contour,true),160,.026,8,true),
+    new THREE.MeshPhysicalMaterial({
+      color:0x9456ec,emissive:0x8c3be1,emissiveIntensity:.36,
+      metalness:.45,roughness:.19,clearcoat:1
+    })
+  );
+  group.add(bevel);
+  const face=new THREE.Mesh(
+    new THREE.PlaneGeometry(3.05,2.08),
+    new THREE.MeshBasicMaterial({
+      map:expressions.rest,transparent:true,depthWrite:false,
+      side:THREE.DoubleSide,toneMapped:false
+    })
+  );
+  face.position.z=.676;
+  group.add(face);
+  const edgeLight=new THREE.PointLight(0xc183ff,5.6,4.4);
+  edgeLight.position.set(-.45,-.34,1.32);group.add(edgeLight);
+  const shadowGlow=new THREE.Mesh(
+    new THREE.PlaneGeometry(3.8,2.65),
+    new THREE.MeshBasicMaterial({map:radialTexture(),transparent:true,opacity:.17,depthWrite:false,blending:THREE.AdditiveBlending})
+  );
+  shadowGlow.position.z=-.3;group.add(shadowGlow);
+  return {face,shell,bevel};
+}
+function makeStage(scene){
+  const ground=new THREE.Group();
+  ground.position.set(0,-2.43,-.82);scene.add(ground);
+  const rings=[
+    {a:2.35,b:.41,color:0x4c61d4,opacity:.35},
+    {a:1.95,b:.315,color:0x35b9ff,opacity:.44},
+    {a:1.34,b:.215,color:0xbe75fc,opacity:.37}
+  ];
+  for(const ring of rings){
+    const points=[];
+    for(let i=0;i<=160;i++){
+      const t=i/160*PI2;
+      points.push(new THREE.Vector3(ring.a*Math.cos(t),ring.b*Math.sin(t),0));
     }
-    ctx.restore();
+    const geo=new THREE.BufferGeometry().setFromPoints(points);
+    ground.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:ring.color,transparent:true,opacity:ring.opacity})));
   }
-  ctx.restore();
-}
-function drawFaceShape(ctx,inset=0){
-  // The asymmetric contour reads as a formed surface, not an independent head.
-  ctx.beginPath();
-  const s=1-inset;
-  ctx.moveTo(-146*s,-18*s);
-  ctx.bezierCurveTo(-153*s,-78*s,-86*s,-102*s,-5*s,-99*s);
-  ctx.bezierCurveTo(96*s,-106*s,149*s,-69*s,151*s,-14*s);
-  ctx.bezierCurveTo(158*s,46*s,92*s,99*s,0,100*s);
-  ctx.bezierCurveTo(-105*s,105*s,-148*s,58*s,-146*s,-18*s);
-  ctx.closePath();
-}
-function drawEye(ctx,x,y,open,blink){
-  ctx.save();ctx.translate(x,y);ctx.shadowBlur=19;ctx.shadowColor='#ca82ff';
-  if(open&&blink<.6){
-    const g=ctx.createLinearGradient(0,-18,0,17);g.addColorStop(0,'#fff9ff');g.addColorStop(.72,'#f0d2ff');g.addColorStop(1,'#c89dfb');
-    ellipse(ctx,0,0,12,19,g);ellipse(ctx,2,4,4.1,8,'#7043c1');
-    ellipse(ctx,-3,-7,2.8,4.3,'#fff');
-  }else{
-    // A filled, tapering crescent has more character and polish than a blunt line.
-    ctx.beginPath();ctx.moveTo(-29,11);ctx.bezierCurveTo(-24,-8,-8,-24,2,-24);
-    ctx.bezierCurveTo(17,-23,30,-8,31,10);
-    ctx.bezierCurveTo(30,18,24,16,19,10);
-    ctx.bezierCurveTo(11,-1,-2,-6,-12,2);
-    ctx.bezierCurveTo(-19,7,-22,13,-27,15);ctx.quadraticCurveTo(-30,15,-29,11);
-    const g=ctx.createLinearGradient(0,-28,0,16);g.addColorStop(0,'#fff7ff');g.addColorStop(.72,'#efceff');g.addColorStop(1,'#bf91ff');
-    ctx.fillStyle=g;ctx.fill();
-    if(blink>.05){ctx.globalAlpha=1-blink;ctx.fill();}
+  const halo=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:radialTexture(),transparent:true,opacity:.33,depthWrite:false,
+    blending:THREE.AdditiveBlending
+  }));
+  halo.position.set(0,-2.35,-1.65);halo.scale.set(6.4,2.3,1);scene.add(halo);
+  // Sparse stage points: environmental depth, not fake TNOS telemetry.
+  const dots=[];
+  for(let i=0;i<54;i++){
+    const a=Math.sin((i+1)*83.194)*218.72;
+    const b=Math.sin((i+1)*117.441)*94.83;
+    const x=(a-Math.floor(a))*11-5.5;
+    const y=(b-Math.floor(b))*10-5;
+    dots.push(x,y,-5.5);
   }
-  ctx.restore();
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.Float32BufferAttribute(dots,3));
+  scene.add(new THREE.Points(geometry,new THREE.PointsMaterial({
+    color:0x8384da,size:.027,transparent:true,opacity:.32,depthWrite:false
+  })));
 }
-function drawFace(ctx,time,state,reduced){
-  const t=reduced?0:time;
-  ctx.save();ctx.translate(0,reduced?0:2.6*Math.sin(t*1.0));
-  ctx.rotate(-.10+(reduced?0:.012*Math.sin(t*.7)));
-  // Neckless integrated OLED-like core, with real rim thickness and reflected light.
-  ctx.shadowColor='#a34dff';ctx.shadowBlur=33;
-  drawFaceShape(ctx,-.025);
-  const bezel=ctx.createLinearGradient(-150,-80,155,105);
-  bezel.addColorStop(0,'#f8c6ff');bezel.addColorStop(.22,'#954dff');bezel.addColorStop(.50,'#45248a');bezel.addColorStop(.75,'#52b6ff');bezel.addColorStop(1,'#bc63ff');
-  ctx.fillStyle=bezel;ctx.fill();ctx.shadowBlur=0;
-  drawFaceShape(ctx,.015);
-  let surface=ctx.createRadialGradient(-55,-57,8,9,12,186);
-  surface.addColorStop(0,'#433475');surface.addColorStop(.25,'#231c51');surface.addColorStop(.6,'#100f2f');surface.addColorStop(.88,'#0c0c25');surface.addColorStop(1,'#291447');
-  ctx.fillStyle=surface;ctx.fill();
-  ctx.save();drawFaceShape(ctx,.015);ctx.clip();
-  const sheen=ctx.createLinearGradient(-80,-93,72,92);
-  sheen.addColorStop(0,'rgba(173,122,254,.18)');sheen.addColorStop(.39,'rgba(133,87,223,.025)');sheen.addColorStop(.61,'rgba(59,39,107,.02)');sheen.addColorStop(1,'rgba(56,137,239,.15)');
-  ctx.fillStyle=sheen;ctx.fillRect(-180,-125,360,260);
-  ctx.beginPath();ctx.ellipse(-19,-76,125,37,-.095,3.18,5.85);
-  ctx.strokeStyle='rgba(251,218,255,.17)';ctx.lineWidth=3.8;ctx.stroke();
-  ctx.restore();
-  ctx.save();drawFaceShape(ctx,.016);ctx.strokeStyle='rgba(239,196,255,.63)';ctx.lineWidth=2.1;ctx.stroke();ctx.restore();
-  const blink=reduced?0:Math.pow(Math.max(0,1-Math.abs(((t+1.6)%6.5)-6.18)/.16),2);
-  const open=state.phase==='asking-name'&&!state.speaking;
-  drawEye(ctx,-57,-16,open,blink);drawEye(ctx,57,-16,open,blink);
-  ctx.save();ctx.shadowColor='#be78ff';ctx.shadowBlur=14;
-  if(state.speaking){
-    const talk=7+5.5*Math.abs(Math.sin(t*8.2));
-    const g=ctx.createLinearGradient(0,35,0,64);g.addColorStop(0,'#ffeaff');g.addColorStop(1,'#dfb1ff');
-    ctx.beginPath();ctx.moveTo(-26,38);ctx.quadraticCurveTo(0,42,26,38);
-    ctx.quadraticCurveTo(28,48+talk,0,53+talk);
-    ctx.quadraticCurveTo(-28,48+talk,-26,38);ctx.fillStyle=g;ctx.fill();
-  }else{
-    ctx.beginPath();ctx.moveTo(-29,38);ctx.quadraticCurveTo(0,47,29,38);
-    ctx.quadraticCurveTo(28,67,0,66);ctx.quadraticCurveTo(-28,67,-29,38);
-    const g=ctx.createLinearGradient(0,38,0,66);g.addColorStop(0,'#fff7ff');g.addColorStop(1,'#d89fff');
-    ctx.fillStyle=g;ctx.fill();
+
+function sampleFrame(renderer,canvas){
+  const gl=renderer.getContext();
+  if(gl.isContextLost())return null;
+  const pixels=new Uint8Array(4);
+  let bright=false;
+  for(const [x,y] of [[.5,.5],[.6,.5],[.4,.5],[.5,.6],[.65,.6],[.35,.4]]){
+    gl.readPixels(Math.floor(canvas.width*x),Math.floor(canvas.height*y),1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
+    if(pixels[0]>30||pixels[1]>48||pixels[2]>85){bright=true;break;}
   }
-  ctx.restore();ctx.restore();
+  return bright&&renderer.info.render.calls>10?{drawCalls:renderer.info.render.calls,nonBackgroundPixel:true}:null;
 }
-function drawStage(ctx,w,h,cx,cy,scale,time,active,reduced){
-  const background=ctx.createRadialGradient(cx,cy-55*scale,40*scale,cx,cy,Math.max(w,h)*.9);
-  background.addColorStop(0,'#1b1642');background.addColorStop(.42,'#0e112b');background.addColorStop(1,'#060917');
-  ctx.fillStyle=background;ctx.fillRect(0,0,w,h);
-  // Soft central ambient occlusion, not a bright cloud around the silhouette.
-  const light=ctx.createRadialGradient(cx,cy+10*scale,20,cx,cy+10*scale,340*scale);
-  light.addColorStop(0,'rgba(113,63,228,.13)');light.addColorStop(.6,'rgba(65,34,140,.05)');light.addColorStop(1,'rgba(30,18,85,0)');
-  ctx.fillStyle=light;ctx.fillRect(0,0,w,h);
-  for(let i=0;i<45;i++){
-    const u=(Math.sin(i*129.77+6.63)*179.11)%1,v=(Math.sin(i*78.32+3.07)*224.31)%1;
-    const px=(u<0?u+1:u)*w,py=(v<0?v+1:v)*h;
-    const alpha=.1+.1*(1+Math.sin((reduced?0:time)*.3+i));
-    ellipse(ctx,px,py,i%8===0?1.1:.6,i%8===0?1.1:.6,`rgba(174,184,252,${alpha})`);
-  }
-  ctx.save();ctx.translate(cx,cy+251*scale);ctx.scale(scale,scale);
-  const halo=ctx.createRadialGradient(0,0,4,0,0,280);
-  halo.addColorStop(0,active?'rgba(110,78,227,.27)':'rgba(110,78,227,.17)');
-  halo.addColorStop(.62,'rgba(73,63,193,.045)');halo.addColorStop(1,'rgba(73,63,193,0)');
-  ellipse(ctx,0,0,300,79,halo);
-  for(const [rx,ry,color,lineWidth] of [[252,45,'rgba(103,76,229,.38)',2],[204,33,'rgba(49,186,255,.5)',2.6],[144,21,'rgba(185,103,250,.3)',1.3]]){
-    ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,TWO_PI);ctx.strokeStyle=color;ctx.lineWidth=lineWidth;ctx.stroke();
-  }
-  ctx.restore();
-}
-export function createVioletEnvironment(canvas){
-  const ctx=canvas.getContext('2d',{alpha:false,desynchronized:true});
-  if(!ctx)throw new Error('Violet requires Canvas 2D');
-  let state={phase:'dormant',speaking:false,enteredAt:0};
-  let cssW=1,cssH=1,dpr=1,live=true,lastFrame=-Infinity;
-  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
-  const start=performance.now();
-  function resize(){
-    const rect=canvas.getBoundingClientRect();
-    cssW=Math.max(1,rect.width);cssH=Math.max(1,rect.height);
-    // Keep fine bevels on retina displays without rendering gratuitous 4x pixels.
-    dpr=Math.min(window.devicePixelRatio||1,2);
-    const nextWidth=Math.round(cssW*dpr),nextHeight=Math.round(cssH*dpr);
-    // Reassigning canvas dimensions clears real pixels; an unchanged ResizeObserver
-    // notification must never erase the qualified frame we have just rendered.
-    if(canvas.width!==nextWidth||canvas.height!==nextHeight){
-      canvas.width=nextWidth;canvas.height=nextHeight;
-      lastFrame=-Infinity; // An actual size change requires a new rendered frame.
+export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
+  let renderer;
+  try{
+    if(!canvas||!(canvas instanceof HTMLCanvasElement))throw new Error('Required Violet canvas is missing');
+    // The local, pinned Three.js module must initialize. No canvas imitation is substituted.
+    renderer=new THREE.WebGLRenderer({
+      canvas,antialias:true,alpha:false,powerPreference:'high-performance',
+      preserveDrawingBuffer:false
+    });
+    renderer.outputColorSpace=THREE.SRGBColorSpace;
+    renderer.toneMapping=THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure=1.4;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+    const expressions={};
+    const faceURL=new URL('./violet-face.svg',import.meta.url);
+    const markURL=new URL('./violet-markings.svg',import.meta.url);
+    const [rest,ask,talk,blink,mark]=await Promise.all([
+      svgTexture(faceURL,'rest'),svgTexture(faceURL,'ask'),svgTexture(faceURL,'talk'),
+      svgTexture(faceURL,'blink'),svgTexture(markURL)
+    ]);
+    Object.assign(expressions,{rest,ask,talk,blink});
+
+    const scene=new THREE.Scene();
+    scene.background=new THREE.Color(0x080c1e);
+    const camera=new THREE.OrthographicCamera(-3,3,6,-6,.1,50);
+    camera.position.set(0,0,15);camera.lookAt(0,0,0);
+    scene.add(new THREE.AmbientLight(0xaaa5e9,1.3));
+    const key=new THREE.DirectionalLight(0xf1e9ff,4.2);key.position.set(-4,5,8);scene.add(key);
+    const cyan=new THREE.PointLight(0x31baff,100,12);cyan.position.set(-4,1.7,3.8);scene.add(cyan);
+    const pink=new THREE.PointLight(0xd46dff,86,12);pink.position.set(3,1.1,3.9);scene.add(pink);
+    const gold=new THREE.PointLight(0xffad55,65,10);gold.position.set(1.8,-2.2,3.2);scene.add(gold);
+
+    makeStage(scene);
+    const body=new THREE.Group();scene.add(body);body.position.y=.53;
+    const bands=BASE.map((def,i)=>addBand(body,def,i,mark));
+    const visor=makeVisor(body,expressions);
+    let state={phase:'dormant',speaking:false};
+    let observed=false,failed=false,live=true,frames=0;
+    let previousExpression='';
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+    const clock=performance.now();
+    const resize=()=>{
+      const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);
+      const aspect=w/h,worldWidth=w<=620?5.72:LIMIT(aspect*7.1,7.1,11.1);
+      const worldHeight=worldWidth/aspect;
+      camera.left=-worldWidth/2;camera.right=worldWidth/2;
+      camera.top=worldHeight/2;camera.bottom=-worldHeight/2;
+      camera.updateProjectionMatrix();renderer.setSize(w,h,false);
+    };
+    resize();
+    const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(canvas);
+    const loss=event=>{
+      event.preventDefault();
+      if(!failed){failed=true;live=false;onFailure?.(new Error('Violet WebGL context lost'));}
+    };
+    canvas.addEventListener('webglcontextlost',loss);
+    function tick(now){
+      if(!live)return;
+      const t=(now-clock)/1000,phase=reduced.matches?0:t;
+      for(let i=0;i<bands.length;i++){
+        const band=bands[i],def=BASE[i];
+        // Elements remain coupled: common breathing with smaller independent responses.
+        const breathe=.012*Math.sin(phase*.65);
+        const individual=.019*Math.sin(phase*(.42+i*.045)+def.phase);
+        band.movement.rotation.z=breathe+individual;
+        band.movement.rotation.x=.008*Math.sin(phase*.51+i);
+        const scale=1+.006*Math.sin(phase*.73+i*.9);
+        band.movement.scale.setScalar(scale);
+      }
+      body.position.y=.53+(reduced.matches?0:.035*Math.sin(phase*.73));
+      body.rotation.z=reduced.matches?0:.011*Math.sin(phase*.4);
+      const expression=state.speaking&&Math.sin(phase*8)>-.12?'talk':
+        !reduced.matches&&Math.sin(phase*.47+1.1)>.997?'blink':
+        state.phase==='asking-name'&&!state.speaking?'ask':'rest';
+      if(expression!==previousExpression){
+        visor.face.material.map=expressions[expression];
+        visor.face.material.needsUpdate=true;previousExpression=expression;
+      }
+      renderer.render(scene,camera);
+      frames++;
+      if(!observed&&frames>1){
+        const proof=sampleFrame(renderer,canvas);
+        if(proof){observed=true;onObserved?.({type:'webgl-pixel-observed',...proof});}
+      }
+      requestAnimationFrame(tick);
     }
-  }
-  resize();window.addEventListener('resize',resize,{passive:true});
-  const observer=new ResizeObserver(resize);observer.observe(canvas);
-  function frame(now){
-    if(!live)return;
-    requestAnimationFrame(frame);
-    // 30 fps animated rendering / 1 still frame for reduced motion. Saves mobile battery.
-    if(now-lastFrame<(reduced.matches?1000:32))return;
-    lastFrame=now;
-    const time=reduced.matches?0:(now-start)/1000;
-    const active=state.phase!=='dormant';
-    const reveal=active?ease((now-state.enteredAt)/1500):0;
-    const scale=Math.min(cssW/680,cssH/750,1.22);
-    const cx=cssW/2,cy=cssH*(active?mix(.475,.425,reveal):.475);
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    drawStage(ctx,cssW,cssH,cx,cy,scale,time,active,reduced.matches);
-    ctx.save();ctx.translate(cx,cy);ctx.scale(scale*1.06,scale*1.06);
-    for(let i=0;i<4;i++)drawBand(ctx,i,fullBand(i,time,reduced.matches),false);
-    drawFace(ctx,time,state,reduced.matches);
-    // Front structure passes around the face like a continuous framed surface.
-    // Clipping excludes only the OLED expression surface, leaving the bevel seated in the frame.
-    ctx.save();ctx.beginPath();ctx.rect(-700,-700,1400,1400);
-    drawFaceShape(ctx,.002);ctx.clip('evenodd');
-    for(let i=0;i<4;i++)for(const part of sweepParts(i,time,reduced.matches,true))drawBand(ctx,i,part,true);
-    ctx.restore();
-    // Edge reflection joins the expressive glass surface visually to the chassis.
-    ctx.save();ctx.rotate(-.1);drawFaceShape(ctx,.009);
-    ctx.strokeStyle='rgba(240,182,255,.38)';ctx.lineWidth=1.25;ctx.shadowColor='#aa58fa';ctx.shadowBlur=4;ctx.stroke();ctx.restore();
-    ctx.restore();
-  }
-  // Establish the first rendered frame synchronously; later frames are scheduled by frame().
-  // A page-load event alone is not evidence that the canvas was drawn.
-  frame(performance.now());
-  return {update(next){state=next;},dispose(){live=false;observer.disconnect();window.removeEventListener('resize',resize);}};
+    requestAnimationFrame(tick);
+    return {
+      update(next){state=next;},
+      dispose(){live=false;resizeObserver.disconnect();canvas.removeEventListener('webglcontextlost',loss);scene.traverse(o=>{o.geometry?.dispose();});renderer.dispose();},
+      get observed(){return observed&&!failed;}
+    };
+  }catch(error){renderer?.dispose();onFailure?.(error);throw error;}
 }
