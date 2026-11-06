@@ -55,32 +55,3 @@ test('voice token prevents stale completion',()=>{
   assert.equal(step(speaking,'SPEECH_ENDED',{token:-1}),speaking);
   assert.equal(step(speaking,'SPEECH_ENDED',{token:s.speechToken}).speaking,false);
 });
-
-test('fade and recall only after welcome; requested presence is not observed presence',()=>{
-  const observed=step(step(initialState,'RENDER_STARTED'),'RENDER_OBSERVED',{
-    evidence:{type:'webgl-pixel-observed',nonBackgroundPixel:true,drawCalls:3}
-  });
-  assert.equal(step(observed,'PRESENCE_HIDE'),observed,'no early hide in dormant state');
-  const asking=step(observed,'ACTIVATE');
-  assert.equal(step(asking,'PRESENCE_HIDE'),asking,'name exchange retains Violet');
-  const welcome=step(asking,'SKIP_NAME');
-  const fading=step(welcome,'PRESENCE_HIDE');
-  assert.equal(fading.presence,'receding');
-  assert.equal(step(fading,'PRESENCE_RECALL'),fading,'not recallable until observed');
-  assert.equal(step(fading,'PRESENCE_RECEDING_OBSERVED',{token:-1,
-    evidence:{type:'webgl-marker-observed',pixelObserved:true}}),fading);
-  assert.equal(step(fading,'PRESENCE_RECEDING_OBSERVED',{token:fading.presenceToken,
-    evidence:{type:'webgl-marker-observed',pixelObserved:false}}),fading);
-  const marker=step(fading,'PRESENCE_RECEDING_OBSERVED',{token:fading.presenceToken,
-    evidence:{type:'webgl-marker-observed',pixelObserved:true}});
-  assert.equal(marker.presence,'marker');
-  const restoring=step(marker,'PRESENCE_RECALL');
-  assert.equal(restoring.presence,'returning');
-  assert.equal(step(restoring,'PRESENCE_RETURN_OBSERVED',{token:fading.presenceToken,
-    evidence:{type:'webgl-character-observed',pixelObserved:true}}),restoring);
-  const full=step(restoring,'PRESENCE_RETURN_OBSERVED',{token:restoring.presenceToken,
-    evidence:{type:'webgl-character-observed',pixelObserved:true}});
-  assert.equal(full.presence,'full');
-  assert.equal(full.phase,'welcome');
-  assert.equal(full.visitorName,null);
-});

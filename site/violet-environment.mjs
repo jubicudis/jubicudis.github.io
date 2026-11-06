@@ -95,7 +95,7 @@ function observedFrame(renderer,canvas){
     return {type:'webgl-pixel-observed',drawCalls:renderer.info.render.calls,nonBackgroundPixel:true};
   return null;
 }
-export async function createVioletEnvironment(canvas,{onObserved,onFailure,onPresenceObserved}={}){
+export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
   let renderer;
   try{
     if(!canvas||!(canvas instanceof HTMLCanvasElement))throw new Error('Required Violet WebGL canvas is missing');
@@ -105,14 +105,14 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onPre
     renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
     const artworkURL=new URL('./violet-a2-art.webp',import.meta.url);
     const faceURL=new URL('./violet-face.svg',import.meta.url);
-    const [art,rest,ask,talk,blink,close]=await Promise.all([
+    const [art,rest,ask,talk,blink]=await Promise.all([
       loadRequiredImage(artworkURL,'Structured Bloom artwork'),
       svgTexture(faceURL,'rest'),svgTexture(faceURL,'ask'),
-      svgTexture(faceURL,'talk'),svgTexture(faceURL,'blink'),svgTexture(faceURL,'close')
+      svgTexture(faceURL,'talk'),svgTexture(faceURL,'blink')
     ]);
     // The art is an authored material of the selected character, not a substitute
     // if a procedural renderer fails. Its presence and decoding are required.
-    const faces={rest,ask,talk,blink,close};
+    const faces={rest,ask,talk,blink};
     const scene=new THREE.Scene();scene.background=new THREE.Color(0x070b1d);
     const camera=new THREE.OrthographicCamera(-4,4,4,-4,.1,50);
     camera.position.set(0,0,8);camera.lookAt(0,0,0);
@@ -132,48 +132,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onPre
     expression.position.set((faceCenterX-art.naturalWidth/2)*artPixelToWorld,
       (art.naturalHeight/2-faceCenterY)*artPixelToWorld,.05);
     character.add(expression);
-
-    // The approved A2 artwork is never altered: it remains the sole full-presence
-    // body. This small, featureless face-shaped node exists ONLY for recall.
-    const marker=new THREE.Group();
-    marker.position.set(expression.position.x,expression.position.y,.14);
-    const markerCore=new THREE.Mesh(
-      new THREE.CircleGeometry(1,96),
-      new THREE.MeshBasicMaterial({color:0x1e103a,transparent:true,opacity:0,depthWrite:false,toneMapped:false})
-    );
-    markerCore.scale.set(.87,.57,1);
-    marker.add(markerCore);
-    const outlinePoints=[];
-    for(let i=0;i<=112;i++){
-      const a=i/112*Math.PI*2;
-      outlinePoints.push(new THREE.Vector3(.88*Math.cos(a),.58*Math.sin(a),.026));
-    }
-    const markerOutline=new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints(outlinePoints),
-      new THREE.LineBasicMaterial({color:0x9d60dc,transparent:true,opacity:0,depthWrite:false})
-    );
-    marker.add(markerOutline);
-    const markerHalo=new THREE.Sprite(new THREE.SpriteMaterial({
-      map:createGlowTexture(),transparent:true,opacity:0,depthWrite:false,
-      blending:THREE.AdditiveBlending
-    }));
-    markerHalo.position.z=-.04;markerHalo.scale.set(2.3,1.7,1);
-    marker.add(markerHalo);
-    character.add(marker);
-
-    let state={phase:'dormant',speaking:false,presence:'full',presenceToken:0},
-      live=true,observed=false,failed=false,frameCount=0,previousExpression='';
-    let presenceCycle=-1,presenceStarted=0,presenceReported=-1;
-    const markerPixel=new Uint8Array(4);
-    function markerObserved(){
-      const gl=renderer.getContext();
-      if(gl.isContextLost()||renderer.info.render.calls<2)return false;
-      const p=marker.getWorldPosition(new THREE.Vector3()).project(camera);
-      const x=clamp(Math.floor((p.x+1)*canvas.width*.5),0,canvas.width-1);
-      const y=clamp(Math.floor((p.y+1)*canvas.height*.5),0,canvas.height-1);
-      gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE,markerPixel);
-      return markerPixel[0]>16&&markerPixel[2]>34;
-    }
+    let state={phase:'dormant',speaking:false},live=true,observed=false,failed=false,frameCount=0,previousExpression='';
     const start=performance.now(),reduced=matchMedia('(prefers-reduced-motion: reduce)');
     const resize=()=>{
       const width=Math.max(1,canvas.clientWidth),height=Math.max(1,canvas.clientHeight),aspect=width/height;
@@ -189,48 +148,15 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onPre
     function frame(now){
       if(!live)return;
       const t=reduced.matches?0:(now-start)/1000;
-      if(state.presenceToken!==presenceCycle){
-        presenceCycle=state.presenceToken;presenceStarted=now;
-      }
-      const presenceProgress=reduced.matches?1:clamp((now-presenceStarted)/660,0,1);
-      let fullOpacity=1,markerOpacity=0;
-      if(state.presence==='receding'){
-        fullOpacity=1-presenceProgress;markerOpacity=presenceProgress;
-      }else if(state.presence==='marker'){
-        fullOpacity=0;markerOpacity=1;
-      }else if(state.presence==='returning'){
-        fullOpacity=presenceProgress;markerOpacity=1-presenceProgress;
-      }
-      main.material.opacity=fullOpacity;
-      expression.material.opacity=fullOpacity;
-      markerCore.material.opacity=markerOpacity*.82;
-      markerOutline.material.opacity=markerOpacity*.65;
-      markerHalo.material.opacity=markerOpacity*.16;
       character.position.y=reduced.matches?0:.038*Math.sin(t*.7);
       character.rotation.z=reduced.matches?0:.008*Math.sin(t*.39);
       const expansion=1+(reduced.matches?0:.004*Math.sin(t*.74));
       character.scale.setScalar(expansion);
-      const mode=state.presence==='receding'||state.presence==='marker'?'close':
-        state.presence==='returning'&&presenceProgress<.36?'close':
-        state.speaking&&Math.sin(t*8.6)>-.16?'talk':
+      const mode=state.speaking&&Math.sin(t*8.6)>-.16?'talk':
         !reduced.matches&&Math.sin(t*.49+.8)>.998?'blink':
         state.phase==='asking-name'&&!state.speaking?'ask':'rest';
       if(mode!==previousExpression){expression.material.map=faces[mode];expression.material.needsUpdate=true;previousExpression=mode;}
       renderer.render(scene,camera);frameCount++;
-      // A requested transition is not a completed one. Observe the actual
-      // WebGL frame before acknowledging the settled marker or restored form.
-      if(presenceReported!==state.presenceToken&&presenceProgress>=1&&observed){
-        const token=state.presenceToken;
-        if(state.presence==='receding'&&markerObserved()){
-          presenceReported=token;
-          onPresenceObserved?.({type:'PRESENCE_RECEDING_OBSERVED',token,
-            evidence:{type:'webgl-marker-observed',pixelObserved:true}});
-        }else if(state.presence==='returning'&&observedFrame(renderer,canvas)){
-          presenceReported=token;
-          onPresenceObserved?.({type:'PRESENCE_RETURN_OBSERVED',token,
-            evidence:{type:'webgl-character-observed',pixelObserved:true}});
-        }
-      }
       if(!observed&&frameCount>1){
         const evidence=observedFrame(renderer,canvas);
         if(evidence){observed=true;onObserved?.(evidence);}

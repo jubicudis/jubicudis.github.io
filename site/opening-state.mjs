@@ -1,7 +1,6 @@
 // Public website presentation state. This is not TNOS native cognition or TranquilSpeak execution.
 export const initialState=Object.freeze({
   phase:'dormant',visitorName:null,nameDecision:null,
-  presence:'full',presenceToken:0,presenceEvidence:null,
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
   enteredAt:0,
@@ -49,24 +48,6 @@ export function reduceOpening(state,event){
       break;
     case 'SKIP_NAME':
       if(state.phase==='asking-name')patch={phase:'welcome',visitorName:null,nameDecision:'skipped',enteredAt:when,speaking:false,speechStatus:'pending',speechToken:state.speechToken+1};
-      break;
-    case 'PRESENCE_HIDE':
-      if(state.phase==='welcome'&&state.renderStatus==='observed'&&state.presence==='full')
-        patch={presence:'receding',presenceToken:state.presenceToken+1,presenceEvidence:null};
-      break;
-    case 'PRESENCE_RECEDING_OBSERVED':
-      if(state.presence==='receding'&&event.token===state.presenceToken
-          &&event.evidence?.type==='webgl-marker-observed'&&event.evidence.pixelObserved===true)
-        patch={presence:'marker',presenceEvidence:Object.freeze({type:event.evidence.type,pixelObserved:true})};
-      break;
-    case 'PRESENCE_RECALL':
-      if(state.phase==='welcome'&&state.renderStatus==='observed'&&state.presence==='marker')
-        patch={presence:'returning',presenceToken:state.presenceToken+1,presenceEvidence:null};
-      break;
-    case 'PRESENCE_RETURN_OBSERVED':
-      if(state.presence==='returning'&&event.token===state.presenceToken
-          &&event.evidence?.type==='webgl-character-observed'&&event.evidence.pixelObserved===true)
-        patch={presence:'full',presenceEvidence:Object.freeze({type:event.evidence.type,pixelObserved:true})};
       break;
     case 'VOICE_AVAILABLE':
       patch={voiceSupported:event.value===true};break;
