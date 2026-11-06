@@ -107,8 +107,7 @@ export function reduceOpening(state,event){
     case 'AUTHORED_ENVELOPE_OBSERVED':
       {
         const proof=event.evidence;
-        const expectedTrack=state.phase==='asking-name'?'asking-name':
-          state.nameDecision==='provided'?'post-welcome':'after-name';
+        const expectedTrack=state.phase==='asking-name'?'asking-name':'after-name';
         const expectedSrc='/site/audio/violet-heart-'+expectedTrack+'.mp3';
         if(event.token!==state.speechToken||state.phase==='dormant'||
           state.speechStatus!=='speaking'||
