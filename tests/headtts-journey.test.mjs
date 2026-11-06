@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdirSync,writeFileSync} from 'node:fs';
-import {chromium} from 'playwright';
+import {chromium,webkit} from 'playwright';
 
 const server=spawn('python3',['-m','http.server','4179','--bind','127.0.0.1'],{stdio:'ignore'});
 const base='http://127.0.0.1:4179/';
@@ -17,13 +17,19 @@ try{
     await sleep(200);
   }
   assert.equal(responding,true,'static site must serve actual files');
-  const browser=await chromium.launch({headless:true,
-    args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
+  const browser=process.env.VIOLET_BROWSER==='webkit'
+    ?await webkit.launch({headless:true})
+    :await chromium.launch({headless:true,
+      args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
   try{
     const page=await browser.newPage({viewport:{width:390,height:844},
-      reducedMotion:'reduce'});
+      reducedMotion:'reduce',
+      ...(process.env.VIOLET_BROWSER==='webkit'?{
+        userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+      }:{})});
     page.setDefaultTimeout(120000);
     const errors=[];
+    const nameCaptionObservations=[];
     page.on('pageerror',e=>errors.push(e.message));
     await page.addInitScript(()=>{
       window.__heartEvents=[];
@@ -94,6 +100,8 @@ try{
       "Welcome. I'm glad you're here.");
     await page.waitForFunction(()=>window.__heartEvents.some(x=>
       x.src.startsWith('blob:')&&x.event==='playing'),null,{timeout:220000});
+    nameCaptionObservations.push(await page.locator('#violet-caption').innerText());
+    assert.equal(nameCaptionObservations[0],"Morgan, let's continue.");
     await page.waitForFunction(()=>window.__heartEvents.some(x=>
       x.src.startsWith('blob:')&&x.event==='ended'),null,{timeout:30000});
     const generatedEnd=await page.evaluate(()=>({
