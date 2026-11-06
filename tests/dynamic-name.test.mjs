@@ -27,6 +27,12 @@ test('inference backend derives from observed browser support; one runtime is se
   assert.equal(await observedInferenceBackend({gpu:{async requestAdapter(){requested++;return {device:true};}}}),'webgpu');
   assert.equal(requested,1);
   assert.equal(await observedInferenceBackend({gpu:{async requestAdapter(){return null;}}}),'wasm');
+  let iosGpuRequested=0;
+  assert.equal(await observedInferenceBackend({
+    userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15',
+    gpu:{async requestAdapter(){iosGpuRequested++;return {device:true};}}
+  }),'wasm');
+  assert.equal(iosGpuRequested,0,'iPhone must not allocate a competing WebGPU adapter');
 });
 test('qualified synthesized speech has real PCM and timed visemes bound to the same output',()=>{
   const text=pronunciationText('Morgan');
