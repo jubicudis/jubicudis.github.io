@@ -24,10 +24,11 @@ try{
     // This changes TEST TIME only; production delivery remains natural speed.
     await page.addInitScript(()=>{
       window.__unexpectedBrowserTTS=0;
+      window.__heartAudioSessions=[];
       const OriginalAudio=window.Audio;
       window.Audio=function(src){
         const audio=new OriginalAudio(src);
-        audio.playbackRate=10;
+        window.__heartAudioSessions.push(audio);
         return audio;
       };
       const synthesis=window.speechSynthesis;
@@ -76,10 +77,22 @@ try{
 
     await page.waitForFunction(()=>{
       const stage=document.querySelector('#environment');
+      const audio=window.__heartAudioSessions.at(-1);
+      return stage.dataset.speechStatus==='speaking' && audio &&
+        !audio.paused && Number.isFinite(audio.duration) && audio.duration>10;
+    },null,{timeout:12000});
+    // Seek on the actual decoded media, not a fabricated speech-complete event.
+    // QA checks audio-clock propagation without waiting 125 seconds per browser.
+    await page.evaluate(()=>{
+      const audio=window.__heartAudioSessions.at(-1);
+      audio.currentTime=Math.max(0,audio.duration-0.45);
+    });
+    await page.waitForFunction(()=>{
+      const stage=document.querySelector('#environment');
       return stage.dataset.phase==='asking-name' &&
         stage.dataset.speechStatus==='completed' &&
         !document.querySelector('#name-form').hidden;
-    },null,{timeout:20000});
+    },null,{timeout:12000});
     assert.match(await page.locator('#violet-caption').innerText(),
       /may I ask what to call you\?/);
     assert.equal(await page.locator('#name-form').isVisible(),true);
@@ -101,20 +114,38 @@ try{
     await afterMedia;
     assert.equal(await page.locator('#name-form').isVisible(),false);
     await page.screenshot({path:'artifacts/'+label+'-welcome.png'});
-
+    await page.waitForFunction(()=>{
+      const a=window.__heartAudioSessions.at(-1);
+      return a && !a.paused && Number.isFinite(a.duration) && a.duration>70;
+    },null,{timeout:12000});
+    const timeline=await page.evaluate(async()=>{
+      const res=await fetch('/site/audio/heart-timeline.json');
+      return (await res.json()).tracks['after-name'].cues;
+    });
+    // Move forward using the real media playback position and its measured
+    // cues; no fake timer or phase event is admitted.
+    await page.evaluate(t=>{
+      window.__heartAudioSessions.at(-1).currentTime=t/1000+0.12;
+    },timeline[1].startMs);
     await page.waitForFunction(()=>document.querySelector('#environment').dataset.phase==='orientation',
-      null,{timeout:20000});
+      null,{timeout:12000});
     assert.match(await page.locator('#violet-caption').innerText(),
       /TNOS is an experimental operating system/);
     await page.screenshot({path:'artifacts/'+label+'-orientation.png'});
-
+    await page.evaluate(t=>{
+      window.__heartAudioSessions.at(-1).currentTime=t/1000+0.12;
+    },timeline[8].startMs);
     await page.waitForFunction(()=>document.querySelector('#environment').dataset.phase==='presentation',
-      null,{timeout:20000});
+      null,{timeout:12000});
     assert.match(await page.locator('#violet-caption').innerText(),
-      /Let's begin|Imagine turning on|usual desktop|interface much like|TNOS is being developed/);
+      /Let's begin with something familiar/);
     await page.screenshot({path:'artifacts/'+label+'-presentation.png'});
+    await page.evaluate(()=>{
+      const a=window.__heartAudioSessions.at(-1);
+      a.currentTime=a.duration-.35;
+    });
     await page.waitForFunction(()=>document.querySelector('#environment').dataset.speechStatus==='completed',
-      null,{timeout:20000});
+      null,{timeout:12000});
     assert.equal(await page.locator('#violet-caption').innerText(),
       'Because the real difference begins with the operating system itself.');
     assert.equal(await page.locator('#audio-failure').isVisible(),false);
