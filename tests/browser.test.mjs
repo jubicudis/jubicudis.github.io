@@ -46,7 +46,13 @@ try{
         const audio=new OriginalAudio(src);
         // QA accelerates actual media playback; completion remains an actual
         // HTMLMediaElement ended event, never a synthetic success or timer.
-        audio.playbackRate=12;
+        // Set accelerated test playback on each play after source assignment.
+        // Replacing src can reset a media element's effective playback rate.
+        const nativePlay=audio.play.bind(audio);
+        audio.play=function(){
+          audio.playbackRate=12;
+          return nativePlay();
+        };
         // Heart uses one persistent player; classify the active asset at
         // the actual media event, not at its constructor.
         const record=type=>window.__heartAudioEvents.push({
