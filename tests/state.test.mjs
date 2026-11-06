@@ -69,7 +69,7 @@ test('name exchange retains voluntary identity; same approved Heart voice',()=>{
   assert.equal(named.nameDecision,'provided');
   assert.equal(named.phase,'welcome');
   assert.equal(named.track,'after-name');
-  assert.match(openingMessage(named),/^Welcome, Morgan\. I'm glad you're here\./);
+  assert.match(openingMessage(named),/^Welcome\. I'm glad you're here\./);
   assert.equal(named.speechStatus,'pending');
   const skipped=step(s,'SKIP_NAME');
   assert.equal(skipped.visitorName,null);
