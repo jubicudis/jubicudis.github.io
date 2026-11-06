@@ -182,6 +182,8 @@ test('approved Heart orientation advances during name generation without invente
     playing:true,elapsedMs:300,pose:'viseme-open'
   }});
   assert.equal(noProof,named);
+  named=step(named,'NAME_AUDIO_STARTED',{token,
+    evidence:{type:'observed-generated-heart-playing'}});
   const speaking=step(named,'GENERATED_VISEME_OBSERVED',{token,evidence:{
     type:'generated-viseme-audio-observed',source:'observed-generated-heart-audio',
     assetId:'generated-heart:'+token,voiceId:'af_heart',
