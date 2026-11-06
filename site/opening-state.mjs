@@ -9,7 +9,7 @@ export const initialState=Object.freeze({
   phase:'dormant',track:null,cueIndex:0,visitorName:null,nameDecision:null,
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
-  playbackPositionMs:null,generatedPositionMs:null,
+  playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
   observedSpeechPose:null,nameAudioCompleted:false,enteredAt:0,
   context:Object.freeze({
     who:'unidentified visitor',what:'Violet',when:'unstarted',
@@ -61,7 +61,7 @@ export function reduceOpening(state,event){
       if(state.phase==='dormant'&&state.renderStatus==='observed'&&state.voiceSupported===true)
         patch={phase:'asking-name',track:'asking-name',cueIndex:0,enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
-          playbackPositionMs:null,generatedPositionMs:null,
+          playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
           observedSpeechPose:null,nameAudioCompleted:false};
       break;
     case 'GIVE_NAME':
@@ -72,7 +72,7 @@ export function reduceOpening(state,event){
         if(name)patch={phase:'welcome',track:'after-name',cueIndex:0,
           visitorName:name,nameDecision:'provided',enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
-          playbackPositionMs:null,generatedPositionMs:null,
+          playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
           observedSpeechPose:null,nameAudioCompleted:false};
       }
       break;
@@ -81,7 +81,7 @@ export function reduceOpening(state,event){
         patch={phase:'welcome',track:'after-name',cueIndex:0,
           visitorName:null,nameDecision:'skipped',enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
-          playbackPositionMs:null,generatedPositionMs:null,
+          playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
           observedSpeechPose:null,nameAudioCompleted:false};
       break;
     case 'SPEECH_STARTED':
@@ -103,6 +103,28 @@ export function reduceOpening(state,event){
           !['viseme-closed','viseme-open','viseme-wide','viseme-round'].includes(proof.pose))
           break;
         patch={observedSpeechPose:proof.pose,generatedPositionMs:proof.elapsedMs};
+      }
+      break;
+    case 'AUTHORED_ENVELOPE_OBSERVED':
+      {
+        const proof=event.evidence;
+        const expectedTrack=state.phase==='asking-name'?'asking-name':
+          state.nameDecision==='provided'?'post-welcome':'after-name';
+        const expectedSrc='/site/audio/violet-heart-'+expectedTrack+'.mp3';
+        if(event.token!==state.speechToken||state.phase==='dormant'||
+          state.speechStatus!=='speaking'||
+          (state.nameDecision==='provided'&&!state.nameAudioCompleted)||
+          proof?.type!=='measured-heart-envelope-observed'||
+          proof.kind!=='acoustic-intensity-not-phoneme'||
+          proof.source!=='observed-authored-audio'||
+          proof.playing!==true||proof.assetId!==expectedSrc||
+          proof.trackName!==expectedTrack||proof.token!==state.speechToken||
+          !Number.isFinite(proof.elapsedMs)||proof.elapsedMs<0||
+          (state.envelopePositionMs!==null&&proof.elapsedMs<state.envelopePositionMs)||
+          !Number.isInteger(proof.level)||proof.level<0||proof.level>255||
+          !['viseme-closed','viseme-open','viseme-wide'].includes(proof.pose))
+          break;
+        patch={observedSpeechPose:proof.pose,envelopePositionMs:proof.elapsedMs};
       }
       break;
     case 'NAME_AUDIO_ENDED':

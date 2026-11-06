@@ -28,6 +28,19 @@ try{
       window.__unexpectedBrowserTTS=0;
       window.__heartAudioSessions=[];
       window.__heartAudioEvents=[];
+      window.__observedHeartPoses=[];
+      document.addEventListener('DOMContentLoaded',()=>{
+        const stage=document.getElementById('environment');
+        if(!stage)return;
+        const capture=()=>{
+          const pose=stage.dataset.speechPose;
+          if(pose&&!window.__observedHeartPoses.includes(pose))
+            window.__observedHeartPoses.push(pose);
+        };
+        new MutationObserver(capture).observe(stage,{
+          attributes:true,attributeFilter:['data-speech-pose']
+        });
+      },{once:true});
       const OriginalAudio=window.Audio;
       window.Audio=function(src){
         const audio=new OriginalAudio(src);
@@ -134,6 +147,11 @@ try{
       'Because the real difference begins with the operating system itself.');
     assert.equal(await page.locator('#audio-failure').isVisible(),false);
     assert.equal(await page.evaluate(()=>window.__unexpectedBrowserTTS),0);
+    const acousticPoses=await page.evaluate(()=>window.__observedHeartPoses);
+    assert.ok(acousticPoses.includes('viseme-closed'),
+      'approved Heart narration must return to a closed mouth between real words');
+    assert.ok(acousticPoses.some(p=>p==='viseme-open'||p==='viseme-wide'),
+      'approved prerecorded Heart narration must visibly articulate from observed acoustic energy');
     assert.equal(await page.locator('nav, select, .card, .panel').count(),0);
     const bounds=await page.evaluate(()=>
       ({scroll:document.documentElement.scrollWidth,viewport:window.innerWidth}));

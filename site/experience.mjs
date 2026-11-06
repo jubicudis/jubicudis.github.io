@@ -3,6 +3,8 @@ import {createVioletVoiceEngine} from './violet-voice.mjs';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
   VIOLET_TIMELINE_URL,VIOLET_HEART_CONTINUATION} from './violet-selected-voice.mjs';
 import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs';
+import {HEART_ENVELOPE_URL,validateHeartEnvelope,sampleMeasuredHeartEnvelope}
+  from './violet-heart-envelope.mjs';
 
 const stage=document.getElementById('environment');
 const activate=document.getElementById('violet-activate');
@@ -13,7 +15,7 @@ const nameInput=document.getElementById('visitor-name');
 const skip=document.getElementById('name-skip');
 const failure=document.getElementById('render-failure');
 const audioFailure=document.getElementById('audio-failure');
-let scene=null,timeline=null,narrationLoadFailure=null,activeNameAudio=null;
+let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameAudio=null;
 const store=createOpeningStore(render);
 const voice=createVioletVoiceEngine();
 activate.disabled=true;
@@ -102,6 +104,27 @@ function observeGeneratedSpeechFrame(){
       assetId:observation.assetId,playing:true,elapsedMs:observation.elapsedMs,
       pose}});
 }
+function observeApprovedSpeechFrame(){
+  const state=store.getState();
+  if(!envelope||state.speechStatus!=='speaking'||
+    voice.activeSource()!=='authored')return;
+  const observation=voice.sampleAuthoredClock(state.speechToken);
+  if(!observation)return;
+  const source=state.phase==='asking-name'?'asking-name':
+    state.nameDecision==='provided'?'post-welcome':'after-name';
+  const sampled=sampleMeasuredHeartEnvelope(envelope,source,observation);
+  if(!sampled)return;
+  if(state.observedSpeechPose===sampled.pose)return;
+  store.dispatch({
+    type:'AUTHORED_ENVELOPE_OBSERVED',
+    token:state.speechToken,
+    evidence:sampled
+  });
+}
+function observeSpeechFrame(){
+  observeGeneratedSpeechFrame();
+  observeApprovedSpeechFrame();
+}
 function render(state,previous){
   scene?.update(state);
   stage.dataset.phase=state.phase;
@@ -154,10 +177,21 @@ document.addEventListener('visibilitychange',()=>{
 // a timeline authorizes requesting speech, never claiming that speech played.
 const narrationReady=(async()=>{
   try{
-    const result=await fetch(VIOLET_TIMELINE_URL,{cache:'no-cache'});
-    if(!result.ok)throw new Error('timeline HTTP '+result.status);
-    const parsed=validateHeartTimeline(await result.json());
+    const [timelineResponse,envelopeResponse]=await Promise.all([
+      fetch(VIOLET_TIMELINE_URL,{cache:'no-cache'}),
+      fetch(HEART_ENVELOPE_URL,{cache:'no-cache'})
+    ]);
+    if(!timelineResponse.ok||!envelopeResponse.ok)
+      throw new Error('approved Heart speech metadata unavailable');
+    const parsed=validateHeartTimeline(await timelineResponse.json());
+    const measured=validateHeartEnvelope(await envelopeResponse.json());
+    for(const track of ['asking-name','after-name']){
+      if(Math.abs(parsed.tracks[track].durationMs-
+         measured.tracks[track].durationMs)>80)
+        throw new Error('Measured Heart audio does not align with approved narration');
+    }
     timeline=parsed;
+    envelope=measured;
     store.dispatch({type:'VOICE_AVAILABLE',value:true});
   }catch(error){
     narrationLoadFailure=String(error?.message||error);
@@ -170,7 +204,7 @@ try{
   scene=await createVioletEnvironment(document.getElementById('world'),{
     onObserved:evidence=>store.dispatch({type:'RENDER_OBSERVED',evidence}),
     onFailure:error=>store.dispatch({type:'RENDER_FAILED',reason:error.message||String(error)}),
-    onAudioFrame:observeGeneratedSpeechFrame
+    onAudioFrame:observeSpeechFrame
   });
   scene.update(store.getState());
 }catch(error){
