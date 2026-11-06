@@ -52,39 +52,33 @@ const EXPRESSION_PARTS=Object.freeze({
 function qualifiedExpressionSvg(xml,mode){
   const active=EXPRESSION_PARTS[mode];
   if(!active)throw new Error('Unrecognized required Violet expression: '+mode);
-  const doc=new DOMParser().parseFromString(xml,'image/svg+xml');
-  const root=doc.documentElement;
-  if(doc.querySelector('parsererror')||root.localName!=='svg')
-    throw new Error('Required Violet expression SVG could not be parsed');
-  root.setAttribute('data-mode',mode);
-  const stylesheet=doc.querySelector('style');
-  if(!stylesheet)throw new Error('Required Violet expression style is missing');
-  const css=stylesheet.textContent;
-  const start=css.indexOf('#eye-smile'),end=css.indexOf('.illuminated');
+  // The authored SVG is the single source of geometry and expression parts.
+  // Match its exact XML id attributes; do not reinterpret the SVG as HTML or
+  // depend on Safari's XML DOM selectors to discover authored parts.
+  if(!/<svg\b[^>]*\bdata-mode="rest"/.test(xml))
+    throw new Error('Required Violet expression SVG root is invalid');
+  const all=new Set(Object.values(EXPRESSION_PARTS).flat());
+  for(const id of all){
+    const exact=new RegExp('<g\\s+id="'+id+'"(?=[\\s>])','g');
+    const count=Array.from(xml.matchAll(exact)).length;
+    if(count!==1)
+      throw new Error('Required Violet expression part '+(count?'duplicated: ':'missing: ')+id);
+  }
+  const start=xml.indexOf('#eye-smile'),end=xml.indexOf('.illuminated');
   if(start<0||end<=start)
     throw new Error('Required Violet expression visibility definitions changed');
-  // The original color, glow, paths and geometry remain authored by this SVG.
-  // Visibility is fixed explicitly for each texture, not selected by CSS
-  // rules whose matching differs between SVG-image browser implementations.
-  stylesheet.textContent=css.slice(0,start)+css.slice(end);
-  const all=new Set(Object.values(EXPRESSION_PARTS).flat());
-  // Safari's XML/SVG selector behavior is not a reliable way to resolve
-  // authored SVG IDs. Inspect actual id attributes instead; absence remains
-  // a hard failure and never substitutes another facial part.
-  const parts=new Map();
-  for(const element of doc.getElementsByTagName('*')){
-    const id=element.getAttribute('id');
-    if(id&&all.has(id)){
-      if(parts.has(id))throw new Error('Duplicate required Violet expression part: '+id);
-      parts.set(id,element);
-    }
-  }
+  // Remove only the source visibility-selector rules. Preserve every path,
+  // gradient, glow and other original style declaration unchanged.
+  let qualified=xml.slice(0,start)+xml.slice(end);
+  qualified=qualified.replace('data-mode="rest"','data-mode="'+mode+'"');
   for(const id of all){
-    const group=parts.get(id);
-    if(!group)throw new Error('Required Violet expression part missing: '+id);
-    group.setAttribute('style','display:'+(active.includes(id)?'inline':'none'));
+    const opening='<g id="'+id+'"';
+    if(!qualified.includes(opening))
+      throw new Error('Required Violet expression opening tag missing: '+id);
+    qualified=qualified.replace(opening,
+      opening+' style="display:'+(active.includes(id)?'inline':'none')+'"');
   }
-  return new XMLSerializer().serializeToString(doc);
+  return qualified;
 }
 function assertVisibleExpression(ctx,mode){
   function visibleInk(x,y,width,height){
