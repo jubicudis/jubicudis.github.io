@@ -16,10 +16,12 @@ assert.equal(response?.ok,true,'Static website must serve its index');
 const browser=await chromium.launch({headless:true,args:['--enable-webgl','--use-gl=angle','--use-angle=swiftshader']});
 try{
   for(const [label,width,height,named] of [
-    ['desktop',1440,900,true],['mobile',390,844,false]
+    ['desktop',1440,900,false],['mobile',390,844,false]
   ]){
     const page=await browser.newPage({viewport:{width,height},reducedMotion:'reduce'});
     const errors=[];
+    // Base QA verifies the real prerecorded skip path. Actual dynamic-name
+    // synthesis is separately verified against the full HeadTTS model.
     // Browser QA uses real recorded Heart audio but a faster playback clock.
     // This changes TEST TIME only; production delivery remains natural speed.
     await page.addInitScript(()=>{

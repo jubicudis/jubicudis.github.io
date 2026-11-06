@@ -163,3 +163,63 @@ test('approved opening covers all three distinct products without invented claim
   assert.equal(OPENING_TRACKS['asking-name'].length,4);
   assert.equal(OPENING_TRACKS['after-name'].length,17);
 });
+
+test('real named Heart audio must play and end before approved orientation can advance',()=>{
+  let named=step(finishQuestion(),'GIVE_NAME',{name:'Morgan'});
+  assert.equal(named.nameDecision,'provided');
+  assert.equal(named.speechStatus,'pending');
+  assert.equal(named.nameAudioCompleted,false);
+  assert.equal(named.observedSpeechPose,null);
+  const token=named.speechToken;
+  named=step(named,'SPEECH_STARTED',{token});
+  assert.equal(named.speechStatus,'speaking');
+  const before=progress(named,1,2400);
+  assert.equal(before,named,'orientation cannot precede spoken name');
+  const noProof=step(named,'GENERATED_VISEME_OBSERVED',{token,evidence:{
+    type:'generated-viseme-audio-observed',source:'fabricated',
+    assetId:'generated-heart:'+token,voiceId:'af_heart',
+    playing:true,elapsedMs:300,pose:'viseme-open'
+  }});
+  assert.equal(noProof,named);
+  const speaking=step(named,'GENERATED_VISEME_OBSERVED',{token,evidence:{
+    type:'generated-viseme-audio-observed',source:'observed-generated-heart-audio',
+    assetId:'generated-heart:'+token,voiceId:'af_heart',
+    playing:true,elapsedMs:300,pose:'viseme-open'
+  }});
+  assert.equal(speaking.observedSpeechPose,'viseme-open');
+  assert.equal(speaking.generatedPositionMs,300);
+  const stale=step(speaking,'GENERATED_VISEME_OBSERVED',{token,evidence:{
+    type:'generated-viseme-audio-observed',source:'observed-generated-heart-audio',
+    assetId:'generated-heart:'+token,voiceId:'af_heart',
+    playing:true,elapsedMs:250,pose:'viseme-wide'
+  }});
+  assert.equal(stale,speaking,'backwards audio cannot change face pose');
+  const fakeEnd=step(speaking,'NAME_AUDIO_ENDED',{token,evidence:{
+    type:'invented-end',assetId:'generated-heart:'+token
+  }});
+  assert.equal(fakeEnd,speaking);
+  assert.equal(step(speaking,'SPEECH_ENDED',{token}),speaking);
+  const ended=step(speaking,'NAME_AUDIO_ENDED',{token,evidence:{
+    type:'observed-generated-heart-ended',assetId:'generated-heart:'+token
+  }});
+  assert.equal(ended.nameAudioCompleted,true);
+  assert.equal(ended.observedSpeechPose,null);
+  const orientation=progress(ended,1,2400);
+  assert.equal(orientation.phase,'orientation');
+  assert.match(openingMessage(orientation),/experimental operating system/);
+  assert.equal(progress(orientation,4,35000).phase,'orientation');
+  assert.equal(progress(orientation,8,61000).phase,'presentation');
+});
+
+test('actual named audio failure never advances to generic welcome or name-skipped path',()=>{
+  let named=step(finishQuestion(),'GIVE_NAME',{name:'Morgan'});
+  const token=named.speechToken;
+  named=step(named,'SPEECH_FAILED',{token,reason:'actual model error'});
+  assert.equal(named.speechStatus,'failed');
+  assert.equal(named.nameDecision,'provided');
+  assert.equal(named.phase,'welcome');
+  assert.equal(named.cueIndex,0);
+  assert.equal(named.nameAudioCompleted,false);
+  assert.equal(step(named,'SPEECH_ENDED',{token}),named);
+  assert.equal(step(named,'SKIP_NAME'),named);
+});

@@ -116,3 +116,56 @@ test('authored speech timing derives from observed playback clock, never a guess
   assert.equal(engine.sampleAuthoredClock(12),null);
   assert.deepEqual(events.map(x=>x.type),['SPEECH_STARTED','SPEECH_ENDED']);
 });
+
+test('observed generated Heart welcome produces actual audio events and does not complete the whole presentation',()=>{
+  let audio;
+  class FakeAudio{
+    constructor(src){
+      this.src=src;this.paused=true;this.ended=false;this.currentTime=0;
+      this.events=new Map();audio=this;
+    }
+    addEventListener(name,handler){this.events.set(name,handler);}
+    play(){return Promise.resolve();}
+    pause(){this.paused=true;}
+    removeAttribute(){}load(){}
+    fire(type){this.events.get(type)?.();}
+  }
+  const events=[],positions=[],calls=[];
+  const engine=createVioletVoiceEngine({AudioCtor:FakeAudio,
+    baseURL:'https://jubicudis.github.io/'});
+  const wav=new ArrayBuffer(128);
+  const result=engine.playGenerated({wav,token:8,emit:event=>events.push(event),
+    onPosition:x=>positions.push(x),
+    onEnded:()=>calls.push('next-qualified-audio')});
+  assert.equal(result.source,'generated-heart');
+  assert.match(audio.src,/^blob:/);
+  assert.equal(engine.sampleGeneratedClock(8),null);
+  audio.paused=false;audio.currentTime=.11;audio.fire('playing');
+  assert.equal(engine.sampleGeneratedClock(8).elapsedMs,110);
+  audio.currentTime=.24;audio.fire('timeupdate');
+  assert.deepEqual(positions.map(x=>x.elapsedMs),[110,240]);
+  assert.deepEqual(events.map(x=>x.type),['SPEECH_STARTED']);
+  audio.ended=true;audio.fire('ended');
+  assert.deepEqual(calls,['next-qualified-audio']);
+  assert.equal(engine.activeSource(),null);
+  assert.deepEqual(events.map(x=>x.type),['SPEECH_STARTED'],
+    'a name recording ending is not the end of the TNOS presentation');
+});
+test('generated audio interruption cannot manufacture successful speech completion',()=>{
+  let audio;
+  class FakeAudio{
+    constructor(){this.paused=true;this.ended=false;this.currentTime=0;
+      this.events={};audio=this;}
+    addEventListener(type,handler){this.events[type]=handler;}
+    play(){return Promise.resolve();}
+    pause(){this.paused=true;}
+    removeAttribute(){}load(){}
+  }
+  const events=[],engine=createVioletVoiceEngine({AudioCtor:FakeAudio});
+  engine.playGenerated({wav:new ArrayBuffer(100),token:16,
+    emit:event=>events.push(event)});
+  assert.equal(engine.cancel('actual-page-hidden'),true);
+  audio.events.ended?.();
+  assert.deepEqual(events.map(x=>x.type),['SPEECH_INTERRUPTED']);
+  assert.equal(engine.activeSource(),null);
+});

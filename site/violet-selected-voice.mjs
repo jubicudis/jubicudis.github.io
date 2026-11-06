@@ -13,6 +13,7 @@ export const VIOLET_HEART_CLIPS=Object.freeze({
   'after-name':'/site/audio/violet-heart-after-name.mp3'
 });
 export const VIOLET_TIMELINE_URL='/site/audio/heart-timeline.json';
+export const VIOLET_HEART_CONTINUATION='/site/audio/violet-heart-post-welcome.mp3';
 
 export function resolveVioletOpeningAudio(state){
   const track=openingTrackForPhase(state?.phase);

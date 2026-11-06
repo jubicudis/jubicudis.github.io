@@ -45,6 +45,7 @@ export function createVioletVoiceEngine({
       if(session.kind==='browser')synthesis?.cancel?.();
       else {session.audio.pause();session.audio.removeAttribute?.('src');session.audio.load?.();}
     }catch{/* cancellation cannot manufacture completed speech */}
+    if(session.kind==='generated')session.revoke?.();
     emitSafely(session.emit,{type:'SPEECH_INTERRUPTED',token:session.token,reason});
     return true;
   }
@@ -132,6 +133,81 @@ export function createVioletVoiceEngine({
       return null;
     }
   }
+  // Same-Heart generated name audio comes from a validated real PCM synthesis.
+  // The full presentation completes only after the separate approved Heart
+  // continuation has actually played; generated welcome completion alone
+  // must never manufacture the final SPEECH_ENDED state.
+  function playGenerated({wav,token,emit,onPosition,onEnded}){
+    cancel('replaced');
+    if(!(wav instanceof ArrayBuffer)||wav.byteLength<=44||!Number.isSafeInteger(token))
+      throw new TypeError('Generated speech requires qualified WAV and current token');
+    if(!AudioCtor||typeof URL==='undefined'||typeof URL.createObjectURL!=='function'){
+      emitSafely(emit,{type:'SPEECH_UNAVAILABLE',token});return null;
+    }
+    const url=URL.createObjectURL(new Blob([wav],{type:'audio/wav'}));
+    let released=false;
+    const revoke=()=>{
+      if(!released){released=true;URL.revokeObjectURL(url);}
+    };
+    try{
+      const audio=new AudioCtor(url);
+      audio.preload='auto';
+      const session={kind:'generated',audio,token,emit,
+        src:'generated-heart:'+token,playing:false,revoke};
+      active=session;
+      const observe=()=>{
+        const sample=sampleGeneratedClock(token);
+        if(sample)emitSafely(onPosition,sample);
+      };
+      audio.addEventListener('playing',()=>{
+        if(active!==session)return;
+        session.playing=true;
+        emitSafely(emit,{type:'SPEECH_STARTED',token});
+        observe();
+      },{once:true});
+      audio.addEventListener('timeupdate',()=>{
+        if(active===session)observe();
+      });
+      audio.addEventListener('ended',()=>{
+        if(active!==session)return;
+        session.playing=false;active=null;revoke();
+        if(typeof onEnded==='function'){
+          try{onEnded();}catch(error){
+            emitSafely(emit,{type:'SPEECH_FAILED',token,
+              reason:String(error?.message||error)});
+          }
+        }else emitSafely(emit,{type:'SPEECH_ENDED',token});
+      },{once:true});
+      audio.addEventListener('error',()=>{
+        if(active!==session)return;
+        active=null;revoke();
+        emitSafely(emit,{type:'SPEECH_FAILED',token,
+          reason:'generated Heart audio could not be decoded or played'});
+      },{once:true});
+      const request=audio.play();
+      if(request&&typeof request.catch==='function')request.catch(error=>{
+        if(active!==session)return;
+        active=null;revoke();
+        emitSafely(emit,{type:'SPEECH_FAILED',token,
+          reason:String(error?.message||error)});
+      });
+      return Object.freeze({source:'generated-heart',token,assetId:session.src});
+    }catch(error){
+      active=null;revoke();
+      emitSafely(emit,{type:'SPEECH_FAILED',token,reason:String(error?.message||error)});
+      return null;
+    }
+  }
+  function sampleGeneratedClock(token){
+    if(!active||active.kind!=='generated'||active.token!==token||
+       !active.playing||active.audio.paused===true||active.audio.ended===true)
+      return null;
+    const seconds=active.audio.currentTime;
+    if(!Number.isFinite(seconds)||seconds<0)return null;
+    return Object.freeze({type:'generated-playback-position-observed',
+      source:'observed-generated-heart-audio',
+      assetId:active.src,token,playing:true,elapsedMs:seconds*1000});
+  }
   // This reads a qualified browser audio clock; no timer guesses how far
   // speech progressed, and browser TTS has no fabricated phoneme timestamps.
   function sampleAuthoredClock(token){
@@ -145,7 +221,8 @@ export function createVioletVoiceEngine({
       token,playing:true,elapsedMs:Math.floor(seconds*1000)});
   }
   return Object.freeze({
-    speakBrowser,playAuthored,cancel,sampleAuthoredClock,
+    speakBrowser,playAuthored,playGenerated,cancel,
+    sampleAuthoredClock,sampleGeneratedClock,
     availableVoices:()=>typeof synthesis?.getVoices==='function'
       ?synthesis.getVoices().map(voiceDescriptor):[],
     selectedBrowserVoice:()=>voiceDescriptor(

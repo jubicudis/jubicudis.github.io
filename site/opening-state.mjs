@@ -9,7 +9,8 @@ export const initialState=Object.freeze({
   phase:'dormant',track:null,cueIndex:0,visitorName:null,nameDecision:null,
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
-  playbackPositionMs:null,enteredAt:0,
+  playbackPositionMs:null,generatedPositionMs:null,
+  observedSpeechPose:null,nameAudioCompleted:false,enteredAt:0,
   context:Object.freeze({
     who:'unidentified visitor',what:'Violet',when:'unstarted',
     where:'TNOS public introduction',why:'arrival',how:'await activation',
@@ -60,7 +61,8 @@ export function reduceOpening(state,event){
       if(state.phase==='dormant'&&state.renderStatus==='observed'&&state.voiceSupported===true)
         patch={phase:'asking-name',track:'asking-name',cueIndex:0,enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
-          playbackPositionMs:null};
+          playbackPositionMs:null,generatedPositionMs:null,
+          observedSpeechPose:null,nameAudioCompleted:false};
       break;
     case 'GIVE_NAME':
       if(!nameChoiceReady(state)||typeof event.name!=='string')break;
@@ -70,7 +72,8 @@ export function reduceOpening(state,event){
         if(name)patch={phase:'welcome',track:'after-name',cueIndex:0,
           visitorName:name,nameDecision:'provided',enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
-          playbackPositionMs:null};
+          playbackPositionMs:null,generatedPositionMs:null,
+          observedSpeechPose:null,nameAudioCompleted:false};
       }
       break;
     case 'SKIP_NAME':
@@ -78,17 +81,43 @@ export function reduceOpening(state,event){
         patch={phase:'welcome',track:'after-name',cueIndex:0,
           visitorName:null,nameDecision:'skipped',enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
-          playbackPositionMs:null};
+          playbackPositionMs:null,generatedPositionMs:null,
+          observedSpeechPose:null,nameAudioCompleted:false};
       break;
     case 'SPEECH_STARTED':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
           state.speechStatus==='pending')
         patch={speaking:true,speechStatus:'speaking'};
       break;
+    case 'GENERATED_VISEME_OBSERVED':
+      {
+        const proof=event.evidence;
+        if(state.nameDecision!=='provided'||state.phase!=='welcome'||
+          state.speechStatus!=='speaking'||event.token!==state.speechToken||
+          proof?.type!=='generated-viseme-audio-observed'||
+          proof.source!=='observed-generated-heart-audio'||
+          proof.voiceId!=='af_heart'||proof.playing!==true||
+          proof.assetId!=='generated-heart:'+state.speechToken||
+          !Number.isFinite(proof.elapsedMs)||proof.elapsedMs<0||
+          (state.generatedPositionMs!==null&&proof.elapsedMs<state.generatedPositionMs)||
+          !['viseme-closed','viseme-open','viseme-wide','viseme-round'].includes(proof.pose))
+          break;
+        patch={observedSpeechPose:proof.pose,generatedPositionMs:proof.elapsedMs};
+      }
+      break;
+    case 'NAME_AUDIO_ENDED':
+      if(state.nameDecision==='provided'&&state.phase==='welcome'&&
+        state.speechStatus==='speaking'&&!state.nameAudioCompleted&&
+        event.token===state.speechToken&&
+        event.evidence?.type==='observed-generated-heart-ended'&&
+        event.evidence.assetId==='generated-heart:'+state.speechToken)
+        patch={nameAudioCompleted:true,observedSpeechPose:null};
+      break;
     case 'SPEECH_CUE_OBSERVED':
       {
         const proof=event.evidence;
         if(event.token!==state.speechToken||state.speechStatus!=='speaking'||
+          (state.nameDecision==='provided'&&!state.nameAudioCompleted)||
           proof?.type!=='authored-playback-position-observed'||
           proof.source!=='observed-authored-audio'||proof.playing!==true||
           proof.track!==state.track||proof.token!==state.speechToken||
@@ -105,27 +134,29 @@ export function reduceOpening(state,event){
       break;
     case 'SPEECH_ENDED':
       if(event.token===state.speechToken&&state.speaking&&
-          state.speechStatus==='speaking'){
+          state.speechStatus==='speaking'&&
+          (state.nameDecision!=='provided'||state.nameAudioCompleted)){
         const segments=OPENING_TRACKS[state.track];
         const last=segments.length-1;
-        patch={speaking:false,speechStatus:'completed',cueIndex:last,
+        patch={speaking:false,speechStatus:'completed',
+          observedSpeechPose:null,cueIndex:last,
           phase:segments[last].phase};
       }
       break;
     case 'SPEECH_FAILED':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
           !finalSpeechStatuses.has(state.speechStatus))
-        patch={speaking:false,speechStatus:'failed'};
+        patch={speaking:false,speechStatus:'failed',observedSpeechPose:null};
       break;
     case 'SPEECH_UNAVAILABLE':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
           state.speechStatus==='pending')
-        patch={speaking:false,speechStatus:'unavailable'};
+        patch={speaking:false,speechStatus:'unavailable',observedSpeechPose:null};
       break;
     case 'SPEECH_INTERRUPTED':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
           ['speaking','pending'].includes(state.speechStatus))
-        patch={speaking:false,speechStatus:'interrupted'};
+        patch={speaking:false,speechStatus:'interrupted',observedSpeechPose:null};
       break;
   }
   if(!patch)return state;

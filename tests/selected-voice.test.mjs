@@ -5,7 +5,8 @@ import {createHash} from 'node:crypto';
 import {initialState,openingMessage} from '../site/opening-state.mjs';
 import {OPENING_TRACKS} from '../site/opening-script.mjs';
 import {VIOLET_SELECTED_VOICE,VIOLET_HEART_CLIPS,VIOLET_TIMELINE_URL,
-  resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition}
+  resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
+  VIOLET_HEART_CONTINUATION}
   from '../site/violet-selected-voice.mjs';
 
 const raw=JSON.parse(readFileSync(new URL('../site/audio/heart-timeline.json',import.meta.url),'utf8'));
@@ -76,4 +77,22 @@ test('real published media and exact provenance checksums are verified',()=>{
     assert.equal(createHash('sha256')
       .update(readFileSync(new URL('../'+path,import.meta.url))).digest('hex'),expected);
   }
+});
+
+test('qualified Heart continuation contains only actual approved post-welcome media',()=>{
+  assert.equal(VIOLET_HEART_CONTINUATION,
+    '/site/audio/violet-heart-post-welcome.mp3');
+  const metadata=JSON.parse(readFileSync(
+    new URL('../site/audio/heart-continuation-provenance.json',import.meta.url),'utf8'));
+  const actual=readFileSync(
+    new URL('../site/audio/violet-heart-post-welcome.mp3',import.meta.url));
+  const source=readFileSync(
+    new URL('../site/audio/violet-heart-after-name.mp3',import.meta.url));
+  assert.equal(metadata.sourceVoice,'af_heart');
+  assert.equal(metadata.sourceSha256,createHash('sha256').update(source).digest('hex'));
+  assert.equal(metadata.outputSha256,createHash('sha256').update(actual).digest('hex'));
+  assert.equal(metadata.cutFromObservedTimelineMs,raw.tracks['after-name'].cues[0].endMs);
+  assert.equal(metadata.firstOrientationCueInSourceMs,
+    raw.tracks['after-name'].cues[1].startMs);
+  assert.ok(actual.length>100000);
 });

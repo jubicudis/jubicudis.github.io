@@ -100,7 +100,7 @@ function observedFrame(renderer,canvas){
     return {type:'webgl-pixel-observed',drawCalls:renderer.info.render.calls,nonBackgroundPixel:true};
   return null;
 }
-export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
+export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAudioFrame}={}){
   let renderer;
   try{
     if(!canvas||!(canvas instanceof HTMLCanvasElement))throw new Error('Required Violet WebGL canvas is missing');
@@ -184,9 +184,11 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
       character.rotation.z=reduced.matches?0:.008*Math.sin(t*.39);
       const expansion=1+(reduced.matches?0:.004*Math.sin(t*.74));
       character.scale.setScalar(expansion);
-      // Speech state, not an independent mouth timer, controls the base pose.
-      // Authored viseme evidence may override it through visualCapabilities.
-      const mode=state.speaking?'talk':
+      // Sample only an actually playing audio clock on the existing renderer
+      // cadence. Rendering frames never authorize speech or invent phonemes.
+      onAudioFrame?.();
+      const mode=state.speaking&&state.observedSpeechPose
+        ?state.observedSpeechPose:state.speaking?'talk':
         !reduced.matches&&Math.sin(t*.49+.8)>.998?'blink':
         state.phase==='asking-name'&&!state.speaking?'ask':'rest';
       const visualMode=visualCapabilities.desiredExpression(mode);
