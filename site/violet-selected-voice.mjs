@@ -22,8 +22,7 @@ export function resolveVioletOpeningAudio(state){
     track,phase:state.phase,voiceId:VIOLET_SELECTED_VOICE.voiceId,
     src:VIOLET_HEART_CLIPS[track],
     spokenText:OPENING_TRACKS[track].map(x=>x.text).join(' '),
-    visibleText:visibleOpeningSegment(track,state.cueIndex||0,
-      state.nameDecision==='provided'?state.visitorName:null),
+    visibleText:visibleOpeningSegment(track,state.cueIndex||0,null),
     visitorNameSpoken:false
   });
 }
