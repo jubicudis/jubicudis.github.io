@@ -26,6 +26,17 @@ export const AFTER_NAME_SEGMENTS=Object.freeze([
   Object.freeze({phase:'presentation',text:"To understand what makes TNOS different, we need to look beneath what you can see."}),
   Object.freeze({phase:'presentation',text:"Because the real difference begins with the operating system itself."})
 ]);
+// A named visitor receives an additional Heart-generated spoken line AFTER
+// the first four recorded after-name paragraphs (roughly 30 seconds of
+// uninterrupted orientation). This is an explicit script slot, not a change
+// to the immutable prerecorded Heart track or its measured cue positions.
+// Skipped names do not use this slot.
+export const VISITOR_NAME_SLOT=Object.freeze({
+  track:'after-name',
+  afterCueIndex:3,
+  beforeCueIndex:4,
+  text:visitorName=>visitorName+", let's continue."
+});
 export const OPENING_TRACKS=Object.freeze({
   'asking-name':Object.freeze(INTRO_SEGMENTS.map(text=>Object.freeze({phase:'asking-name',text}))),
   'after-name':AFTER_NAME_SEGMENTS
