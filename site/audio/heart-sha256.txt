@@ -1,0 +1,2 @@
+af3e6c7d66bf4f0674ece606fb7cfa49732ea500ae18749d10814c191c7f803c  site/audio/violet-heart-asking-name.m4a
+a315c823181c395259c4e615c1c1bba5ed7f012aefe834f1032989bf48beca55  site/audio/violet-heart-welcome.m4a

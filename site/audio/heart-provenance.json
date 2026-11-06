@@ -1,0 +1,21 @@
+{
+  "voice_id": "af_heart",
+  "model": "Kokoro-82M v1.0",
+  "model_license": "Apache-2.0",
+  "runtime": "kokoro-onnx 0.6.1 (MIT)",
+  "status": "inventor-selected",
+  "clips": {
+    "asking-name": {
+      "spoken_text": "Hello, I'm Violet. What is your name?",
+      "sample_rate": 24000,
+      "duration_seconds": 2.375,
+      "peak": 0.3711
+    },
+    "welcome": {
+      "spoken_text": "Welcome. This experience introduces Tranquility Neuro Operating System, the Workbench being developed to help build and examine it, and the separate MCP server intended to connect selected capabilities with other tools.",
+      "sample_rate": 24000,
+      "duration_seconds": 14.271,
+      "peak": 0.4583
+    }
+  }
+}
