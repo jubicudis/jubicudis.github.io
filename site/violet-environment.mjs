@@ -3,7 +3,7 @@
 // SVGs provide independently changeable facial expressions and micro-detail.
 // This opening scene is NOT TNOS cognition or a completed 3D soft-body simulation.
 // If any required art or WebGL rendering fails, no replacement character is fabricated.
-import * as THREE from './vendor/three.module.js';
+import * as THREE from './vendor/three.module.js?v=20261106-webkit-precision-01';
 import {createVioletAppearanceCapabilities} from './violet-appearance.mjs';
 import {createBloomMotionCapabilities} from './violet-motion.mjs';
 import {captureWebGLRegion,compareWebGLObservations,compareWithOpenCV} from './violet-observation.mjs';
