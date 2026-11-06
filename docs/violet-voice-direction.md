@@ -18,7 +18,7 @@ and the separate MCP server are accurately distinguished.
    it may not forge a completed name question or alternative presentation.
 3. Skipping the optional name plays the approved `after-name` recording.
 4. Providing a name also starts the approved `after-name` recording immediately. Name synthesis runs concurrently, not as a silent prerequisite to narration.
-5. The same selected Heart voice synthesizes a brief later acknowledgment of the visitor's name. If it becomes ready, the presentation inserts it at an observed later paragraph boundary and resumes the recorded Heart narration at the observed position. No synthetic timing, alternate voice, or invented name completion is permitted. If inference fails, the name is not claimed to have been spoken.
+5. `site/opening-script.mjs` owns the explicit optional visitor-name slot between `after-name` cue 3 and cue 4, after approximately 30 seconds of recorded orientation. The selected Heart voice synthesizes the slot text dynamically from the actual visitor name. If synthesis is still pending at the slot, narration continues and the name is inserted at a later observed paragraph boundary; if synthesis finishes after the recording, the pending name remains required before the named journey completes. The original recording and cue transcript are not altered. No alternate voice, invented speech completion, or substitute name is permitted. A synthesis failure must be visible rather than silently omitting the name.
 6. Captions and approved topic changes follow the observed audio clock,
    not speculative timeouts. The actual viseme evidence drives Violet's
    existing A2 mouth textures during generated speech.
@@ -31,7 +31,7 @@ and the separate MCP server are accurately distinguished.
 - `tools/generate_approved_opening.py` creates the main prerecorded
   Kokoro Heart narration offline, without per-visitor usage charges.
 - `site/violet-dynamic-name.mjs` supports on-demand, in-browser Heart
-  synthesis. The selected runtime is based on observed browser capability;
+  synthesis. The visitor-specific audio is created at runtime, not committed as a static MP3 for every possible name. The selected runtime is based on observed browser capability;
   no alternate presenter voice is configured.
 - The HeadTTS runtime provides timed Oculus visemes which are rendered
   using the already-approved four A2 mouth poses. Four poses do **not**
