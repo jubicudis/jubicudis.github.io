@@ -85,14 +85,25 @@ try{
     // QA checks audio-clock propagation without waiting 125 seconds per browser.
     await page.evaluate(()=>{
       const audio=window.__heartAudioSessions.at(-1);
-      audio.currentTime=Math.max(0,audio.duration-0.45);
+      audio.currentTime=audio.duration;
     });
-    await page.waitForFunction(()=>{
-      const stage=document.querySelector('#environment');
-      return stage.dataset.phase==='asking-name' &&
-        stage.dataset.speechStatus==='completed' &&
-        !document.querySelector('#name-form').hidden;
-    },null,{timeout:12000});
+    try{
+      await page.waitForFunction(()=>{
+        const stage=document.querySelector('#environment');
+        return stage.dataset.phase==='asking-name' &&
+          stage.dataset.speechStatus==='completed' &&
+          !document.querySelector('#name-form').hidden;
+      },null,{timeout:12000});
+    }catch(error){
+      const observation=await page.evaluate(()=>{
+        const a=window.__heartAudioSessions.at(-1),stage=document.querySelector('#environment');
+        return {phase:stage.dataset.phase,speech:stage.dataset.speechStatus,
+          currentTime:a?.currentTime,duration:a?.duration,
+          paused:a?.paused,ended:a?.ended,readyState:a?.readyState,
+          networkState:a?.networkState,error:a?.error?.message};
+      });
+      throw new Error('Observed Heart completion mismatch: '+JSON.stringify(observation),{cause:error});
+    }
     assert.match(await page.locator('#violet-caption').innerText(),
       /may I ask what to call you\?/);
     assert.equal(await page.locator('#name-form').isVisible(),true);
@@ -142,7 +153,7 @@ try{
     await page.screenshot({path:'artifacts/'+label+'-presentation.png'});
     await page.evaluate(()=>{
       const a=window.__heartAudioSessions.at(-1);
-      a.currentTime=a.duration-.35;
+      a.currentTime=a.duration;
     });
     await page.waitForFunction(()=>document.querySelector('#environment').dataset.speechStatus==='completed',
       null,{timeout:12000});
