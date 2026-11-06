@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initialState,reduceOpening,openingMessage,nameChoiceReady}
   from '../site/opening-state.mjs';
-import {OPENING_TRACKS} from '../site/opening-script.mjs';
+import {OPENING_TRACKS,VISITOR_NAME_SLOT} from '../site/opening-script.mjs';
 
 const step=(state,type,data={})=>reduceOpening(state,{type,at:100,...data});
 function ready(){
@@ -223,4 +223,33 @@ test('actual named audio failure never advances to generic welcome or name-skipp
   assert.equal(named.nameAudioCompleted,false);
   assert.equal(step(named,'SPEECH_ENDED',{token}),named);
   assert.equal(step(named,'SKIP_NAME'),named);
+});
+
+test('approved script reserves a later actual spoken-name slot, not the immediate welcome',()=>{
+  assert.equal(VISITOR_NAME_SLOT.track,'after-name');
+  assert.equal(VISITOR_NAME_SLOT.afterCueIndex,3);
+  assert.equal(VISITOR_NAME_SLOT.beforeCueIndex,4);
+  assert.equal(VISITOR_NAME_SLOT.text('Morgan'),"Morgan, let's continue.");
+  let named=step(finishQuestion(),'GIVE_NAME',{name:'Morgan'});
+  named=step(named,'SPEECH_STARTED',{token:named.speechToken});
+  named=progress(named,4,31000);
+  assert.equal(named.nameAudioPlaying,false);
+  assert.equal(openingMessage(named),OPENING_TRACKS['after-name'][4].text);
+  const started=step(named,'NAME_AUDIO_STARTED',{
+    token:named.speechToken,evidence:{type:'observed-generated-heart-playing'}
+  });
+  assert.equal(openingMessage(started),VISITOR_NAME_SLOT.text('Morgan'));
+  assert.equal(started.nameAudioPlaying,true);
+  const ended=step(started,'NAME_AUDIO_ENDED',{
+    token:named.speechToken,
+    evidence:{type:'observed-generated-heart-ended',
+      assetId:'generated-heart:'+named.speechToken}
+  });
+  assert.equal(ended.nameAudioCompleted,true);
+  assert.equal(ended.nameAudioPlaying,false);
+  assert.equal(openingMessage(ended),OPENING_TRACKS['after-name'][4].text);
+  const skipped=step(finishQuestion(),'SKIP_NAME');
+  assert.equal(step(skipped,'NAME_AUDIO_STARTED',{
+    token:skipped.speechToken,evidence:{type:'observed-generated-heart-playing'}
+  }),skipped);
 });
