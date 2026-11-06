@@ -25,12 +25,16 @@ try{
     await page.addInitScript(()=>{
       window.__unexpectedBrowserTTS=0;
       window.__heartAudioSessions=[];
+      window.__heartAudioEvents=[];
       const OriginalAudio=window.Audio;
       window.Audio=function(src){
         const audio=new OriginalAudio(src);
         // QA accelerates actual media playback; completion remains an actual
         // HTMLMediaElement ended event, never a synthetic success or timer.
         audio.playbackRate=12;
+        const track=String(src);
+        audio.addEventListener('playing',()=>window.__heartAudioEvents.push({track,type:'playing'}));
+        audio.addEventListener('ended',()=>window.__heartAudioEvents.push({track,type:'ended'}));
         window.__heartAudioSessions.push(audio);
         return audio;
       };
@@ -80,16 +84,13 @@ try{
 
     await page.waitForFunction(()=>{
       const stage=document.querySelector('#environment');
-      const audio=window.__heartAudioSessions.at(-1);
-      return stage.dataset.speechStatus==='speaking' && audio &&
-        !audio.paused && Number.isFinite(audio.duration) && audio.duration>10;
-    },null,{timeout:12000});
-    await page.waitForFunction(()=>{
-      const stage=document.querySelector('#environment');
+      const events=window.__heartAudioEvents;
       return stage.dataset.phase==='asking-name' &&
         stage.dataset.speechStatus==='completed' &&
-        !document.querySelector('#name-form').hidden;
-    },null,{timeout:12000});
+        !document.querySelector('#name-form').hidden &&
+        events.some(x=>x.track.endsWith('/violet-heart-asking-name.mp3')&&x.type==='playing') &&
+        events.some(x=>x.track.endsWith('/violet-heart-asking-name.mp3')&&x.type==='ended');
+    },null,{timeout:15000});
     assert.match(await page.locator('#violet-caption').innerText(),
       /may I ask what to call you\?/);
     assert.equal(await page.locator('#name-form').isVisible(),true);
