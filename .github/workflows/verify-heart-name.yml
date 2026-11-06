@@ -1,0 +1,31 @@
+name: Verify real on-device HeadTTS Heart name synthesis
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-heart-name.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  actual-name:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser with network-enabled model download
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Synthesize actual Heart name locally in browser
+        run: node tests/headtts-browser.test.mjs
+      - name: Save genuine synthesis observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: violet-headtts-real-name-test
+          path: artifacts/headtts-heart-name-actual.json
+          if-no-files-found: ignore
