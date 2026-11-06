@@ -47,9 +47,13 @@ try{
         // QA accelerates actual media playback; completion remains an actual
         // HTMLMediaElement ended event, never a synthetic success or timer.
         audio.playbackRate=12;
-        const track=String(src);
-        audio.addEventListener('playing',()=>window.__heartAudioEvents.push({track,type:'playing'}));
-        audio.addEventListener('ended',()=>window.__heartAudioEvents.push({track,type:'ended'}));
+        // Heart uses one persistent player; classify the active asset at
+        // the actual media event, not at its constructor.
+        const record=type=>window.__heartAudioEvents.push({
+          track:audio.currentSrc||audio.src,type
+        });
+        audio.addEventListener('playing',()=>record('playing'));
+        audio.addEventListener('ended',()=>record('ended'));
         window.__heartAudioSessions.push(audio);
         return audio;
       };
@@ -147,6 +151,8 @@ try{
       'Because the real difference begins with the operating system itself.');
     assert.equal(await page.locator('#audio-failure').isVisible(),false);
     assert.equal(await page.evaluate(()=>window.__unexpectedBrowserTTS),0);
+    assert.equal(await page.evaluate(()=>window.__heartAudioSessions.length),1,
+      'all prerecorded Heart segments must reuse the visitor-authorized media element');
     const acousticPoses=await page.evaluate(()=>window.__observedHeartPoses);
     assert.ok(acousticPoses.includes('viseme-closed'),
       'approved Heart narration must return to a closed mouth between real words');
