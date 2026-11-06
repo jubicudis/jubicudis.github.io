@@ -32,3 +32,7 @@
 /* Keep one meaningful caption readable without obscuring Violet's floor halo. */
 .violet-caption{max-width:680px;max-height:29svh;overflow:auto;overflow-wrap:break-word;padding:4px 2px;text-shadow:0 2px 14px #020318,0 0 14px #020318,0 1px 4px #020318}
 @media(max-width:620px){.violet-caption{max-height:32svh}}
+
+/* Desktop spatial separation: preserve Violet and the ring artwork while
+   reserving a clear lower stage for caption plus optional name entry. */
+@media(min-width:621px){#world{transform:translateY(-5svh)}}
