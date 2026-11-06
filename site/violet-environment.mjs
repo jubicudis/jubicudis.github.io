@@ -277,7 +277,13 @@ export function createVioletEnvironment(canvas){
     cssW=Math.max(1,rect.width);cssH=Math.max(1,rect.height);
     // Keep fine bevels on retina displays without rendering gratuitous 4x pixels.
     dpr=Math.min(window.devicePixelRatio||1,2);
-    canvas.width=Math.round(cssW*dpr);canvas.height=Math.round(cssH*dpr);
+    const nextWidth=Math.round(cssW*dpr),nextHeight=Math.round(cssH*dpr);
+    // Reassigning canvas dimensions clears real pixels; an unchanged ResizeObserver
+    // notification must never erase the qualified frame we have just rendered.
+    if(canvas.width!==nextWidth||canvas.height!==nextHeight){
+      canvas.width=nextWidth;canvas.height=nextHeight;
+      lastFrame=-Infinity; // An actual size change requires a new rendered frame.
+    }
   }
   resize();window.addEventListener('resize',resize,{passive:true});
   const observer=new ResizeObserver(resize);observer.observe(canvas);
