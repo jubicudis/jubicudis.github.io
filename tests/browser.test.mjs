@@ -20,7 +20,9 @@ try{
     const errors=[];
     page.on('pageerror',error=>errors.push(error.message));
     await page.goto(base,{waitUntil:'domcontentloaded'});
-    await page.waitForFunction(()=>document.querySelector('#environment').dataset.renderStatus==='observed',null,{timeout:20000});
+    await page.waitForFunction(()=>['observed','failed'].includes(document.querySelector('#environment').dataset.renderStatus),null,{timeout:20000});
+    const actualStatus=await page.evaluate(()=>({status:document.querySelector('#environment').dataset.renderStatus,error:document.querySelector('#render-failure').textContent,canvas:{width:document.querySelector('#world').width,height:document.querySelector('#world').height}}));
+    assert.equal(actualStatus.status,'observed','Violet renderer must produce evidence: '+JSON.stringify(actualStatus));
     assert.equal(await page.locator('#render-failure').isVisible(),false);
     assert.equal(await page.locator('#violet-activate').isEnabled(),true);
     assert.equal(await page.locator('#violet-activate').isVisible(),true);
