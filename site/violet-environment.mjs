@@ -1,234 +1,211 @@
-// One continuous Violet environment. Three.js owns depth, materials and illumination;
-// authored SVGs supply the vector face and precise surface markings.
-// No synthetic renderer, stand-in character, or success-shaped fallback is permitted.
+// Violet — Structured Bloom (A2). Persistent, animated, source-grounded website character.
+// Three.js renders interwoven volumetric structural bands and a shallow inset visor.
+// Authored SVGs render expressions and small inlaid accents. This does not execute TNOS.
+// No replacement avatar, fake draw-success state, or automatic presentation is provided.
 import * as THREE from './vendor/three.module.js';
 
-const PI2=Math.PI*2;
-const BASE=[
-  {color:0x19baf5,edge:0x80ecff,angle:-.49,tilt:.19,turn:-.23,a:2.26,b:1.42,z:-.18,phase:0},
-  {color:0x934cf0,edge:0xf0aaff,angle:.44,tilt:-.28,turn:.28,a:2.19,b:1.49,z:-.13,phase:1.1},
-  {color:0xf0a744,edge:0xffe29b,angle:-.11,tilt:.36,turn:.16,a:2.25,b:.82,z:-.12,phase:2.3},
-  {color:0x7945dc,edge:0xe4b2ff,angle:.73,tilt:-.22,turn:-.32,a:1.75,b:1.91,z:.14,phase:3.4}
-];
-const LIMIT=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
-const TEMP_Z=new THREE.Vector3(0,0,1);
-const EASE=x=>1-Math.pow(1-LIMIT(x,0,1),3);
+const TAU = Math.PI * 2;
+const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+const DARK = new THREE.Color(0x0b0c27);
+const WHITE = new THREE.Color(0xf7edff);
+const FRONT = new THREE.Vector3(0, 0, 1);
 
-function buildParam(def){
-  const rot=new THREE.Euler(def.tilt,def.turn,def.angle,'XYZ');
-  return t=>{
-    const u=t*PI2;
-    const point=new THREE.Vector3(
-      Math.cos(u)*def.a,
-      Math.sin(u)*def.b,
-      .095*Math.sin(u*2+def.phase)
-    );
-    point.applyEuler(rot);point.z+=def.z;return point;
-  };
-}
-function axes(curve,t){
-  const delta=.0004;
-  const tangent=curve((t+delta)%1).sub(curve((t-delta+1)%1)).normalize();
-  // Broad structural material is oriented across the strand, not round rope.
-  const across=new THREE.Vector3().crossVectors(TEMP_Z,tangent).normalize();
-  const facing=new THREE.Vector3().crossVectors(tangent,across).normalize();
+// Four deliberately different closed, three-dimensional paths. They share a center,
+// but are not concentric tilted ellipses. Control points preserve the A2 composition:
+// cyan high at the back and below the face, purple sweeping across the forehead,
+// amber behind and to the right, and a deep-violet structural loop behind them.
+const FORMS = [
+  {name:'azure', base:0x159af5, light:0xa4f5ff, edge:0x56e4ff, shadow:0x102f9b, width:.32, seed:.14,
+    knots:[[-2.22,.46,-.38],[-2.35,1.46,-.32],[-1.56,2.08,-.39],[-.28,2.19,-.43],[1.03,1.75,-.16],[1.74,.66,-.35],[1.31,-.58,-.33],[.88,-1.55,1.00],[.12,-2.05,1.20],[-.87,-1.90,.72],[-1.42,-.91,-.34],[-1.65,-.08,-.45]]},
+  {name:'violet-crown', base:0x9540ed, light:0xf0a9ff, edge:0xe29cff, shadow:0x4313a3, width:.34, seed:1.22,
+    knots:[[-2.56,-1.16,1.40],[-2.45,-.13,1.53],[-1.73,.92,1.60],[-.63,1.57,1.36],[.65,1.70,1.10],[1.72,1.42,.77],[2.29,.64,.12],[2.13,-.55,-.47],[1.12,-1.43,-.69],[-.38,-1.86,-.79],[-1.64,-1.75,-.25]]},
+  {name:'amber', base:0xf9a43d, light:0xfff0a1, edge:0xffcc6c, shadow:0x8d3576, width:.295, seed:2.30,
+    knots:[[-2.47,-.13,-.78],[-2.52,.82,-.82],[-1.88,1.69,-.86],[-.66,1.69,-1.10],[.65,1.17,-1.13],[1.79,.54,-.77],[2.52,-.18,-.09],[2.43,-1.10,.47],[1.35,-1.34,.56],[.17,-1.05,-.45],[-1.25,-.70,-.91]]},
+  {name:'violet-chassis', base:0x733bd1, light:0xdab0ff, edge:0xb077ff, shadow:0x25115f, width:.27, seed:3.47,
+    knots:[[1.43,2.01,-.87],[2.22,1.50,-.63],[2.45,.42,-.96],[2.08,-.61,-1.12],[.78,-1.58,-1.12],[-.61,-1.75,-.91],[-1.87,-1.24,-.77],[-2.18,-.23,-.77],[-1.53,.89,-1.0],[-.19,1.58,-1.12]]}
+];
+
+function colored(r,g,b){return new THREE.Color(r,g,b);}
+function pathGeometry(points){return new THREE.BufferGeometry().setFromPoints(points);}
+function curveFor(form){return new THREE.CatmullRomCurve3(form.knots.map(p=>new THREE.Vector3(...p)),true,'centripetal');}
+function frameAt(curve,t){
+  const tangent=curve.getTangentAt(t).normalize();
+  // Stabilized camera-facing band frame: the front face has a gentle crown, and
+  // actual path Z supplies the depth-order changes, not painter's-order guesses.
+  const facing=new THREE.Vector3(-.075*tangent.y,.075*tangent.x,1).normalize();
+  const across=new THREE.Vector3().crossVectors(facing,tangent).normalize();
   return {tangent,across,facing};
 }
-function surfacePoint(curve,t,u,v){
-  const p=curve(t),basis=axes(curve,t);
-  return p.addScaledVector(basis.across,u).addScaledVector(basis.facing,v);
+function bandPoint(curve,t,widthAt,normalAt){
+  const p=curve.getPointAt((t+1)%1),f=frameAt(curve,t);
+  return p.addScaledVector(f.across,widthAt).addScaledVector(f.facing,normalAt);
 }
-function makeRibbonGeometry(curve){
-  const samples=196,w=.195,profile=[
-    [-w+.042,.064],[w-.042,.064],[w,.028],[w,-.031],
-    [w-.044,-.08],[-w+.044,-.08],[-w,-.031],[-w,.028]
-  ];
-  const positions=[],uv=[],indices=[];
-  for(let i=0;i<=samples;i++){
-    const t=(i%samples)/samples;
-    for(let j=0;j<profile.length;j++){
-      const [u,v]=profile[j],p=surfacePoint(curve,t,u,v);
-      positions.push(p.x,p.y,p.z);uv.push(t,j/profile.length);
+function bandGradient(form,t,u){
+  const base=new THREE.Color(form.base), hi=new THREE.Color(form.light), deep=new THREE.Color(form.shadow);
+  const rim=Math.pow(Math.abs(u),2.65), shine=Math.pow(Math.max(0,1-Math.abs(u+.56)/.29),2);
+  const travel=.12*Math.sin(TAU*(t*1.6+form.seed));
+  return base.clone().lerp(deep,.19+.20*(1-rim)).lerp(hi,clamp(.17+rim*.66+shine*.24+travel,0,.87));
+}
+function ribbonGeometry(curve,form,{widthScale=1,depth=0}={}){
+  const n=232,sections=9,positions=[],colors=[],indices=[],half=form.width*widthScale;
+  for(let i=0;i<=n;i++){
+    const t=i/n, point=curve.getPointAt(t),fr=frameAt(curve,t);
+    for(let j=0;j<sections;j++){
+      const u=(j/(sections-1)*2-1);
+      const width=half*u;
+      const crown=(1-u*u)*.075;
+      const p=point.clone().addScaledVector(fr.across,width).addScaledVector(fr.facing,crown+depth);
+      positions.push(p.x,p.y,p.z);
+      const col=bandGradient(form,t,u);colors.push(col.r,col.g,col.b);
     }
   }
-  const ring=profile.length;
-  for(let i=0;i<samples;i++)for(let j=0;j<ring;j++){
-    const a=i*ring+j,b=i*ring+(j+1)%ring,c=(i+1)*ring+j,d=(i+1)*ring+(j+1)%ring;
+  for(let i=0;i<n;i++)for(let j=0;j<sections-1;j++){
+    const a=i*sections+j,b=a+1,c=a+sections,d=c+1;
+    indices.push(a,b,c,b,d,c);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+  geo.setIndex(indices);geo.computeVertexNormals();return geo;
+}
+function lineGeometry(curve,form,fraction=1,height=.07,t0=0,t1=1){
+  const points=[],count=Math.ceil(200*(t1-t0));
+  for(let i=0;i<=count;i++)points.push(bandPoint(curve,t0+(t1-t0)*i,form.width*fraction,height));
+  return pathGeometry(points);
+}
+function surfacePanel(curve,form,t0,t1){
+  const vertices=[],indices=[],colors=[],steps=9,across=5;
+  const base=new THREE.Color(form.shadow),accent=new THREE.Color(form.base);
+  for(let i=0;i<=steps;i++){
+    const t=t0+(t1-t0)*i/steps;
+    const endSpace=.17*Math.pow(Math.abs(i/steps*2-1),4);
+    for(let j=0;j<=across;j++){
+      const u=(j/across*2-1)*(.76-endSpace);
+      const p=bandPoint(curve,t,form.width*u,.084-(u*u)*.022);
+      vertices.push(p.x,p.y,p.z);
+      const col=base.clone().lerp(accent,.20+.24*(1-Math.abs(u)));colors.push(col.r,col.g,col.b);
+    }
+  }
+  for(let i=0;i<steps;i++)for(let j=0;j<across;j++){
+    const a=i*(across+1)+j,b=a+1,c=a+across+1,d=c+1;
     indices.push(a,c,b,b,c,d);
   }
-  const geometry=new THREE.BufferGeometry();
-  geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
-  geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));geo.setIndex(indices);geo.computeVertexNormals();return geo;
 }
-function lineAt(curve,u,v,segments=240){
-  const points=[];
-  for(let i=0;i<=segments;i++)points.push(surfacePoint(curve,i/segments,u,v));
-  return new THREE.BufferGeometry().setFromPoints(points);
+function contourPatch(curve,form,t0,t1){
+  const a=[],b=[],count=30;
+  for(let i=0;i<=count;i++){
+    const t=t0+(t1-t0)*i/count;
+    const inset=.22*Math.pow(Math.abs(i/count*2-1),6);
+    a.push(bandPoint(curve,t,form.width*(.76-inset),.101));
+    b.push(bandPoint(curve,t,-form.width*(.76-inset),.101));
+  }
+  return [...a,...b.reverse(),a[0]];
 }
-function addBand(threeScene,def,index,markTexture){
-  const movement=new THREE.Group();
-  const curve=buildParam(def);
-  const material=new THREE.MeshPhysicalMaterial({
-    color:def.color,metalness:.38,roughness:.27,clearcoat:.9,
-    clearcoatRoughness:.13,side:THREE.DoubleSide,
-    emissive:def.color,emissiveIntensity:.115
-  });
-  const mesh=new THREE.Mesh(makeRibbonGeometry(curve),material);
-  movement.add(mesh);
-  const edgeMat=new THREE.LineBasicMaterial({color:def.edge,transparent:true,opacity:.86,depthTest:true});
-  for(const u of [-.153,.153]){
-    const edge=new THREE.Line(lineAt(curve,u,.077),edgeMat);
-    movement.add(edge);
+function addRibbon(owner,form,index,markTexture){
+  const ribbon=new THREE.Group();owner.add(ribbon);
+  const curve=curveFor(form);
+  const material=new THREE.MeshPhysicalMaterial({vertexColors:true,metalness:.13,roughness:.28,clearcoat:1,clearcoatRoughness:.11,
+    side:THREE.DoubleSide,emissive:new THREE.Color(form.base),emissiveIntensity:.28});
+  ribbon.add(new THREE.Mesh(ribbonGeometry(curve,form),material));
+  // An actual bevel and translucent light bleed, rather than flat contour strokes.
+  const glow=new THREE.Mesh(ribbonGeometry(curve,form,{widthScale:1.26,depth:-.018}),
+    new THREE.MeshBasicMaterial({color:form.base,transparent:true,opacity:.16,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+  ribbon.add(glow);
+  const shadowedge=new THREE.LineBasicMaterial({color:form.shadow,transparent:true,opacity:.5});
+  const rim=new THREE.LineBasicMaterial({color:form.edge,transparent:true,opacity:.94});
+  const highlight=new THREE.LineBasicMaterial({color:form.light,transparent:true,opacity:.77});
+  for(const sign of [-1,1]){
+    ribbon.add(new THREE.Line(lineGeometry(curve,form,sign*.99,-.018),shadowedge));
+    ribbon.add(new THREE.Line(lineGeometry(curve,form,sign*.96,.052),rim));
+    if(sign<0)ribbon.add(new THREE.Line(lineGeometry(curve,form,sign*.77,.084),highlight));
   }
-  const innerMat=new THREE.LineBasicMaterial({color:0x201a59,transparent:true,opacity:.63});
-  const seamMat=new THREE.LineBasicMaterial({color:0xd7b8ff,transparent:true,opacity:.42});
-  for(let n=0;n<13;n++){
-    const t=(n+.4)/13;
-    const points=[];
-    for(let j=0;j<=8;j++)points.push(surfacePoint(curve,t,-.154+.308*j/8,.076));
-    movement.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),n%4===0?seamMat:innerMat));
+  // Long contoured inlaid panels, not thirteen evenly spaced transverse notches.
+  const panelFill=new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:.31,side:THREE.DoubleSide,depthWrite:false});
+  const panelLine=new THREE.LineBasicMaterial({color:form.light,transparent:true,opacity:.41,depthWrite:false});
+  for(let i=0;i<10;i++){
+    const t0=(i+.15)/10,t1=(i+.90)/10;
+    ribbon.add(new THREE.Mesh(surfacePanel(curve,form,t0,t1),panelFill));
+    ribbon.add(new THREE.Line(pathGeometry(contourPatch(curve,form,t0,t1)),panelLine));
   }
-  const markMaterial=new THREE.MeshBasicMaterial({
-    map:markTexture,color:def.edge,transparent:true,opacity:.88,
-    depthWrite:false,side:THREE.DoubleSide,toneMapped:false
-  });
-  const patternPositions=index===2?[.09,.59]:[.12,.63,.87];
-  for(const t of patternPositions){
-    const {tangent,across,facing}=axes(curve,t);
-    const p=surfacePoint(curve,t,0,.086);
+  // Authored SVG slashes are an additional material detail; never the body itself.
+  const stamps=index===2?[.18,.79]:index===3?[.12,.62]:[.12,.57,.82];
+  const markerMaterial=new THREE.MeshBasicMaterial({map:markTexture,transparent:true,opacity:.9,
+    depthWrite:false,side:THREE.DoubleSide,toneMapped:false});
+  for(const t of stamps){
+    const {tangent,across,facing}=frameAt(curve,t);
     const m=new THREE.Matrix4().makeBasis(tangent,across,facing);
-    const decal=new THREE.Mesh(new THREE.PlaneGeometry(.28,.108),markMaterial);
-    decal.position.copy(p);decal.quaternion.setFromRotationMatrix(m);
-    movement.add(decal);
+    const marker=new THREE.Mesh(new THREE.PlaneGeometry(.28,.105),markerMaterial);
+    marker.position.copy(bandPoint(curve,t,0,.115));
+    marker.quaternion.setFromRotationMatrix(m);ribbon.add(marker);
   }
-  threeScene.add(movement);
-  return {movement,curve,material};
+  return ribbon;
 }
-function radialTexture(){
-  const c=document.createElement('canvas');c.width=c.height=256;
-  const ctx=c.getContext('2d');
-  if(!ctx)throw new Error('Unable to create Violet illumination texture');
-  const g=ctx.createRadialGradient(128,128,8,128,128,127);
-  g.addColorStop(0,'rgba(198,115,255,.45)');
-  g.addColorStop(.28,'rgba(113,62,210,.21)');
-  g.addColorStop(1,'rgba(55,36,155,0)');
+function glowTexture(){
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=256;
+  const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Violet illumination canvas unavailable');
+  const g=ctx.createRadialGradient(128,128,0,128,128,126);
+  g.addColorStop(0,'rgba(196,95,255,.45)');g.addColorStop(.4,'rgba(109,41,193,.17)');g.addColorStop(1,'rgba(109,41,193,0)');
   ctx.fillStyle=g;ctx.fillRect(0,0,256,256);
-  const tx=new THREE.CanvasTexture(c);tx.colorSpace=THREE.SRGBColorSpace;return tx;
+  const tx=new THREE.CanvasTexture(canvas);tx.colorSpace=THREE.SRGBColorSpace;return tx;
 }
 async function svgTexture(url,mode){
   const response=await fetch(url,{cache:'force-cache'});
   if(!response.ok)throw new Error('Required Violet SVG unavailable: '+response.status+' '+url);
-  let xml=await response.text();
-  if(!xml.includes('<svg'))throw new Error('Invalid Violet SVG source: '+url);
+  let xml=await response.text();if(!xml.includes('<svg'))throw new Error('Invalid Violet SVG: '+url);
   if(mode)xml=xml.replace('data-mode="rest"','data-mode="'+mode+'"');
-  const blob=new Blob([xml],{type:'image/svg+xml'});
-  const objectUrl=URL.createObjectURL(blob);
+  const blob=new Blob([xml],{type:'image/svg+xml'}),objectURL=URL.createObjectURL(blob);
   const image=new Image();
   try{
-    image.src=objectUrl;
-    await new Promise((resolve,reject)=>{
-      image.onload=resolve;
-      image.onerror=()=>reject(new Error('Violet SVG decoding failed: '+url));
-    });
-    const canvas=document.createElement('canvas');
-    canvas.width=640;canvas.height=String(url).includes('markings')?250:440;
-    const ctx=canvas.getContext('2d');
-    if(!ctx)throw new Error('SVG vector texture canvas unavailable');
+    image.src=objectURL;
+    await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error('Violet SVG decoding failed: '+url));});
+    const canvas=document.createElement('canvas');canvas.width=640;canvas.height=String(url).includes('markings')?250:440;
+    const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Required Violet SVG texture canvas unavailable');
     ctx.drawImage(image,0,0,canvas.width,canvas.height);
-    const texture=new THREE.CanvasTexture(canvas);
-    texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4;
+    const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=8;
     return texture;
-  }finally{URL.revokeObjectURL(objectUrl);}
+  }finally{URL.revokeObjectURL(objectURL);}
 }
-function makeVisor(group,expressions){
-  const shell=new THREE.Mesh(
-    new THREE.SphereGeometry(1,80,56),
-    new THREE.MeshPhysicalMaterial({
-      color:0x10112a,metalness:.12,roughness:.38,
-      clearcoat:.78,clearcoatRoughness:.29
-    })
-  );
-  shell.position.z=.18;shell.scale.set(1.59,1.01,.46);
-  group.add(shell);
-
-  // Separate structural edge and light-catching contour.
-  const contour=[];
-  for(let i=0;i<=160;i++){
-    const t=i/160*PI2;
-    contour.push(new THREE.Vector3(1.565*Math.cos(t),.985*Math.sin(t),.54));
+function makeVisor(owner,expressions){
+  const group=new THREE.Group();group.position.set(.10,.10,.75);group.rotation.z=-.075;owner.add(group);
+  const shell=new THREE.Mesh(new THREE.SphereGeometry(1,88,64),
+    new THREE.MeshPhysicalMaterial({color:0x0b0824,emissive:0x190f3d,emissiveIntensity:.13,
+      roughness:.82,metalness:0,clearcoat:.16,clearcoatRoughness:.72}));
+  shell.scale.set(1.56,.99,.37);group.add(shell);
+  const points=[];for(let i=0;i<=192;i++){
+    const t=i/192*TAU;
+    points.push(new THREE.Vector3(1.565*Math.cos(t),.985*Math.sin(t),.155+.06*(1+Math.cos(t))));
   }
-  const bevel=new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(contour,true),160,.026,8,true),
-    new THREE.MeshPhysicalMaterial({
-      color:0x9456ec,emissive:0x8c3be1,emissiveIntensity:.36,
-      metalness:.45,roughness:.19,clearcoat:1
-    })
-  );
-  group.add(bevel);
-  const face=new THREE.Mesh(
-    new THREE.PlaneGeometry(3.05,2.08),
-    new THREE.MeshBasicMaterial({
-      map:expressions.rest,transparent:true,depthWrite:false,
-      side:THREE.DoubleSide,toneMapped:false
-    })
-  );
-  face.position.z=.676;
-  group.add(face);
-  const edgeLight=new THREE.PointLight(0xc183ff,1.5,4.4);
-  edgeLight.position.set(-.45,-.34,1.32);group.add(edgeLight);
-  const shadowGlow=new THREE.Mesh(
-    new THREE.PlaneGeometry(3.8,2.65),
-    new THREE.MeshBasicMaterial({map:radialTexture(),transparent:true,opacity:.17,depthWrite:false,blending:THREE.AdditiveBlending})
-  );
-  shadowGlow.position.z=-.3;group.add(shadowGlow);
-  return {face,shell,bevel};
+  const contour=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points,true),192,.020,8,true),
+    new THREE.MeshBasicMaterial({color:0xc06bff}));group.add(contour);
+  const inset=new THREE.Mesh(new THREE.PlaneGeometry(3.22,2.12),
+    new THREE.MeshBasicMaterial({map:expressions.rest,transparent:true,depthWrite:false,
+      toneMapped:false,side:THREE.DoubleSide}));
+  inset.position.z=.414;group.add(inset);
+  const ambient=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTexture(),transparent:true,opacity:.26,
+    depthWrite:false,blending:THREE.AdditiveBlending}));
+  ambient.position.z=-.19;ambient.scale.set(4.0,2.8,1);group.add(ambient);
+  return {inset,group};
 }
 function makeStage(scene){
-  const ground=new THREE.Group();
-  ground.position.set(0,-2.43,-.82);scene.add(ground);
-  const rings=[
-    {a:2.35,b:.41,color:0x4c61d4,opacity:.35},
-    {a:1.95,b:.315,color:0x35b9ff,opacity:.44},
-    {a:1.34,b:.215,color:0xbe75fc,opacity:.37}
-  ];
-  for(const ring of rings){
-    const points=[];
-    for(let i=0;i<=160;i++){
-      const t=i/160*PI2;
-      points.push(new THREE.Vector3(ring.a*Math.cos(t),ring.b*Math.sin(t),0));
-    }
-    const geo=new THREE.BufferGeometry().setFromPoints(points);
-    ground.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:ring.color,transparent:true,opacity:ring.opacity})));
+  const ground=new THREE.Group();ground.position.set(0,-2.58,-.72);scene.add(ground);
+  for(const [a,b,col,alpha] of [[2.65,.35,0x5a3dc5,.45],[2.25,.26,0x3dd5ff,.66],[1.67,.19,0xb46cff,.47]]){
+    const points=[];for(let i=0;i<=192;i++){const t=i/192*TAU;points.push(new THREE.Vector3(a*Math.cos(t),b*Math.sin(t),0));}
+    ground.add(new THREE.Line(pathGeometry(points),new THREE.LineBasicMaterial({color:col,transparent:true,opacity:alpha})));
   }
-  const halo=new THREE.Sprite(new THREE.SpriteMaterial({
-    map:radialTexture(),transparent:true,opacity:.33,depthWrite:false,
-    blending:THREE.AdditiveBlending
-  }));
-  halo.position.set(0,-2.35,-1.65);halo.scale.set(6.4,2.3,1);scene.add(halo);
-  // Sparse stage points: environmental depth, not fake TNOS telemetry.
-  const dots=[];
-  for(let i=0;i<54;i++){
-    const a=Math.sin((i+1)*83.194)*218.72;
-    const b=Math.sin((i+1)*117.441)*94.83;
-    const x=(a-Math.floor(a))*11-5.5;
-    const y=(b-Math.floor(b))*10-5;
-    dots.push(x,y,-5.5);
+  const shadow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTexture(),transparent:true,opacity:.35,
+    depthWrite:false,blending:THREE.AdditiveBlending}));
+  shadow.position.set(0,-2.42,-1.5);shadow.scale.set(6.5,2.2,1);scene.add(shadow);
+  const coords=[];for(let i=0;i<54;i++){
+    const a=Math.sin((i+1)*83.194)*218.72,b=Math.sin((i+1)*117.441)*94.83;
+    coords.push((a-Math.floor(a))*11-5.5,(b-Math.floor(b))*10-5,-5.5);
   }
-  const geometry=new THREE.BufferGeometry();
-  geometry.setAttribute('position',new THREE.Float32BufferAttribute(dots,3));
-  scene.add(new THREE.Points(geometry,new THREE.PointsMaterial({
-    color:0x8384da,size:.027,transparent:true,opacity:.32,depthWrite:false
-  })));
+  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));
+  scene.add(new THREE.Points(geometry,new THREE.PointsMaterial({color:0x9291d9,size:.023,transparent:true,opacity:.32,depthWrite:false})));
 }
-
 function sampleFrame(renderer,canvas){
-  const gl=renderer.getContext();
-  if(gl.isContextLost())return null;
-  const pixels=new Uint8Array(4);
-  let bright=false;
+  const gl=renderer.getContext();if(gl.isContextLost())return null;
+  const pixels=new Uint8Array(4);let bright=false;
   for(const [x,y] of [[.5,.5],[.6,.5],[.4,.5],[.5,.6],[.65,.6],[.35,.4]]){
     gl.readPixels(Math.floor(canvas.width*x),Math.floor(canvas.height*y),1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixels);
     if(pixels[0]>30||pixels[1]>48||pixels[2]>85){bright=true;break;}
@@ -239,86 +216,56 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure}={}){
   let renderer;
   try{
     if(!canvas||!(canvas instanceof HTMLCanvasElement))throw new Error('Required Violet canvas is missing');
-    // The local, pinned Three.js module must initialize. No canvas imitation is substituted.
-    renderer=new THREE.WebGLRenderer({
-      canvas,antialias:true,alpha:false,powerPreference:'high-performance',
-      preserveDrawingBuffer:false
-    });
-    renderer.outputColorSpace=THREE.SRGBColorSpace;
-    renderer.toneMapping=THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure=1.24;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
-    const expressions={};
-    const faceURL=new URL('./violet-face.svg',import.meta.url);
-    const markURL=new URL('./violet-markings.svg',import.meta.url);
+    renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance',preserveDrawingBuffer:false});
+    renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure=1.28;renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+    const faceURL=new URL('./violet-face.svg',import.meta.url),markURL=new URL('./violet-markings.svg',import.meta.url);
     const [rest,ask,talk,blink,mark]=await Promise.all([
-      svgTexture(faceURL,'rest'),svgTexture(faceURL,'ask'),svgTexture(faceURL,'talk'),
-      svgTexture(faceURL,'blink'),svgTexture(markURL)
+      svgTexture(faceURL,'rest'),svgTexture(faceURL,'ask'),svgTexture(faceURL,'talk'),svgTexture(faceURL,'blink'),svgTexture(markURL)
     ]);
-    Object.assign(expressions,{rest,ask,talk,blink});
-
-    const scene=new THREE.Scene();
-    scene.background=new THREE.Color(0x080c1e);
-    const camera=new THREE.OrthographicCamera(-3,3,6,-6,.1,50);
+    const expressions={rest,ask,talk,blink};
+    const scene=new THREE.Scene();scene.background=new THREE.Color(0x070b1d);
+    const camera=new THREE.OrthographicCamera(-4,4,4,-4,.1,50);
     camera.position.set(0,0,15);camera.lookAt(0,0,0);
-    scene.add(new THREE.AmbientLight(0xaaa5e9,.92));
-    const key=new THREE.DirectionalLight(0xf1e9ff,2.5);key.position.set(-4,5,8);scene.add(key);
-    const cyan=new THREE.PointLight(0x31baff,34,12);cyan.position.set(-4,1.7,3.8);scene.add(cyan);
-    const pink=new THREE.PointLight(0xd46dff,29,12);pink.position.set(3,1.1,3.9);scene.add(pink);
-    const gold=new THREE.PointLight(0xffad55,25,10);gold.position.set(1.8,-2.2,3.2);scene.add(gold);
-
+    scene.add(new THREE.AmbientLight(0xc5aaf1,1.04));
+    const key=new THREE.DirectionalLight(0xece6ff,3.6);key.position.set(-3.1,4.5,6);scene.add(key);
+    const cyan=new THREE.PointLight(0x4ad5ff,37,10);cyan.position.set(-3,1.9,3.8);scene.add(cyan);
+    const lilac=new THREE.PointLight(0xf286ff,34,10);lilac.position.set(2.6,1.2,3.8);scene.add(lilac);
+    const gold=new THREE.PointLight(0xffbb69,28,9);gold.position.set(1.8,-1.5,3);scene.add(gold);
     makeStage(scene);
-    const body=new THREE.Group();scene.add(body);body.position.y=.53;
-    const bands=BASE.map((def,i)=>addBand(body,def,i,mark));
+    const body=new THREE.Group();body.position.y=.38;scene.add(body);
+    const bands=FORMS.map((form,i)=>addRibbon(body,form,i,mark));
     const visor=makeVisor(body,expressions);
-    let state={phase:'dormant',speaking:false};
-    let observed=false,failed=false,live=true,frames=0;
-    let previousExpression='';
-    const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-    const clock=performance.now();
+    let state={phase:'dormant',speaking:false},observed=false,failed=false,live=true,frames=0,previousExpression='';
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)'),clock=performance.now();
     const resize=()=>{
-      const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);
-      const aspect=w/h,worldWidth=w<=620?5.72:LIMIT(aspect*7.1,7.1,11.1);
-      const worldHeight=worldWidth/aspect;
-      camera.left=-worldWidth/2;camera.right=worldWidth/2;
-      camera.top=worldHeight/2;camera.bottom=-worldHeight/2;
+      const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight),aspect=w/h;
+      const worldWidth=w<=620?6.9:clamp(aspect*7.35,8.3,12.2),worldHeight=worldWidth/aspect;
+      camera.left=-worldWidth/2;camera.right=worldWidth/2;camera.top=worldHeight/2;camera.bottom=-worldHeight/2;
       camera.updateProjectionMatrix();renderer.setSize(w,h,false);
     };
-    resize();
-    const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(canvas);
-    const loss=event=>{
-      event.preventDefault();
-      if(!failed){failed=true;live=false;onFailure?.(new Error('Violet WebGL context lost'));}
-    };
+    resize();const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(canvas);
+    const loss=event=>{event.preventDefault();if(!failed){failed=true;live=false;onFailure?.(new Error('Violet WebGL context lost'));}};
     canvas.addEventListener('webglcontextlost',loss);
     function tick(now){
       if(!live)return;
       const t=(now-clock)/1000,phase=reduced.matches?0:t;
       for(let i=0;i<bands.length;i++){
-        const band=bands[i],def=BASE[i];
-        // Elements remain coupled: common breathing with smaller independent responses.
-        const breathe=.012*Math.sin(phase*.65);
-        const individual=.019*Math.sin(phase*(.42+i*.045)+def.phase);
-        band.movement.rotation.z=breathe+individual;
-        band.movement.rotation.x=.008*Math.sin(phase*.51+i);
-        const scale=1+.006*Math.sin(phase*.73+i*.9);
-        band.movement.scale.setScalar(scale);
+        const form=FORMS[i],band=bands[i];
+        // Shared breathing + constrained independent responses; one cohesive body.
+        const breathe=.009*Math.sin(phase*.65),individual=.014*Math.sin(phase*(.38+.045*i)+form.seed);
+        band.rotation.z=breathe+individual;
+        band.rotation.x=.007*Math.sin(phase*.52+i*1.6);
+        band.scale.setScalar(1+.005*Math.sin(phase*.72+form.seed));
       }
-      body.position.y=.53+(reduced.matches?0:.035*Math.sin(phase*.73));
-      body.rotation.z=reduced.matches?0:.011*Math.sin(phase*.4);
+      body.position.y=.38+(reduced.matches?0:.028*Math.sin(phase*.77));
+      body.rotation.z=reduced.matches?0:.009*Math.sin(phase*.43);
       const expression=state.speaking&&Math.sin(phase*8)>-.12?'talk':
         !reduced.matches&&Math.sin(phase*.47+1.1)>.997?'blink':
         state.phase==='asking-name'&&!state.speaking?'ask':'rest';
-      if(expression!==previousExpression){
-        visor.face.material.map=expressions[expression];
-        visor.face.material.needsUpdate=true;previousExpression=expression;
-      }
-      renderer.render(scene,camera);
-      frames++;
-      if(!observed&&frames>1){
-        const proof=sampleFrame(renderer,canvas);
-        if(proof){observed=true;onObserved?.({type:'webgl-pixel-observed',...proof});}
-      }
+      if(expression!==previousExpression){visor.inset.material.map=expressions[expression];visor.inset.material.needsUpdate=true;previousExpression=expression;}
+      renderer.render(scene,camera);frames++;
+      if(!observed&&frames>1){const proof=sampleFrame(renderer,canvas);if(proof){observed=true;onObserved?.({type:'webgl-pixel-observed',...proof});}}
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
