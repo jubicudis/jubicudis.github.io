@@ -164,7 +164,7 @@ test('approved opening covers all three distinct products without invented claim
   assert.equal(OPENING_TRACKS['after-name'].length,17);
 });
 
-test('real named Heart audio must play and end before approved orientation can advance',()=>{
+test('approved Heart orientation advances during name generation without invented name completion',()=>{
   let named=step(finishQuestion(),'GIVE_NAME',{name:'Morgan'});
   assert.equal(named.nameDecision,'provided');
   assert.equal(named.speechStatus,'pending');
@@ -174,7 +174,8 @@ test('real named Heart audio must play and end before approved orientation can a
   named=step(named,'SPEECH_STARTED',{token});
   assert.equal(named.speechStatus,'speaking');
   const before=progress(named,1,2400);
-  assert.equal(before,named,'orientation cannot precede spoken name');
+  assert.equal(before.phase,'orientation','approved narration must continue while name generates');
+  assert.equal(before.nameAudioCompleted,false,'narration must not fabricate spoken name');
   const noProof=step(named,'GENERATED_VISEME_OBSERVED',{token,evidence:{
     type:'generated-viseme-audio-observed',source:'fabricated',
     assetId:'generated-heart:'+token,voiceId:'af_heart',
