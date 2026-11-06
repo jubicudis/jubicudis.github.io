@@ -126,8 +126,7 @@ function observeApprovedSpeechFrame(){
     voice.activeSource()!=='authored')return;
   const observation=voice.sampleAuthoredClock(state.speechToken);
   if(!observation)return;
-  const source=state.phase==='asking-name'?'asking-name':
-    state.nameDecision==='provided'?'post-welcome':'after-name';
+  const source=state.phase==='asking-name'?'asking-name':'after-name';
   const sampled=sampleMeasuredHeartEnvelope(envelope,source,observation);
   if(!sampled)return;
   if(state.observedSpeechPose===sampled.pose)return;
