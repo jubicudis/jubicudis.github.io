@@ -1,0 +1,22 @@
+:root{color-scheme:dark;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#080b1a;color:#f3efff;font-synthesis:none}
+*{box-sizing:border-box}html,body{min-height:100%;width:100%;margin:0}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible{outline:2px solid #9de8ff;outline-offset:5px}
+.environment{position:relative;isolation:isolate;width:100%;height:100svh;min-height:480px;overflow:hidden;background:#080b1a;touch-action:pan-y}
+#world{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.violet-activate{position:absolute;left:50%;top:45%;width:min(59vw,630px);height:min(58vw,570px);max-height:65svh;transform:translate(-50%,-50%);z-index:2;background:transparent;border:0;border-radius:50%;padding:0;outline-offset:-15px;touch-action:manipulation}
+.environment[data-phase="asking-name"] .violet-activate,.environment[data-phase="welcome"] .violet-activate{pointer-events:none}
+.visitor-dialogue{position:absolute;z-index:4;top:79%;left:50%;width:min(750px,calc(100% - 32px));transform:translateX(-50%);text-align:center;pointer-events:none}
+.visitor-dialogue[hidden],.name-form[hidden]{display:none!important}
+.violet-caption{margin:0 auto 14px;max-width:730px;font-size:clamp(1.13rem,2.1vw,1.58rem);font-weight:400;letter-spacing:-.008em;line-height:1.52;text-wrap:balance;text-shadow:0 2px 18px #050a25,0 0 25px rgba(125,84,200,.20);color:#f2edff}
+.name-form{pointer-events:auto;display:flex;align-items:center;flex-direction:column;gap:13px;margin-top:10px}
+.name-entry{display:flex;align-items:center;width:min(350px,85vw);border:0;border-bottom:1px solid rgba(153,173,245,.69);background:transparent;box-shadow:0 9px 14px -15px #8b74ff;transition:border-color .22s ease}
+.name-entry:focus-within{border-bottom-color:#d6b8ff}
+.name-entry input{color:#fff;background:transparent;border:0;outline:0;outline-offset:0!important;box-shadow:none!important;width:100%;min-width:0;padding:12px 6px;text-align:center;font-size:1.05rem;letter-spacing:.025em}
+.name-entry input::placeholder{color:#ada7d6}
+.enter-name{background:transparent;border:0;color:#e5d4ff;font-size:1.5rem;padding:5px 12px;transition:transform .2s,color .2s}
+.enter-name:hover{transform:translate(2px,-2px);color:#9ce9ff}
+.skip-name{color:#d6c6fa;border:0;background:transparent;padding:6px 12px;font-size:.91rem;text-decoration:underline;text-decoration-color:rgba(187,160,251,.28);text-underline-offset:5px}
+.skip-name:hover{color:white;text-decoration-color:#d6c6fa}.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;clip-path:inset(50%)}
+@media(max-width:620px){.environment{min-height:460px}.violet-activate{width:82vw;height:78vw;max-height:44svh;top:41%}.visitor-dialogue{top:64%;width:calc(100% - 30px)}.violet-caption{font-size:clamp(1rem,4.35vw,1.19rem);line-height:1.49}.name-form{gap:9px}.name-entry{width:min(310px,82vw)}.name-entry input{font-size:1rem}.skip-name{font-size:.89rem}}
+@media(max-height:690px){.violet-activate{top:40%;height:52svh;width:min(54vw,510px)}.visitor-dialogue{top:68%}}
+@media(max-width:620px) and (max-height:690px){.violet-activate{top:36%;height:42svh;width:73vw}.visitor-dialogue{top:62%}}
+@media(prefers-reduced-motion:reduce){.enter-name,.name-entry{transition:none}}

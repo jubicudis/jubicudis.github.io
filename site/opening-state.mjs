@@ -1,0 +1,66 @@
+// Public website presentation state. This is not TNOS native cognition or TranquilSpeak execution.
+export const initialState=Object.freeze({
+  phase:'dormant',visitorName:null,nameDecision:null,
+  speaking:false,speechToken:0,voiceSupported:false,
+  enteredAt:0,
+  context:Object.freeze({who:'unidentified visitor',what:'Violet',when:'unstarted',where:'TNOS website opening',why:'visit',how:'await activation',extent:'not started'})
+});
+const states=new Set(['dormant','asking-name','welcome']);
+export function openingMessage(state){
+  switch(state.phase){
+    case 'dormant':return '';
+    case 'asking-name':return "Hello, I'm Violet. What is your name?";
+    case 'welcome':{
+      const greeting=state.nameDecision==='provided'?`Welcome, ${state.visitorName}.`:'Welcome.';
+      return `${greeting} This experience introduces Tranquility Neuro Operating System, the Workbench being developed to help build and examine it, and the separate MCP server intended to connect selected capabilities with other tools.`;
+    }
+    default:throw new Error('Unknown opening phase');
+  }
+}
+export function reduceOpening(state,event){
+  if(!event||typeof event.type!=='string')return state;
+  const when=Number.isFinite(event.at)?event.at:0;
+  let patch=null;
+  switch(event.type){
+    case 'ACTIVATE':
+      if(state.phase==='dormant')patch={phase:'asking-name',enteredAt:when,speaking:false,speechToken:state.speechToken+1};
+      break;
+    case 'GIVE_NAME':
+      if(state.phase!=='asking-name'||typeof event.name!=='string')break;
+      {const name=event.name.replace(/[\u0000-\u001F\u007F<>]/g,'').trim().replace(/\s+/g,' ').slice(0,48);
+       if(name)patch={phase:'welcome',visitorName:name,nameDecision:'provided',enteredAt:when,speaking:false,speechToken:state.speechToken+1};}
+      break;
+    case 'SKIP_NAME':
+      if(state.phase==='asking-name')patch={phase:'welcome',visitorName:null,nameDecision:'skipped',enteredAt:when,speaking:false,speechToken:state.speechToken+1};
+      break;
+    case 'VOICE_AVAILABLE':
+      patch={voiceSupported:!!event.value};break;
+    case 'SPEECH_STARTED':
+      if(event.token===state.speechToken&&state.phase!=='dormant')patch={speaking:true};
+      break;
+    case 'SPEECH_ENDED':
+      if(event.token===state.speechToken&&state.speaking)patch={speaking:false};
+      break;
+  }
+  if(!patch)return state;
+  const next={...state,...patch};
+  if(!states.has(next.phase))throw new Error('Illegal opening phase');
+  next.context=Object.freeze({
+    who:next.nameDecision==='provided'?next.visitorName:'unidentified visitor',
+    what:next.phase==='dormant'?'Violet':next.phase==='asking-name'?'greeting and optional name':'three-product introduction',
+    when:when,
+    where:'TNOS website opening',
+    why:'introduce the operating system, Workbench and separate MCP server',
+    how:event.type,
+    extent:next.phase
+  });
+  return Object.freeze(next);
+}
+export function createOpeningStore(listener){
+  let state=initialState;
+  return {getState:()=>state,dispatch(event){
+    const next=reduceOpening(state,{...event,at:event.at??performance.now()});
+    if(next!==state){const previous=state;state=next;listener?.(next,previous,event);}
+    return state;
+  }};
+}

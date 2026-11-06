@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#080b1a">
+  <meta name="description" content="Violet welcomes you to the Tranquility Neuro Operating System experience.">
+  <title>TNOS · Violet</title>
+  <link rel="stylesheet" href="./site/experience.css">
+</head>
+<body>
+  <main class="environment" id="environment" data-phase="dormant" aria-label="TNOS opening experience">
+    <canvas id="world" aria-hidden="true"></canvas>
+    <button id="violet-activate" class="violet-activate" type="button" aria-label="Activate Violet"></button>
+    <div class="visitor-dialogue" id="visitor-dialogue" hidden>
+      <p id="violet-caption" class="violet-caption" role="status" aria-live="polite" aria-atomic="true"></p>
+      <form id="name-form" class="name-form" autocomplete="off" hidden>
+        <label class="sr-only" for="visitor-name">Name Violet should call you</label>
+        <div class="name-entry">
+          <input id="visitor-name" type="text" name="visitorName" maxlength="48" autocomplete="given-name" enterkeyhint="done" placeholder="Your name" aria-label="Your name">
+          <button id="name-confirm" class="enter-name" type="submit" aria-label="Tell Violet your name"><span aria-hidden="true">↗</span></button>
+        </div>
+        <button id="name-skip" type="button" class="skip-name">Continue without a name</button>
+      </form>
+    </div>
+    <p class="sr-only" id="experience-description">Violet is a stylized interface character within an animated TNOS-inspired computer environment. Activate her to hear an introduction. The visitor may enter a name or skip.</p>
+  </main>
+  <script type="module" src="./site/experience.mjs"></script>
+</body>
+</html>
