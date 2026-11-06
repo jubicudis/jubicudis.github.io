@@ -308,6 +308,8 @@ export function createVioletEnvironment(canvas){
     ctx.strokeStyle='rgba(240,182,255,.38)';ctx.lineWidth=1.25;ctx.shadowColor='#aa58fa';ctx.shadowBlur=4;ctx.stroke();ctx.restore();
     ctx.restore();
   }
-  requestAnimationFrame(frame);
+  // Establish the first rendered frame synchronously; later frames are scheduled by frame().
+  // A page-load event alone is not evidence that the canvas was drawn.
+  frame(performance.now());
   return {update(next){state=next;},dispose(){live=false;observer.disconnect();window.removeEventListener('resize',resize);}};
 }
