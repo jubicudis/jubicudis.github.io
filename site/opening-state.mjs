@@ -23,8 +23,7 @@ const finalSpeechStatuses=new Set(['completed','unavailable','failed','interrupt
 export function openingMessage(state){
   if(state.phase==='dormant')return '';
   const track=state.track||openingTrackForPhase(state.phase);
-  return visibleOpeningSegment(track,state.cueIndex,
-    state.nameDecision==='provided'?state.visitorName:null);
+  return visibleOpeningSegment(track,state.cueIndex,null);
 }
 export function nameChoiceReady(state){
   return state.phase==='asking-name' && state.speechStatus==='completed'
@@ -113,7 +112,6 @@ export function reduceOpening(state,event){
         const expectedSrc='/site/audio/violet-heart-'+expectedTrack+'.mp3';
         if(event.token!==state.speechToken||state.phase==='dormant'||
           state.speechStatus!=='speaking'||
-          (state.nameDecision==='provided'&&!state.nameAudioCompleted)||
           proof?.type!=='measured-heart-envelope-observed'||
           proof.kind!=='acoustic-intensity-not-phoneme'||
           proof.source!=='observed-authored-audio'||
@@ -128,7 +126,7 @@ export function reduceOpening(state,event){
       }
       break;
     case 'NAME_AUDIO_ENDED':
-      if(state.nameDecision==='provided'&&state.phase==='welcome'&&
+      if(state.nameDecision==='provided'&&
         state.speechStatus==='speaking'&&!state.nameAudioCompleted&&
         event.token===state.speechToken&&
         event.evidence?.type==='observed-generated-heart-ended'&&
@@ -139,7 +137,6 @@ export function reduceOpening(state,event){
       {
         const proof=event.evidence;
         if(event.token!==state.speechToken||state.speechStatus!=='speaking'||
-          (state.nameDecision==='provided'&&!state.nameAudioCompleted)||
           proof?.type!=='authored-playback-position-observed'||
           proof.source!=='observed-authored-audio'||proof.playing!==true||
           proof.track!==state.track||proof.token!==state.speechToken||
@@ -156,8 +153,7 @@ export function reduceOpening(state,event){
       break;
     case 'SPEECH_ENDED':
       if(event.token===state.speechToken&&state.speaking&&
-          state.speechStatus==='speaking'&&
-          (state.nameDecision!=='provided'||state.nameAudioCompleted)){
+          state.speechStatus==='speaking'){
         const segments=OPENING_TRACKS[state.track];
         const last=segments.length-1;
         patch={speaking:false,speechStatus:'completed',
