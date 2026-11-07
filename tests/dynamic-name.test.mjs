@@ -17,7 +17,7 @@ function observedChunk(){
   }};
 }
 test('authorized name is present in the actual synthesized text; invalid names are not inferred',()=>{
-  assert.equal(pronunciationText('Morgan'),"Morgan, let's continue.");
+  assert.equal(pronunciationText('Morgan'),"Now, Morgan, let's take a closer look.");
   for(const bad of ['', ' ', '<script>', '\nMorgan', 'A'.repeat(49)])
     assert.throws(()=>pronunciationText(bad));
 });
@@ -75,7 +75,7 @@ test('a single observed synthesis result selects Heart only; no alternate provid
     loadModule:async()=>({HeadTTS:Runtime}),browser:null
   });
   assert.equal(result.voiceId,'af_heart');
-  assert.equal(result.spokenText,"Morgan, let's continue.");
+  assert.equal(result.spokenText,"Now, Morgan, let's take a closer look.");
   assert.equal(result.backend,'wasm');
   assert.equal(result.wav.byteLength,48044);
   assert.deepEqual(calls[0][1].endpoints,['wasm']);
