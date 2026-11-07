@@ -114,7 +114,7 @@ try{
     await page.screenshot({path:'artifacts/'+label+'-initial.png'});
 
     const greetingMedia=page.waitForResponse(response=>
-      response.url().endsWith('/site/audio/violet-heart-asking-name.mp3') &&
+      new URL(response.url()).pathname.endsWith('/site/audio/violet-heart-asking-name.mp3') &&
       [200,206].includes(response.status()),{timeout:15000});
     await page.locator('#violet-activate').click();
     await greetingMedia;
