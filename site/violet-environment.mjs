@@ -253,7 +253,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     faceAssembly.add(expression);
     // Render capabilities are addressable but are NOT scheduled or activated by this opening.
     const visualCapabilities=createVioletAppearanceCapabilities({
-      character,main,expression,art,artWidth,faceMaps:faces,backgroundGroup
+      character,main,expression,art,artWidth,faceMaps:faces,backgroundGroup,faceplate:plate,faceAssembly
     });
     const motionCapabilities=createBloomMotionCapabilities({
       structureSurface:visualCapabilities.getStructureSurface(),
