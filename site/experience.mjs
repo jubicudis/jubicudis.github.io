@@ -29,7 +29,7 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
   const source=selected.src;
   const offset=0;
   voice.playAuthored({
-    src:source,
+    src:source+'?voice=heart-character-tnos-01',
     token:state.speechToken,startAtMs:resumeAtMs,
     emit:event=>{
       if(event.type==='SPEECH_ENDED'&&state.nameDecision==='provided'&&
