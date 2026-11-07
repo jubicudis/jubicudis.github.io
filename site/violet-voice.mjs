@@ -149,6 +149,8 @@ export function createVioletVoiceEngine({
     try{
       const audio=sharedMedia();
       audio.src=url.href;
+      audio.preservesPitch=true;
+      audio.playbackRate=1;
       const session={kind:'authored',audio,token,emit,src:url.pathname,
         playing:false,onPosition};
       active=session;
@@ -189,6 +191,11 @@ export function createVioletVoiceEngine({
     try{
       const audio=sharedMedia();
       audio.src=url;
+      // The dynamic visitor-name line receives the same subtle character
+      // pitch lift as the recorded Heart narration. WebKit uses
+      // preservesPitch=false for actual sample-rate pitch movement.
+      audio.preservesPitch=false;
+      audio.playbackRate=1.08;
       const session={kind:'generated',audio,token,emit,
         src:'generated-heart:'+token,playing:false,revoke,onPosition,onEnded};
       active=session;
