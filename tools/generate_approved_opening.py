@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import numpy as np
 import soundfile as sf
+import subprocess
 from kokoro_onnx import Kokoro
 
 def main():
@@ -38,7 +39,10 @@ def main():
                 "asking-name","welcome","orientation","presentation"
             ):
                 raise ValueError("Invalid approved narration segment")
-            samples,rate=engine.create(text,voice="af_heart",speed=1.0,lang="en-us")
+            # Captions preserve TNOS spelling; synthesis must articulate its
+            # four letter names, never pronounce it as a lexical word.
+            spoken=text.replace("TNOS","T. N. O. S.")
+            samples,rate=engine.create(spoken,voice="af_heart",speed=1.0,lang="en-us")
             signal=np.asarray(samples,dtype=np.float32).reshape(-1)
             peak=float(np.max(np.abs(signal))) if signal.size else 0
             if signal.size<rate//3 or not np.isfinite(signal).all() or not .003<=peak<=1.1:
@@ -70,7 +74,8 @@ def main():
     (a.output/"heart-provenance.json").write_text(json.dumps({
         "voice_id":"af_heart","model":"Kokoro-82M v1.0",
         "model_license":"Apache-2.0","runtime":"kokoro-onnx 0.6.1 (MIT)",
-        "status":"inventor-approved-revision-2",
+        "status":"Heart character treatment candidate; approval pending",
+        "spoken_acronym":"T. N. O. S.",
         "tracks":{k:{"spoken_text":" ".join(c["text"] for c in v["cues"]),
                        "segments":len(v["cues"]),"durationMs":v["durationMs"]}
                   for k,v in timeline["tracks"].items()}
