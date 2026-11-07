@@ -5,7 +5,7 @@
 // If any required art or WebGL rendering fails, no replacement character is fabricated.
 import * as THREE from './vendor/three.module.js?v=20261106-webkit-precision-01';
 import {createVioletAppearanceCapabilities} from './violet-appearance.mjs';
-import {A2_FACEPLATE,createA2FaceplateGeometry} from './violet-faceplate.mjs';
+import {A2_FACEPLATE,createA2FaceplateGeometry,createA2FaceplateSideGeometry} from './violet-faceplate.mjs';
 import {createBloomMotionCapabilities} from './violet-motion.mjs';
 import {captureWebGLRegion,compareWebGLObservations,compareWithOpenCV} from './violet-observation.mjs';
 
@@ -238,6 +238,26 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       side:THREE.DoubleSide
     }));
     faceAssembly.add(plate);
+    // The physical thickness and luminous contour are visible from a frontal
+    // iPhone camera; without these, a curved texture still reads as a 2D decal.
+    const side=new THREE.Mesh(createA2FaceplateSideGeometry(artPixelToWorld),
+      new THREE.MeshPhongMaterial({
+        color:0x230d48,emissive:0x3a126f,emissiveIntensity:.42,
+        specular:0xb77bff,shininess:86,side:THREE.DoubleSide
+      }));
+    faceAssembly.add(side);
+    const outline=[];
+    for(let i=0;i<=128;i++){
+      const angle=i*Math.PI*2/128;
+      outline.push(new THREE.Vector3(
+        A2_FACEPLATE.widthPixels*artPixelToWorld*.5*Math.cos(angle),
+        A2_FACEPLATE.heightPixels*artPixelToWorld*.5*Math.sin(angle),.008));
+    }
+    const rim=new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(outline,true),160,.016,7,true),
+      new THREE.MeshBasicMaterial({color:0x9d57ef,transparent:true,opacity:.76,
+        blending:THREE.AdditiveBlending,depthWrite:false}));
+    faceAssembly.add(rim);
     const faceAmbient=new THREE.AmbientLight(0xb6a0f8,1.05);
     const faceKey=new THREE.DirectionalLight(0xe7c9ff,1.5);
     faceKey.position.set(-2.8,3.8,5);
