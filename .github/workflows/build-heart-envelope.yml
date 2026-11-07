@@ -5,10 +5,6 @@ on:
     paths:
       - '.github/workflows/build-heart-envelope.yml'
       - 'tools/generate_heart_envelope.py'
-      - 'site/audio/violet-heart-asking-name.mp3'
-      - 'site/audio/violet-heart-after-name.mp3'
-      - 'site/audio/violet-heart-post-welcome.mp3'
-      - 'site/audio/heart-continuation-sha256.txt'
   workflow_dispatch:
 permissions:
   contents: write
