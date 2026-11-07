@@ -5,6 +5,7 @@
 // If any required art or WebGL rendering fails, no replacement character is fabricated.
 import * as THREE from './vendor/three.module.js?v=20261106-webkit-precision-01';
 import {createVioletAppearanceCapabilities} from './violet-appearance.mjs';
+import {A2_FACEPLATE,createA2FaceplateGeometry} from './violet-faceplate.mjs';
 import {createBloomMotionCapabilities} from './violet-motion.mjs';
 import {captureWebGLRegion,compareWebGLObservations,compareWithOpenCV} from './violet-observation.mjs';
 
@@ -116,6 +117,31 @@ async function svgTexture(url,mode){
     return texture;
   }finally{URL.revokeObjectURL(objectURL);}
 }
+// Lift the actual approved A2 faceplate pixels onto the curved mesh. This
+// preserves the reference's face material instead of substituting a flat
+// painted disc. The feathered perimeter merges into the original ribbons.
+function createA2FaceplateTexture(art){
+  const {centerX,centerY,widthPixels,heightPixels}=A2_FACEPLATE;
+  const canvas=document.createElement('canvas');
+  canvas.width=widthPixels;canvas.height=heightPixels;
+  const ctx=canvas.getContext('2d',{willReadFrequently:true});
+  if(!ctx)throw new Error('A2 faceplate texture requires 2D pixel access');
+  ctx.drawImage(art,centerX-widthPixels/2,centerY-heightPixels/2,
+    widthPixels,heightPixels,0,0,widthPixels,heightPixels);
+  const pixels=ctx.getImageData(0,0,widthPixels,heightPixels);
+  for(let y=0;y<heightPixels;y++)for(let x=0;x<widthPixels;x++){
+    const u=(x-widthPixels/2)/(widthPixels*.5);
+    const v=(y-heightPixels/2)/(heightPixels*.5);
+    const radius=Math.sqrt(u*u+v*v);
+    const feather=clamp((1-radius)*24,0,1);
+    pixels.data[(y*widthPixels+x)*4+3]=Math.round(
+      pixels.data[(y*widthPixels+x)*4+3]*feather);
+  }
+  ctx.putImageData(pixels,0,0);
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.colorSpace=THREE.SRGBColorSpace;
+  return texture;
+}
 function textureFromImage(image){
   const texture=new THREE.Texture(image);
   texture.colorSpace=THREE.SRGBColorSpace;
@@ -192,14 +218,24 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       map:textureFromImage(art),transparent:true,depthWrite:false,toneMapped:false,side:THREE.DoubleSide
     }));
     character.add(main);
-    // The original A2 body and its lighting remain intact; the SVG layer alone
-    // controls the expression, so the character can speak without a separate face.
+    // Preserve approved A2 body and lighting while lifting the source faceplate
+    // into a real curved surface; speech expressions conform to its geometry.
     const artPixelToWorld=artWidth/art.naturalWidth;
     const faceCenterX=517,faceCenterY=320;
-    const expression=new THREE.Mesh(new THREE.PlaneGeometry(475*artPixelToWorld,326*artPixelToWorld),
-      new THREE.MeshBasicMaterial({map:rest,transparent:true,depthWrite:false,toneMapped:false,side:THREE.DoubleSide}));
-    expression.position.set((faceCenterX-art.naturalWidth/2)*artPixelToWorld,
-      (art.naturalHeight/2-faceCenterY)*artPixelToWorld,.05);
+    const faceGeometry=createA2FaceplateGeometry(artPixelToWorld);
+    const plate=new THREE.Mesh(faceGeometry,new THREE.MeshBasicMaterial({
+      map:createA2FaceplateTexture(art),transparent:true,depthWrite:false,
+      toneMapped:false,side:THREE.DoubleSide
+    }));
+    plate.position.set((faceCenterX-art.naturalWidth/2)*artPixelToWorld,
+      (art.naturalHeight/2-faceCenterY)*artPixelToWorld,.04);
+    character.add(plate);
+    // Expressions share the exact curved geometry, not a second flat plane.
+    const expression=new THREE.Mesh(faceGeometry.clone(),
+      new THREE.MeshBasicMaterial({map:rest,transparent:true,depthWrite:false,
+        toneMapped:false,side:THREE.DoubleSide}));
+    expression.position.copy(plate.position);
+    expression.position.z+=.012;
     character.add(expression);
     // Render capabilities are addressable but are NOT scheduled or activated by this opening.
     const visualCapabilities=createVioletAppearanceCapabilities({
