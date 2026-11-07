@@ -1,10 +1,5 @@
 name: Measure actual approved Heart audio for Violet expression
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/build-heart-envelope.yml'
-      - 'tools/generate_heart_envelope.py'
   workflow_dispatch:
 permissions:
   contents: write
