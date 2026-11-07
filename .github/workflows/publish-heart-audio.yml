@@ -134,8 +134,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/audio/heart-provenance.json site/audio/heart-timeline.json site/audio/heart-sha256.txt site/audio/heart-envelope.json site/audio/violet-heart-asking-name.mp3 site/audio/violet-heart-after-name.mp3 site/audio/violet-heart-post-welcome.mp3 site/audio/heart-continuation-sha256.txt site/audio/heart-continuation-provenance.json
           if ! git diff --cached --quiet; then
-            git commit -m "Publish Heart character treatment with spelled-out T N O S and higher pitch"
             git fetch origin main
-            git rebase origin/main
+            git reset --soft origin/main
+            git commit -m "Publish synchronized approved Heart media and measurements"
             git push origin HEAD:main
           fi
