@@ -23,6 +23,8 @@ jobs:
         run: node tests/browser.test.mjs
       - name: Verify null shader precision does not prevent real Chromium rendering
         run: node tests/webgl-null-precision.test.mjs
+      - name: Verify approved A2 faceplate geometry is genuinely three-dimensional
+        run: node --test tests/faceplate.test.mjs
       - name: Install WebKit browser engine
         run: npx playwright install --with-deps webkit
       - name: Verify opening in WebKit
