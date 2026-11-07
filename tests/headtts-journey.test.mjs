@@ -101,9 +101,9 @@ try{
     await page.waitForFunction(()=>window.__heartEvents.some(x=>
       x.src.startsWith('blob:')&&x.event==='playing'),null,{timeout:220000});
     await page.waitForFunction(()=>document.getElementById('violet-caption')?.textContent===
-      "Morgan, let's continue.",null,{timeout:10000});
+      "Now, Morgan, let's take a closer look.",null,{timeout:10000});
     nameCaptionObservations.push(await page.locator('#violet-caption').innerText());
-    assert.equal(nameCaptionObservations[0],"Morgan, let's continue.");
+    assert.equal(nameCaptionObservations[0],"Now, Morgan, let's take a closer look.");
     await page.waitForFunction(()=>window.__heartEvents.some(x=>
       x.src.startsWith('blob:')&&x.event==='ended'),null,{timeout:30000});
     const generatedEnd=await page.evaluate(()=>({
