@@ -4,17 +4,17 @@
   "model_license": "Apache-2.0",
   "runtime": "kokoro-onnx 0.6.1 (MIT)",
   "status": "Heart character treatment candidate; approval pending",
-  "spoken_acronym": "T. N. O. S.",
+  "spoken_acronym": "T N O S",
   "tracks": {
     "asking-name": {
       "spoken_text": "Hello, I'm Violet. I'm a visual representation of the interface being designed for Tranquility Neuro Operating System, or TNOS. You've arrived at the project's public introduction, and I'm here to help you understand what TNOS is, why it's being developed, and what makes it different. Before we begin, may I ask what to call you? You can share a name, or we can continue without one.",
       "segments": 4,
-      "durationMs": 27175
+      "durationMs": 24641
     },
     "after-name": {
       "spoken_text": "Welcome. I'm glad you're here. TNOS is an experimental operating system being developed around a different foundation for intelligent computing. Its design aims to connect intelligent computation with the physical state of the computer and the context in which it operates. I'll begin by showing you the kind of experience TNOS is intended to create. From there, we'll explore what makes the underlying design different, what's already been built, and what remains under development. Along the way, I'll explain what the Workbench is, why it's being developed, and how it helps with the engineering of TNOS. We'll also explore the separate MCP server, what it is, and how it's intended to connect selected capabilities with other tools. As we go, I'll distinguish between the intended design, what has actually been demonstrated, and the work that's still in progress. I'll explain each part as we reach it, so everything you discover builds on what you've already learned. Let's begin with something familiar. Imagine turning on your computer. But instead of being greeted by the usual desktop, you're welcomed by a visual interface that helps you understand your computer and work with it. An interface much like the one you're interacting with right now. That's part of the experience TNOS is being developed to create. But what you're seeing here is only a representation of that intended experience. You're not actually running TNOS in your browser. And the larger idea goes much deeper than the interface itself. To understand what makes TNOS different, we need to look beneath what you can see. Because the real difference begins with the operating system itself.",
       "segments": 17,
-      "durationMs": 109960
+      "durationMs": 102598
     }
   }
 }
