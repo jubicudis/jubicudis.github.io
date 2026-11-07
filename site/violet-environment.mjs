@@ -187,13 +187,18 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
   let renderer;
   try{
     if(!canvas||!(canvas instanceof HTMLCanvasElement))throw new Error('Required Violet WebGL canvas is missing');
-    renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance',preserveDrawingBuffer:false});
+    // iOS WebKit can terminate a WebGL context under GPU memory pressure.
+    // Use the actual required A2 scene at a bounded GPU allocation, rather
+    // than trying to restore a lost context or showing substitute artwork.
+    renderer=new THREE.WebGLRenderer({
+      canvas,antialias:false,alpha:false,powerPreference:'low-power',
+      preserveDrawingBuffer:false,stencil:false,depth:true
+    });
     renderer.outputColorSpace=THREE.SRGBColorSpace;
     renderer.toneMapping=THREE.NoToneMapping; // keep reference artwork colorimetry, no pastel wash-out
     // On touch-sized WebKit surfaces, a 2x framebuffer quadruples GPU memory.
     // Preserve the same authored scene while limiting its framebuffer cost.
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,
-      window.innerWidth<=620?1:2));
+    renderer.setPixelRatio(1);
     const artworkURL=new URL('./violet-a2-art.webp',import.meta.url);
     const faceURL=new URL('./violet-face.svg',import.meta.url);
     const [art,rest,ask,talk,blink,visemeClosed,visemeOpen,visemeWide,visemeRound]=await Promise.all([
@@ -254,7 +259,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         A2_FACEPLATE.heightPixels*artPixelToWorld*.5*Math.sin(angle),.008));
     }
     const rim=new THREE.Mesh(
-      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(outline,true),160,.016,7,true),
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(outline,true),96,.016,5,true),
       new THREE.MeshBasicMaterial({color:0x9d57ef,transparent:true,opacity:.76,
         blending:THREE.AdditiveBlending,depthWrite:false}));
     faceAssembly.add(rim);
