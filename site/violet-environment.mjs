@@ -108,12 +108,20 @@ async function svgTexture(url,mode){
       image.onload=resolve;
       image.onerror=()=>reject(new Error('Violet expression SVG decoding failed'));
     });
-    const canvas=document.createElement('canvas');canvas.width=640;canvas.height=440;
-    const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Violet expression texture canvas unavailable');
-    ctx.drawImage(image,0,0,canvas.width,canvas.height);
+    // Verify the authored expression at its original 640x440 resolution,
+    // then upload a compact 320x220 GPU texture. These are the same SVG
+    // paths and expression state, not a replacement asset or fallback.
+    const verified=document.createElement('canvas');verified.width=640;verified.height=440;
+    const ctx=verified.getContext('2d');if(!ctx)throw new Error('Violet expression verification canvas unavailable');
+    ctx.drawImage(image,0,0,verified.width,verified.height);
     assertVisibleExpression(ctx,mode);
+    const canvas=document.createElement('canvas');canvas.width=320;canvas.height=220;
+    const compact=canvas.getContext('2d');if(!compact)throw new Error('Violet expression texture canvas unavailable');
+    compact.drawImage(verified,0,0,canvas.width,canvas.height);
     const texture=new THREE.CanvasTexture(canvas);
     texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=1;
+    texture.generateMipmaps=false;
+    texture.minFilter=THREE.LinearFilter;texture.magFilter=THREE.LinearFilter;
     return texture;
   }finally{URL.revokeObjectURL(objectURL);}
 }
