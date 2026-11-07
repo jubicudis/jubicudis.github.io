@@ -123,7 +123,7 @@ function environmentMaterials(group){
  * apply() changes requested material values and never asserts observed pixels.
  */
 export function createVioletAppearanceCapabilities({
-  character,main,expression,art,artWidth,faceMaps,backgroundGroup
+  character,main,expression,art,artWidth,faceMaps,backgroundGroup,faceplate,faceAssembly
 }){
   const width=artWidth,height=artWidth*art.naturalHeight/art.naturalWidth;
   const textureMaps=makeMaterialTextures(art);
@@ -179,7 +179,18 @@ export function createVioletAppearanceCapabilities({
       surface.geometry.dispose();surface.material.map.dispose();surface.material.dispose();
     }
   }
+  function readFaceplateEvidence(){
+    const normal=faceplate.geometry.getAttribute('normal');
+    let min=Infinity,max=-Infinity;
+    for(let i=0;i<normal.count;i++){
+      min=Math.min(min,normal.getZ(i));max=Math.max(max,normal.getZ(i));
+    }
+    return Object.freeze({material:faceplate.material.type,
+      depth:faceplate.geometry.userData.a2Faceplate.depth,
+      rotationY:faceAssembly.rotation.y,normalZRange:max-min});
+  }
   return Object.freeze({
+    readFaceplateEvidence,
     apply,setExpressionOverride,setStructuralWarpActive,getStructureSurface,
     desiredExpression:defaultMode=>expressionOverride??defaultMode,
     readRequested:()=>requested,
