@@ -53,8 +53,8 @@ jobs:
             # Mild cartoon-character lift: +8% pitch with compensating tempo
             # correction, retaining Heart's identity and approximate timing.
             # This is a candidate character treatment, not a new speaker.
-            ffmpeg -hide_banner -nostdin -loglevel error -y -i "/tmp/heart-generated/violet-heart-$track.wav" \\
-              -af "asetrate=24000*1.08,aresample=24000,atempo=0.925925926" \\
+            ffmpeg -hide_banner -nostdin -loglevel error -y -i "/tmp/heart-generated/violet-heart-$track.wav" \
+              -af "asetrate=24000*1.08,aresample=24000,atempo=0.925925926" \
               -c:a libmp3lame -q:a 2 "site/audio/violet-heart-$track.mp3"
             test "$(stat -c%s "site/audio/violet-heart-$track.mp3")" -gt 10000
             ffprobe -v error -show_entries format=duration -of default=nw=1 "site/audio/violet-heart-$track.mp3"
