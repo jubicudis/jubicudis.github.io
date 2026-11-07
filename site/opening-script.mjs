@@ -11,7 +11,7 @@ export const AFTER_NAME_SEGMENTS=Object.freeze([
   Object.freeze({phase:'welcome',text:"Welcome. I'm glad you're here."}),
   Object.freeze({phase:'orientation',text:"TNOS is an experimental operating system being developed around a different foundation for intelligent computing."}),
   Object.freeze({phase:'orientation',text:"Its design aims to connect intelligent computation with the physical state of the computer and the context in which it operates."}),
-  Object.freeze({phase:'orientation',text:"I'll begin by showing you the kind of experience TNOS is intended to create. From there, we'll explore what makes the underlying design different, what's already been built, and what remains under development."}),
+  Object.freeze({phase:'orientation',text:"I'll begin by showing you the kind of experience TNOS is intended to create. From there, we'll explore what makes the underlying design different, what's already been built, and what remains under development. That's where our journey begins."}),
   Object.freeze({phase:'orientation',text:"Along the way, I'll explain what the Workbench is, why it's being developed, and how it helps with the engineering of TNOS."}),
   Object.freeze({phase:'orientation',text:"We'll also explore the separate MCP server, what it is, and how it's intended to connect selected capabilities with other tools."}),
   Object.freeze({phase:'orientation',text:"As we go, I'll distinguish between the intended design, what has actually been demonstrated, and the work that's still in progress."}),
@@ -26,18 +26,19 @@ export const AFTER_NAME_SEGMENTS=Object.freeze([
   Object.freeze({phase:'presentation',text:"To understand what makes TNOS different, we need to look beneath what you can see."}),
   Object.freeze({phase:'presentation',text:"Because the real difference begins with the operating system itself."})
 ]);
-// A named visitor receives an additional Heart-generated spoken line AFTER
-// the first four recorded after-name paragraphs (roughly 30 seconds of
-// uninterrupted orientation). This is an explicit script slot, not a change
-// to the immutable prerecorded Heart track or its measured cue positions.
-// Skipped names do not use this slot.
+// A named visitor hears the prerecorded Heart orientation FIRST. Its first
+// four paragraphs provide approximately 30 seconds for the separately
+// synthesized name line to finish. The authored paragraph ends in a natural
+// transition to the generated line, and the next authored paragraph continues
+// the same explanation. No name is required immediately after name entry.
+// The narration is regenerated whenever this approved script changes.
 export const VISITOR_NAME_SLOT=Object.freeze({
   track:'after-name',
   phase:'orientation',
   kind:'generated-visitor-name',
   afterCueIndex:3,
   beforeCueIndex:4,
-  text:visitorName=>visitorName+", let's continue."
+  text:visitorName=>"Now, "+visitorName+", let's take a closer look."
 });
 // The actual named-visitor script includes this required dynamic speech line.
 // The prerecorded Heart media still contains only the static paragraphs.
