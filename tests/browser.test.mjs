@@ -232,6 +232,18 @@ try{
     return window.__visualProbe.visualCapabilities.readRequested();
   });
   assert.deepEqual(accepted,{structure:1,center:1,environment:1,features:1});
+  // A nonplanar vertex buffer alone did not make the A2 face look 3D.
+  // Verify the actual live face uses normal-dependent shading and a rotated
+  // curved assembly, not another flat unlit image projection.
+  const faceVolume=await probe.evaluate(()=>{
+    const scene=window.__visualProbe.visualCapabilities.readFaceplateEvidence();
+    return scene;
+  });
+  assert.equal(faceVolume.material,'MeshPhongMaterial');
+  assert.ok(faceVolume.depth>.5);
+  assert.ok(faceVolume.rotationY>.1);
+  assert.ok(faceVolume.normalZRange>.2);
+
   await probe.waitForTimeout(200);
   const baseline=await probe.screenshot({path:'artifacts/renderer-capability-approved-a2.png'});
   const requested=await probe.evaluate(()=>{
