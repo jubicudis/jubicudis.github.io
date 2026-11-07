@@ -5,7 +5,7 @@
   "tracks": {
     "asking-name": {
       "file": "/site/audio/violet-heart-asking-name.mp3",
-      "durationMs": 24243,
+      "durationMs": 27175,
       "cues": [
         {
           "index": 0,
@@ -19,27 +19,27 @@
           "phase": "asking-name",
           "text": "I'm a visual representation of the interface being designed for Tranquility Neuro Operating System, or TNOS.",
           "startMs": 1674,
-          "endMs": 9139
+          "endMs": 10415
         },
         {
           "index": 2,
           "phase": "asking-name",
           "text": "You've arrived at the project's public introduction, and I'm here to help you understand what TNOS is, why it's being developed, and what makes it different.",
-          "startMs": 9339,
-          "endMs": 18299
+          "startMs": 10615,
+          "endMs": 21231
         },
         {
           "index": 3,
           "phase": "asking-name",
           "text": "Before we begin, may I ask what to call you? You can share a name, or we can continue without one.",
-          "startMs": 18499,
-          "endMs": 24243
+          "startMs": 21431,
+          "endMs": 27175
         }
       ]
     },
     "after-name": {
       "file": "/site/audio/violet-heart-after-name.mp3",
-      "durationMs": 100606,
+      "durationMs": 109960,
       "cues": [
         {
           "index": 0,
@@ -53,112 +53,112 @@
           "phase": "orientation",
           "text": "TNOS is an experimental operating system being developed around a different foundation for intelligent computing.",
           "startMs": 2177,
-          "endMs": 9291
+          "endMs": 10987
         },
         {
           "index": 2,
           "phase": "orientation",
           "text": "Its design aims to connect intelligent computation with the physical state of the computer and the context in which it operates.",
-          "startMs": 9491,
-          "endMs": 17501
+          "startMs": 11187,
+          "endMs": 19197
         },
         {
           "index": 3,
           "phase": "orientation",
           "text": "I'll begin by showing you the kind of experience TNOS is intended to create. From there, we'll explore what makes the underlying design different, what's already been built, and what remains under development.",
-          "startMs": 17701,
-          "endMs": 30009
+          "startMs": 19397,
+          "endMs": 33409
         },
         {
           "index": 4,
           "phase": "orientation",
           "text": "Along the way, I'll explain what the Workbench is, why it's being developed, and how it helps with the engineering of TNOS.",
-          "startMs": 30209,
-          "endMs": 37333
+          "startMs": 33609,
+          "endMs": 42321
         },
         {
           "index": 5,
           "phase": "orientation",
           "text": "We'll also explore the separate MCP server, what it is, and how it's intended to connect selected capabilities with other tools.",
-          "startMs": 37533,
-          "endMs": 45596
+          "startMs": 42521,
+          "endMs": 50584
         },
         {
           "index": 6,
           "phase": "orientation",
           "text": "As we go, I'll distinguish between the intended design, what has actually been demonstrated, and the work that's still in progress.",
-          "startMs": 45796,
-          "endMs": 53379
+          "startMs": 50784,
+          "endMs": 58367
         },
         {
           "index": 7,
           "phase": "orientation",
           "text": "I'll explain each part as we reach it, so everything you discover builds on what you've already learned.",
-          "startMs": 53579,
-          "endMs": 59200
+          "startMs": 58567,
+          "endMs": 64188
         },
         {
           "index": 8,
           "phase": "presentation",
           "text": "Let's begin with something familiar.",
-          "startMs": 59400,
-          "endMs": 61387
+          "startMs": 64388,
+          "endMs": 66376
         },
         {
           "index": 9,
           "phase": "presentation",
           "text": "Imagine turning on your computer.",
-          "startMs": 61587,
-          "endMs": 63596
+          "startMs": 66576,
+          "endMs": 68576
         },
         {
           "index": 10,
           "phase": "presentation",
           "text": "But instead of being greeted by the usual desktop, you're welcomed by a visual interface that helps you understand your computer and work with it.",
-          "startMs": 63796,
-          "endMs": 71628
+          "startMs": 68776,
+          "endMs": 76608
         },
         {
           "index": 11,
           "phase": "presentation",
           "text": "An interface much like the one you're interacting with right now.",
-          "startMs": 71828,
-          "endMs": 75393
+          "startMs": 76808,
+          "endMs": 80373
         },
         {
           "index": 12,
           "phase": "presentation",
           "text": "That's part of the experience TNOS is being developed to create.",
-          "startMs": 75593,
-          "endMs": 79498
+          "startMs": 80573,
+          "endMs": 86028
         },
         {
           "index": 13,
           "phase": "presentation",
           "text": "But what you're seeing here is only a representation of that intended experience. You're not actually running TNOS in your browser.",
-          "startMs": 79698,
-          "endMs": 87410
+          "startMs": 86228,
+          "endMs": 95452
         },
         {
           "index": 14,
           "phase": "presentation",
           "text": "And the larger idea goes much deeper than the interface itself.",
-          "startMs": 87610,
-          "endMs": 91374
+          "startMs": 95652,
+          "endMs": 99416
         },
         {
           "index": 15,
           "phase": "presentation",
           "text": "To understand what makes TNOS different, we need to look beneath what you can see.",
-          "startMs": 91574,
-          "endMs": 96320
+          "startMs": 99616,
+          "endMs": 105674
         },
         {
           "index": 16,
           "phase": "presentation",
           "text": "Because the real difference begins with the operating system itself.",
-          "startMs": 96520,
-          "endMs": 100606
+          "startMs": 105874,
+          "endMs": 109960
         }
       ]
     }
