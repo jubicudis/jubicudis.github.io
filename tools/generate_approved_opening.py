@@ -11,8 +11,10 @@ import json
 from pathlib import Path
 import numpy as np
 import soundfile as sf
-import subprocess
 from kokoro_onnx import Kokoro
+
+def heart_spoken_text(caption):
+    return caption.replace('TNOS', 'T. N. O. S.')
 
 def main():
     parser=argparse.ArgumentParser()
@@ -41,7 +43,7 @@ def main():
                 raise ValueError("Invalid approved narration segment")
             # Captions preserve TNOS spelling; synthesis must articulate its
             # four letter names, never pronounce it as a lexical word.
-            spoken=text.replace("TNOS","T. N. O. S.")
+            spoken=heart_spoken_text(text)
             samples,rate=engine.create(spoken,voice="af_heart",speed=1.0,lang="en-us")
             signal=np.asarray(samples,dtype=np.float32).reshape(-1)
             peak=float(np.max(np.abs(signal))) if signal.size else 0
