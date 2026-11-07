@@ -5,7 +5,7 @@ import * as THREE from './vendor/three.module.js';
 export const A2_FACEPLATE=Object.freeze({
   widthPixels:475,heightPixels:326,
   centerX:517,centerY:320,
-  depth:0.27,segmentsX:48,segmentsY:32
+  depth:0.64,segmentsX:64,segmentsY:48
 });
 
 export function createA2FaceplateGeometry(pixelToWorld){
@@ -14,13 +14,12 @@ export function createA2FaceplateGeometry(pixelToWorld){
   const width=widthPixels*pixelToWorld,height=heightPixels*pixelToWorld;
   const geometry=new THREE.PlaneGeometry(width,height,segmentsX,segmentsY);
   const positions=geometry.getAttribute('position');
-  const normals=geometry.getAttribute('normal');
   for(let i=0;i<positions.count;i++){
     const x=positions.getX(i)/(width*.5),y=positions.getY(i)/(height*.5);
     const r=Math.min(1,Math.sqrt(x*x+y*y));
     // Convex ellipsoidal cap with continuous edge falloff. The same texture
     // follows the curvature rather than floating on a planar billboard.
-    const z=depth*Math.sqrt(Math.max(0,1-r*r));
+    const z=depth*Math.pow(Math.max(0,1-r*r),0.68);
     positions.setZ(i,z);
   }
   positions.needsUpdate=true;
