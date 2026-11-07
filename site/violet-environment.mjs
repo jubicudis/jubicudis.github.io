@@ -310,8 +310,16 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     // continues to be sampled on each animation frame.
     const gpuFrameInterval=1000/30;
     let lastGpuFrame=-Infinity,frameRequest=0;
+    let allocatedWidth=0,allocatedHeight=0;
     const resize=()=>{
-      const width=Math.max(1,canvas.clientWidth),height=Math.max(1,canvas.clientHeight),aspect=width/height;
+      const width=Math.max(1,Math.round(canvas.clientWidth));
+      const height=Math.max(1,Math.round(canvas.clientHeight));
+      // ResizeObserver can fire repeatedly for an unchanged CSS box on
+      // WebKit. Reallocating an identical WebGL drawing buffer is unnecessary
+      // GPU work and can evict the active context during Heart playback.
+      if(width===allocatedWidth&&height===allocatedHeight)return;
+      allocatedWidth=width;allocatedHeight=height;
+      const aspect=width/height;
       const worldWidth=width<=620?7.25:clamp(aspect*7.25,8.0,13.1);
       const worldHeight=worldWidth/aspect;
       camera.left=-worldWidth/2;camera.right=worldWidth/2;
