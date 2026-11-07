@@ -5,6 +5,9 @@ on:
     paths:
       - '.github/workflows/build-heart-envelope.yml'
       - 'tools/generate_heart_envelope.py'
+      - 'site/audio/violet-heart-asking-name.mp3'
+      - 'site/audio/violet-heart-after-name.mp3'
+      - 'site/audio/violet-heart-post-welcome.mp3'
   workflow_dispatch:
 permissions:
   contents: write
@@ -14,7 +17,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Verify existing inventor-approved sources
+      - name: Verify existing Heart audio sources
         run: |
           sha256sum -c site/audio/heart-sha256.txt
           sha256sum -c site/audio/heart-continuation-sha256.txt
