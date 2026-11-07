@@ -18,7 +18,7 @@ const failure=document.getElementById('render-failure');
 const audioFailure=document.getElementById('audio-failure');
 let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameAudio=null;
 let preparedName=null,nameSynthesisError=null,nameInsertionActive=false,nameInsertionDone=false;
-let deferredNameBoundaryMs=null,authoredNarrationEnded=false;
+let authoredNarrationEnded=false;
 const store=createOpeningStore(render);
 const voice=createVioletVoiceEngine();
 activate.disabled=true;
@@ -52,12 +52,14 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
         evidence:{...observation,track:selected.track,cueIndex:cue.index,
           elapsedMs:observation.elapsedMs+offset}
       });
-      if(state.nameDecision==='provided'&&!nameInsertionDone&&
+      // The name is inserted only at an observed authored cue boundary.
+      // If synthesis is still running, use the NEXT observed paragraph
+      // boundary, never splice a name in the middle of recorded speech.
+      if(state.nameDecision==='provided'&&preparedName&&!nameInsertionDone&&
          !nameInsertionActive&&cue.index>=VISITOR_NAME_SLOT.beforeCueIndex&&
          cue.index>previousCueIndex){
         const boundary=timeline.tracks[selected.track].cues[cue.index].startMs;
-        if(preparedName)insertPreparedName(state,boundary);
-        else deferredNameBoundaryMs=boundary;
+        insertPreparedName(store.getState(),boundary);
       }
 
     }
@@ -105,7 +107,6 @@ async function beginSpeech(state){
   nameInsertionDone=false;
   preparedName=null;
   nameSynthesisError=null;
-  deferredNameBoundaryMs=null;
   authoredNarrationEnded=false;
   playApprovedTrack(state);
   if(state.nameDecision!=='provided')return;
@@ -214,7 +215,7 @@ document.addEventListener('visibilitychange',()=>{
   const current=store.getState();
   if(current.speechStatus==='pending'&&current.nameDecision==='provided')
     store.dispatch({type:'SPEECH_INTERRUPTED',token:current.speechToken});
-  activeNameAudio=null;preparedName=null;deferredNameBoundaryMs=null;
+  activeNameAudio=null;preparedName=null;
   voice.cancel('page-hidden');
 });
 
