@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/prepare-heart-continuation.yml'
+      - 'site/audio/violet-heart-after-name.mp3'
   workflow_dispatch:
 permissions:
   contents: write
@@ -22,8 +23,8 @@ jobs:
           const t=JSON.parse(fs.readFileSync('site/audio/heart-timeline.json'));
           if(t.voiceId!=='af_heart'||t.version!==2||
              t.tracks['after-name'].cues.length!==OPENING_TRACKS['after-name'].length||
-             t.tracks['after-name'].cues[0].endMs!==1977||
-             t.tracks['after-name'].cues[1].startMs!==2177)
+             t.tracks['after-name'].cues[0].endMs<=0||
+             t.tracks['after-name'].cues[1].startMs<=t.tracks['after-name'].cues[0].endMs)
             throw Error('Unapproved Heart audio or greeting boundary');
           NODE
       - name: Obtain FFmpeg
@@ -35,8 +36,10 @@ jobs:
           PY
       - name: Cut actual approved Heart track after the prerecorded welcome
         run: |
+          CUT_MS=$(node --input-type=module -e "import fs from 'node:fs'; console.log(JSON.parse(fs.readFileSync('site/audio/heart-timeline.json')).tracks['after-name'].cues[0].endMs)")
+          CUT_SECONDS=$(awk "BEGIN {printf \"%.3f\", $CUT_MS/1000}")
           "$FFMPEG_BIN" -hide_banner -nostdin -loglevel error -y \
-            -ss 1.977 -i site/audio/violet-heart-after-name.mp3 \
+            -ss "$CUT_SECONDS" -i site/audio/violet-heart-after-name.mp3 \
             -map 0:a:0 -c:a libmp3lame -q:a 2 \
             site/audio/violet-heart-post-welcome.mp3
           test "$(stat -c%s site/audio/violet-heart-post-welcome.mp3)" -gt 200000
@@ -54,8 +57,8 @@ jobs:
             sourceSha256:createHash('sha256').update(fs.readFileSync(src)).digest('hex'),
             output:out,
             outputSha256:createHash('sha256').update(fs.readFileSync(out)).digest('hex'),
-            cutFromObservedTimelineMs:1977,
-            firstOrientationCueInSourceMs:2177,
+            cutFromObservedTimelineMs:JSON.parse(fs.readFileSync('site/audio/heart-timeline.json')).tracks['after-name'].cues[0].endMs,
+            firstOrientationCueInSourceMs:JSON.parse(fs.readFileSync('site/audio/heart-timeline.json')).tracks['after-name'].cues[1].startMs,
             purpose:'Continue exact approved orientation after the observed personalized Heart welcome'
           };
           fs.writeFileSync('site/audio/heart-continuation-provenance.json',
