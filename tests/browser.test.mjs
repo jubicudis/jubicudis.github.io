@@ -138,7 +138,7 @@ try{
     await page.screenshot({path:'artifacts/'+label+'-name-question.png'});
 
     const afterMedia=page.waitForResponse(response=>
-      response.url().endsWith('/site/audio/violet-heart-after-name.mp3')&&
+      new URL(response.url()).pathname.endsWith('/site/audio/violet-heart-after-name.mp3')&&
       [200,206].includes(response.status()),{timeout:15000});
     if(named){
       await page.locator('#visitor-name').fill('Morgan');
