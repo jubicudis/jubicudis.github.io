@@ -301,14 +301,35 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       camera.updateProjectionMatrix();renderer.setSize(width,height,false);
     };
     resize();const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(canvas);
-    const loss=event=>{event.preventDefault();if(!failed){
-      failed=true;live=false;
-      rejectObservations(new Error('Violet WebGL context lost'));
-      onFailure?.(new Error('Violet WebGL context lost'));
-    }};
+    // A transient iOS WebKit GPU context reset is not proof that the
+    // approved Violet scene is invalid. Three.js rebuilds its own GPU
+    // resources on webglcontextrestored; keep the original scene and state.
+    // Never fabricate an alternate character or advance narration here.
+    let contextLost=false,frameScheduled=false;
+    const scheduleFrame=()=>{
+      if(!live||contextLost||frameScheduled)return;
+      frameScheduled=true;
+      requestAnimationFrame(frame);
+    };
+    const loss=event=>{
+      event.preventDefault();
+      if(!live||contextLost)return;
+      contextLost=true;
+      rejectObservations(new Error('Violet WebGL context temporarily lost'));
+    };
+    const restored=()=>{
+      if(!live||!contextLost)return;
+      contextLost=false;
+      // A restoration invalidates any previous observed-pixel evidence.
+      observed=false;frameCount=0;previousExpression='';
+      renderer.setSize(Math.max(1,canvas.clientWidth),Math.max(1,canvas.clientHeight),false);
+      scheduleFrame();
+    };
     canvas.addEventListener('webglcontextlost',loss);
+    canvas.addEventListener('webglcontextrestored',restored);
     function frame(now){
-      if(!live)return;
+      frameScheduled=false;
+      if(!live||contextLost)return;
       const t=reduced.matches?0:(now-start)/1000;
       character.position.y=reduced.matches?0:.038*Math.sin(t*.7);
       character.rotation.z=reduced.matches?0:.008*Math.sin(t*.39);
@@ -333,9 +354,9 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         const evidence=observedFrame(renderer,canvas);
         if(evidence){observed=true;onObserved?.(evidence);}
       }
-      requestAnimationFrame(frame);
+      scheduleFrame();
     }
-    requestAnimationFrame(frame);
+    scheduleFrame();
     return {
       update(next){state=next;},
       // The caller may explicitly propagate a visual snapshot in a later approved pass.
@@ -350,6 +371,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         live=false;
         rejectObservations(new Error('Violet renderer disposed'));
         resizeObserver.disconnect();canvas.removeEventListener('webglcontextlost',loss);
+        canvas.removeEventListener('webglcontextrestored',restored);
         visualCapabilities.dispose();scene.traverse(o=>{o.geometry?.dispose();});renderer.dispose();
       },
       get observed(){return observed&&!failed;}
