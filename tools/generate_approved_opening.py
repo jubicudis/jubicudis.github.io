@@ -14,7 +14,7 @@ import soundfile as sf
 from kokoro_onnx import Kokoro
 
 def heart_spoken_text(caption):
-    return caption.replace('TNOS', 'T. N. O. S.')
+    return caption.replace('TNOS', 'T N O S')
 
 def main():
     parser=argparse.ArgumentParser()
@@ -61,7 +61,7 @@ def main():
             if index<len(segments)-1:
                 # Audible pacing without an invented presentation event; the
                 # measured silent audio is part of the actual playback track.
-                pause=np.zeros(round(rate*0.20),dtype=np.float32)
+                pause=np.zeros(round(rate*0.08),dtype=np.float32)
                 parts.append(pause)
                 position+=pause.size
             print(f"Heart {track} segment {index+1}/{len(segments)} {len(signal)/rate:.2f}s",flush=True)
@@ -77,7 +77,7 @@ def main():
         "voice_id":"af_heart","model":"Kokoro-82M v1.0",
         "model_license":"Apache-2.0","runtime":"kokoro-onnx 0.6.1 (MIT)",
         "status":"Heart character treatment candidate; approval pending",
-        "spoken_acronym":"T. N. O. S.",
+        "spoken_acronym":"T N O S",
         "tracks":{k:{"spoken_text":" ".join(c["text"] for c in v["cues"]),
                        "segments":len(v["cues"]),"durationMs":v["durationMs"]}
                   for k,v in timeline["tracks"].items()}
