@@ -69,3 +69,9 @@ https://github.com/met4citizen/HeadTTS
 All work is committed directly to the existing `main` branch. Violet's
 approved Structured Bloom A2 artwork, the written introductory script,
 and the existing visitor-facing name/skip controls are retained.
+
+## Violet character-voice treatment candidate (November 7, 2026)
+
+The underlying speaker remains the approved Kokoro `af_heart` voice. The proposed character treatment lifts the pitch approximately 8% while compensating the prerecorded tracks' tempo, rather than replacing Heart with another actor or browser speech voice. Dynamically synthesized visitor names use the same Heart speaker and a matching playback pitch lift. This is an auditionable character treatment, not an assertion of final voice approval.
+
+TNOS is an initialism: the canonical caption and written name remain `TNOS`, while the synthesis text explicitly spells out `T. N. O. S.` in every recorded line. The two continuous Heart audio tracks must be regenerated and deployed; changing captions or source text alone does not correct existing recordings. The timeline continues to be derived from actual synthesized sample counts.
