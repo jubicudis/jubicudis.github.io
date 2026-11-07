@@ -123,11 +123,15 @@ async function beginSpeech(state){
     if(authoredNarrationEnded&&!nameInsertionActive&&!nameInsertionDone&&
        current.speechStatus==='speaking')insertPreparedName(current,null);
   }catch(error){
-    // Do not interrupt an actual Heart recording because optional
-    // personalization failed; do not pretend the name was spoken.
+    // A provided name is a required part of this named-visitor path.
+    // Failure is explicit: never silently finish the unnamed narration
+    // while claiming the requested personalization succeeded.
+    const current=store.getState();
+    if(current.speechToken!==token||current.nameDecision!=='provided')return;
     nameSynthesisError=String(error?.message||error);
     console.error('Selected Heart name synthesis failed',error);
-    render(store.getState(),store.getState());
+    store.dispatch({type:'SPEECH_FAILED',token,reason:nameSynthesisError});
+    voice.cancel('required Heart name generation failed');
   }
 }
 
