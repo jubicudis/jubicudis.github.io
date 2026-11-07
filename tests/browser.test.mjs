@@ -129,8 +129,8 @@ try{
       return stage.dataset.phase==='asking-name' &&
         stage.dataset.speechStatus==='completed' &&
         !document.querySelector('#name-form').hidden &&
-        events.some(x=>x.track.endsWith('/violet-heart-asking-name.mp3')&&x.type==='playing') &&
-        events.some(x=>x.track.endsWith('/violet-heart-asking-name.mp3')&&x.type==='ended');
+        events.some(x=>new URL(x.track).pathname.endsWith('/violet-heart-asking-name.mp3')&&x.type==='playing') &&
+        events.some(x=>new URL(x.track).pathname.endsWith('/violet-heart-asking-name.mp3')&&x.type==='ended');
     },null,{timeout:15000});
     assert.match(await page.locator('#violet-caption').innerText(),
       /may I ask what to call you\?/);
