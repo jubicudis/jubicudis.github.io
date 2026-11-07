@@ -79,14 +79,14 @@ jobs:
                   cue['endMs']=round(cue['endMs']*ratio)
               track['durationMs']=round(duration)
               track['cues'][-1]['endMs']=track['durationMs']
-          path.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\\n')
+          path.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
           PY
           # Cut the approved after-name recording at its measured welcome
           # boundary and generate its exact continuation in the same job.
           CUT_MS=$(node --input-type=module -e "import fs from 'node:fs'; console.log(JSON.parse(fs.readFileSync('site/audio/heart-timeline.json')).tracks['after-name'].cues[0].endMs)")
-          CUT_SECONDS=$(awk "BEGIN {printf \\"%.3f\\", $CUT_MS/1000}")
-          ffmpeg -hide_banner -nostdin -loglevel error -y -ss "$CUT_SECONDS" \\
-            -i site/audio/violet-heart-after-name.mp3 -map 0:a:0 \\
+          CUT_SECONDS=$(awk "BEGIN {printf \"%.3f\", $CUT_MS/1000}")
+          ffmpeg -hide_banner -nostdin -loglevel error -y -ss "$CUT_SECONDS" \
+            -i site/audio/violet-heart-after-name.mp3 -map 0:a:0 \
             -c:a libmp3lame -q:a 2 site/audio/violet-heart-post-welcome.mp3
           sha256sum site/audio/violet-heart-post-welcome.mp3 > site/audio/heart-continuation-sha256.txt
           python - <<'PY'
@@ -102,13 +102,13 @@ jobs:
                     cutFromObservedTimelineMs=t[0]['endMs'],
                     firstOrientationCueInSourceMs=t[1]['startMs'],
                     purpose='Continue exact approved orientation after the observed personalized Heart welcome')
-          (base/'heart-continuation-provenance.json').write_text(json.dumps(data,indent=2)+'\\n')
+          (base/'heart-continuation-provenance.json').write_text(json.dumps(data,indent=2)+'\n')
           PY
           # Derive the acoustic envelope from these exact MP3 bytes before
           # committing. A mismatched envelope can never be published.
           for track in asking-name after-name post-welcome; do
-            ffmpeg -hide_banner -nostdin -loglevel error -y \\
-              -i "site/audio/violet-heart-$track.mp3" -ar 8000 -ac 1 \\
+            ffmpeg -hide_banner -nostdin -loglevel error -y \
+              -i "site/audio/violet-heart-$track.mp3" -ar 8000 -ac 1 \
               -acodec pcm_s16le "/tmp/heart-envelope-$track.wav"
           done
           python tools/generate_heart_envelope.py
