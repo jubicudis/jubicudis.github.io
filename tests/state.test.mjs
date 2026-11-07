@@ -233,7 +233,7 @@ test('approved script reserves a later actual spoken-name slot, not the immediat
   assert.equal(NAMED_VISITOR_SCRIPT.length,OPENING_TRACKS['after-name'].length+1);
   assert.equal(VISITOR_NAME_SLOT.afterCueIndex,3);
   assert.equal(VISITOR_NAME_SLOT.beforeCueIndex,4);
-  assert.equal(VISITOR_NAME_SLOT.text('Morgan'),"Morgan, let's continue.");
+  assert.equal(VISITOR_NAME_SLOT.text('Morgan'),"Now, Morgan, let's take a closer look.");
   let named=step(finishQuestion(),'GIVE_NAME',{name:'Morgan'});
   named=step(named,'SPEECH_STARTED',{token:named.speechToken});
   named=progress(named,4,31000);
