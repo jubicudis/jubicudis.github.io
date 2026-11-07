@@ -59,8 +59,71 @@ jobs:
             test "$(stat -c%s "site/audio/violet-heart-$track.mp3")" -gt 10000
             ffprobe -v error -show_entries format=duration -of default=nw=1 "site/audio/violet-heart-$track.mp3"
           done
+          # The decoded, encoded MP3 is authoritative. Keep the cue boundaries
+          # aligned with the exact media committed in this SAME transaction.
+          python - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+          path=Path('site/audio/heart-timeline.json')
+          generated=Path('/tmp/heart-generated/heart-timeline.json')
+          data=json.loads(generated.read_text())
+          for name,track in data['tracks'].items():
+              media=f'site/audio/violet-heart-{name}.mp3'
+              duration=float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','default=nw=1:nk=1',media],text=True).strip())*1000
+              original=track['durationMs']
+              if abs(duration-original)>max(100,original*.012):
+                  raise RuntimeError(f'Heart audio and synthesized cue timeline diverged: {name} {original} {duration}')
+              ratio=duration/original
+              for cue in track['cues']:
+                  cue['startMs']=round(cue['startMs']*ratio)
+                  cue['endMs']=round(cue['endMs']*ratio)
+              track['durationMs']=round(duration)
+              track['cues'][-1]['endMs']=track['durationMs']
+          path.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\\n')
+          PY
+          # Cut the approved after-name recording at its measured welcome
+          # boundary and generate its exact continuation in the same job.
+          CUT_MS=$(node --input-type=module -e "import fs from 'node:fs'; console.log(JSON.parse(fs.readFileSync('site/audio/heart-timeline.json')).tracks['after-name'].cues[0].endMs)")
+          CUT_SECONDS=$(awk "BEGIN {printf \\"%.3f\\", $CUT_MS/1000}")
+          ffmpeg -hide_banner -nostdin -loglevel error -y -ss "$CUT_SECONDS" \\
+            -i site/audio/violet-heart-after-name.mp3 -map 0:a:0 \\
+            -c:a libmp3lame -q:a 2 site/audio/violet-heart-post-welcome.mp3
+          sha256sum site/audio/violet-heart-post-welcome.mp3 > site/audio/heart-continuation-sha256.txt
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          base=Path('site/audio')
+          t=json.loads((base/'heart-timeline.json').read_text())['tracks']['after-name']['cues']
+          source=base/'violet-heart-after-name.mp3'
+          output=base/'violet-heart-post-welcome.mp3'
+          data=dict(sourceVoice='af_heart',source=str(source),
+                    sourceSha256=hashlib.sha256(source.read_bytes()).hexdigest(),
+                    output=str(output),outputSha256=hashlib.sha256(output.read_bytes()).hexdigest(),
+                    cutFromObservedTimelineMs=t[0]['endMs'],
+                    firstOrientationCueInSourceMs=t[1]['startMs'],
+                    purpose='Continue exact approved orientation after the observed personalized Heart welcome')
+          (base/'heart-continuation-provenance.json').write_text(json.dumps(data,indent=2)+'\\n')
+          PY
+          # Derive the acoustic envelope from these exact MP3 bytes before
+          # committing. A mismatched envelope can never be published.
+          for track in asking-name after-name post-welcome; do
+            ffmpeg -hide_banner -nostdin -loglevel error -y \\
+              -i "site/audio/violet-heart-$track.mp3" -ar 8000 -ac 1 \\
+              -acodec pcm_s16le "/tmp/heart-envelope-$track.wav"
+          done
+          python tools/generate_heart_envelope.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          base=Path('site/audio')
+          timeline=json.loads((base/'heart-timeline.json').read_text())
+          envelope=json.loads((base/'heart-envelope.json').read_text())
+          for name,track in timeline['tracks'].items():
+              observed=envelope['tracks'][name]['durationMs']
+              if abs(observed-track['durationMs'])>80:
+                  raise RuntimeError(f'Heart audio duration mismatch {name}: {observed} != {track["durationMs"]}')
+          PY
           cp /tmp/heart-generated/heart-provenance.json site/audio/heart-provenance.json
-          cp /tmp/heart-generated/heart-timeline.json site/audio/heart-timeline.json
           sha256sum site/audio/violet-heart-asking-name.mp3 site/audio/violet-heart-after-name.mp3 > site/audio/heart-sha256.txt
           # Superseded voice file is no longer an active presentation asset.
           # Existing AAC assets remain until all consumers are verified on MP3.
@@ -69,7 +132,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add site/audio/heart-provenance.json site/audio/heart-timeline.json site/audio/heart-sha256.txt site/audio/violet-heart-asking-name.mp3 site/audio/violet-heart-after-name.mp3
+          git add site/audio/heart-provenance.json site/audio/heart-timeline.json site/audio/heart-sha256.txt site/audio/heart-envelope.json site/audio/violet-heart-asking-name.mp3 site/audio/violet-heart-after-name.mp3 site/audio/violet-heart-post-welcome.mp3 site/audio/heart-continuation-sha256.txt site/audio/heart-continuation-provenance.json
           if ! git diff --cached --quiet; then
             git commit -m "Publish Heart character treatment with spelled-out T N O S and higher pitch"
             git fetch origin main
