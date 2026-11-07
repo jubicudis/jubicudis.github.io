@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
 import {mkdirSync} from 'node:fs';
+import {readFile} from 'node:fs/promises';
 import {chromium,webkit} from 'playwright';
 
 const server=spawn('python3',['-m','http.server','4174','--bind','127.0.0.1'],{stdio:'ignore'});
@@ -237,7 +238,7 @@ try{
   // curved assembly, not another flat unlit image projection.
   // The authored WebGL scene must survive a transient context reset. A lost
   // context cannot be treated as a permanent render failure on iOS Safari.
-  const recoverySource=await fs.readFile(new URL('../site/violet-environment.mjs',import.meta.url),'utf8');
+  const recoverySource=await readFile(new URL('../site/violet-environment.mjs',import.meta.url),'utf8');
   assert.match(recoverySource,/addEventListener\\('webglcontextrestored',restored\\)/);
   assert.match(recoverySource,/contextLost=false/);
   assert.doesNotMatch(recoverySource,/onFailure\\?\\.\\(new Error\\('Violet WebGL context lost'\\)\\)/);
