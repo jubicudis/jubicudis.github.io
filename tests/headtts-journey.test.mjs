@@ -94,7 +94,7 @@ try{
     // The approved Heart track begins immediately while the name is
     // synthesized in parallel; no blank waiting screen is authorized.
     await page.waitForFunction(()=>window.__heartEvents.some(x=>
-      x.src.endsWith('/site/audio/violet-heart-after-name.mp3')&&
+      new URL(x.src).pathname.endsWith('/site/audio/violet-heart-after-name.mp3')&&
       x.event==='playing'),null,{timeout:15000});
     assert.equal(await page.locator('#violet-caption').innerText(),
       "Welcome. I'm glad you're here.");
@@ -118,7 +118,7 @@ try{
     assert.ok(generatedEnd.poses.some(x=>x.pose==='viseme-open'||x.pose==='viseme-wide'||x.pose==='viseme-round'),
       'real generated phonemes should produce articulated mouth expressions');
     await page.waitForFunction(()=>window.__heartEvents.some(x=>
-      x.src.endsWith('/site/audio/violet-heart-after-name.mp3')&&x.event==='playing'),
+      new URL(x.src).pathname.endsWith('/site/audio/violet-heart-after-name.mp3')&&x.event==='playing'),
       null,{timeout:15000});
     await page.waitForFunction(()=>
       document.querySelector('#environment').dataset.phase==='orientation',
@@ -149,7 +149,7 @@ try{
     assert.ok(result.events.filter(x=>
       x.src.includes('violet-heart-after-name.mp3')).length>0);
     assert.ok(result.events.some(x=>x.src.startsWith('blob:')&&x.event==='ended'));
-    assert.ok(result.events.some(x=>x.src.endsWith('violet-heart-after-name.mp3')&&x.event==='ended'));
+    assert.ok(result.events.some(x=>new URL(x.src).pathname.endsWith('violet-heart-after-name.mp3')&&x.event==='ended'));
     assert.deepEqual(errors,[]);
     mkdirSync('artifacts',{recursive:true});
     writeFileSync('artifacts/violet-name-real-journey.json',
