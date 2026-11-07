@@ -305,6 +305,11 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     }
     let state={phase:'dormant',speaking:false},live=true,observed=false,failed=false,frameCount=0,previousExpression='';
     const start=performance.now(),reduced=matchMedia('(prefers-reduced-motion: reduce)');
+    // The approved A2 scene does not require 60 GPU submissions per second.
+    // Bound actual WebGL work on iOS to 30 Hz while the narration clock
+    // continues to be sampled on each animation frame.
+    const gpuFrameInterval=1000/30;
+    let lastGpuFrame=-Infinity,frameRequest=0;
     const resize=()=>{
       const width=Math.max(1,canvas.clientWidth),height=Math.max(1,canvas.clientHeight),aspect=width/height;
       const worldWidth=width<=620?7.25:clamp(aspect*7.25,8.0,13.1);
@@ -320,6 +325,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       event.preventDefault();
       if(failed)return;
       failed=true;live=false;observed=false;
+      cancelAnimationFrame(frameRequest);
       const error=new Error('Violet WebGL context lost');
       rejectObservations(error);
       onFailure?.(error);
@@ -327,6 +333,12 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     canvas.addEventListener('webglcontextlost',loss);
     function frame(now){
       if(!live)return;
+      onAudioFrame?.();
+      if(now-lastGpuFrame<gpuFrameInterval){
+        frameRequest=requestAnimationFrame(frame);
+        return;
+      }
+      lastGpuFrame=now;
       const t=reduced.matches?0:(now-start)/1000;
       character.position.y=reduced.matches?0:.038*Math.sin(t*.7);
       character.rotation.z=reduced.matches?0:.008*Math.sin(t*.39);
@@ -334,7 +346,6 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       character.scale.setScalar(expansion);
       // Sample only an actually playing audio clock on the existing renderer
       // cadence. Rendering frames never authorize speech or invent phonemes.
-      onAudioFrame?.();
       const mode=state.speaking&&state.observedSpeechPose
         ?state.observedSpeechPose:state.speaking?'talk':
         !reduced.matches&&Math.sin(t*.49+.8)>.998?'blink':
@@ -351,9 +362,9 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         const evidence=observedFrame(renderer,canvas);
         if(evidence){observed=true;onObserved?.(evidence);}
       }
-      requestAnimationFrame(frame);
+      frameRequest=requestAnimationFrame(frame);
     }
-    requestAnimationFrame(frame);
+    frameRequest=requestAnimationFrame(frame);
     return {
       update(next){state=next;},
       // The caller may explicitly propagate a visual snapshot in a later approved pass.
@@ -366,6 +377,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       }),
       dispose(){
         live=false;
+        cancelAnimationFrame(frameRequest);
         rejectObservations(new Error('Violet renderer disposed'));
         resizeObserver.disconnect();canvas.removeEventListener('webglcontextlost',loss);
         visualCapabilities.dispose();scene.traverse(o=>{o.geometry?.dispose();});renderer.dispose();
