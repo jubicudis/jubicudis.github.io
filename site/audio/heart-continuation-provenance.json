@@ -1,9 +1,9 @@
 {
   "sourceVoice": "af_heart",
   "source": "site/audio/violet-heart-after-name.mp3",
-  "sourceSha256": "5c3a66ac28713cb6aa119dd998adee6a0ea5351c89da7617ce7ab23c758d8d21",
+  "sourceSha256": "d49e7d9b24d5a6c1fec1c90b33b386e3941d6ada216f471ef9c2b66ea7ec5b63",
   "output": "site/audio/violet-heart-post-welcome.mp3",
-  "outputSha256": "d89fc384575ce5165474e37b2340fe5bbef4757e354914d494e4c3256e5abd1e",
+  "outputSha256": "11b67033981b7b5d833930e565a1969fb476f59550080ccff96b57268f638287",
   "cutFromObservedTimelineMs": 1977,
   "firstOrientationCueInSourceMs": 2177,
   "purpose": "Continue exact approved orientation after the observed personalized Heart welcome"
