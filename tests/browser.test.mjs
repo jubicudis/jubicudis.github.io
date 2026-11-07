@@ -236,12 +236,11 @@ try{
   // A nonplanar vertex buffer alone did not make the A2 face look 3D.
   // Verify the actual live face uses normal-dependent shading and a rotated
   // curved assembly, not another flat unlit image projection.
-  // The authored WebGL scene must survive a transient context reset. A lost
-  // context cannot be treated as a permanent render failure on iOS Safari.
+  // Required renderer loss is a real failed state, not a hidden recovery.
   const recoverySource=await readFile(new URL('../site/violet-environment.mjs',import.meta.url),'utf8');
-  assert.match(recoverySource,/addEventListener\\('webglcontextrestored',restored\\)/);
-  assert.match(recoverySource,/contextLost=false/);
-  assert.doesNotMatch(recoverySource,/onFailure\\?\\.\\(new Error\\('Violet WebGL context lost'\\)\\)/);
+  assert.match(recoverySource,/onFailure\\?\\.\\(error\\)/);
+  assert.match(recoverySource,/failed=true;live=false;observed=false/);
+  assert.doesNotMatch(recoverySource,/addEventListener\\('webglcontextrestored'/);
   const faceVolume=await probe.evaluate(()=>{
     const scene=window.__visualProbe.visualCapabilities.readFaceplateEvidence();
     return scene;
