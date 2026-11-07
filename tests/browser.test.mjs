@@ -240,7 +240,7 @@ try{
   const recoverySource=await readFile(new URL('../site/violet-environment.mjs',import.meta.url),'utf8');
   assert.match(recoverySource,/onFailure\\?\\.\\(error\\)/);
   assert.match(recoverySource,/failed=true;live=false;observed=false/);
-  assert.doesNotMatch(recoverySource,/addEventListener\\('webglcontextrestored'/);
+  assert.doesNotMatch(recoverySource,/addEventListener\('webglcontextrestored'/);
   assert.ok(recoverySource.includes("antialias:false,alpha:false,powerPreference:'low-power'"));
   assert.ok(recoverySource.includes('renderer.setPixelRatio(1)'));
   assert.ok(recoverySource.includes('canvas.width=320;canvas.height=220'));
