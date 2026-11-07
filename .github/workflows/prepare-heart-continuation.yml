@@ -1,9 +1,5 @@
 name: Prepare Heart continuation after personalized greeting
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/prepare-heart-continuation.yml'
   workflow_dispatch:
 permissions:
   contents: write
