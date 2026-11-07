@@ -1,0 +1,37 @@
+name: Verify actual A2 faceplate rendering
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/violet-faceplate.mjs'
+      - 'site/violet-environment.mjs'
+      - 'site/violet-appearance.mjs'
+      - 'site/experience.mjs'
+      - 'index.html'
+      - 'tests/faceplate.test.mjs'
+      - 'tests/browser.test.mjs'
+      - '.github/workflows/verify-a2-faceplate.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: Verify actual elliptical cap and physical thickness
+        run: node --test tests/faceplate.test.mjs
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
+      - name: Verify actual A2 rendering in Chromium
+        run: node tests/browser.test.mjs
+      - name: Preserve observed rendering
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a2-faceplate-browser-observations
+          path: artifacts/
+          if-no-files-found: ignore
