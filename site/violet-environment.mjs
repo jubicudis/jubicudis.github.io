@@ -223,20 +223,34 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     const artPixelToWorld=artWidth/art.naturalWidth;
     const faceCenterX=517,faceCenterY=320;
     const faceGeometry=createA2FaceplateGeometry(artPixelToWorld);
-    const plate=new THREE.Mesh(faceGeometry,new THREE.MeshBasicMaterial({
+    // The approved face material needs actual normal-dependent light to
+    // reveal its convexity. A BasicMaterial on an orthographic front-facing
+    // cap merely reprojects the same flat pixels (the prior regression).
+    const faceAssembly=new THREE.Group();
+    faceAssembly.position.set((faceCenterX-art.naturalWidth/2)*artPixelToWorld,
+      (art.naturalHeight/2-faceCenterY)*artPixelToWorld,.11);
+    faceAssembly.rotation.set(-.055,.16,-.065);
+    character.add(faceAssembly);
+    const plate=new THREE.Mesh(faceGeometry,new THREE.MeshPhongMaterial({
       map:createA2FaceplateTexture(art),transparent:true,depthWrite:false,
-      toneMapped:false,side:THREE.DoubleSide
+      color:0xffffff,specular:0x9656dd,shininess:42,
+      emissive:0x12051e,emissiveIntensity:.42,
+      side:THREE.DoubleSide
     }));
-    plate.position.set((faceCenterX-art.naturalWidth/2)*artPixelToWorld,
-      (art.naturalHeight/2-faceCenterY)*artPixelToWorld,.04);
-    character.add(plate);
-    // Expressions share the exact curved geometry, not a second flat plane.
+    faceAssembly.add(plate);
+    const faceAmbient=new THREE.AmbientLight(0xb6a0f8,1.05);
+    const faceKey=new THREE.DirectionalLight(0xe7c9ff,1.5);
+    faceKey.position.set(-2.8,3.8,5);
+    const faceRim=new THREE.DirectionalLight(0x7854ed,.75);
+    faceRim.position.set(3,-1,2);
+    scene.add(faceAmbient,faceKey,faceRim);
+    // Expressions follow the same cap normals and assembly orientation;
+    // their self-illuminated strokes retain the approved A2 expression art.
     const expression=new THREE.Mesh(faceGeometry.clone(),
       new THREE.MeshBasicMaterial({map:rest,transparent:true,depthWrite:false,
         toneMapped:false,side:THREE.DoubleSide}));
-    expression.position.copy(plate.position);
-    expression.position.z+=.012;
-    character.add(expression);
+    expression.position.z=.018;
+    faceAssembly.add(expression);
     // Render capabilities are addressable but are NOT scheduled or activated by this opening.
     const visualCapabilities=createVioletAppearanceCapabilities({
       character,main,expression,art,artWidth,faceMaps:faces,backgroundGroup
