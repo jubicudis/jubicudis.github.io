@@ -17,8 +17,7 @@ const skip=document.getElementById('name-skip');
 const failure=document.getElementById('render-failure');
 const audioFailure=document.getElementById('audio-failure');
 let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameAudio=null;
-let preparedName=null,nameSynthesisError=null,nameInsertionActive=false,nameInsertionDone=false;
-let authoredNarrationEnded=false;
+let preparedName=null,nameSynthesisError=null;
 const store=createOpeningStore(render);
 const voice=createVioletVoiceEngine();
 activate.disabled=true;
@@ -33,9 +32,12 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
     token:state.speechToken,startAtMs:resumeAtMs,
     emit:event=>{
       if(event.type==='SPEECH_ENDED'&&state.nameDecision==='provided'&&
-         !nameInsertionDone){
-        authoredNarrationEnded=true;
-        if(preparedName)insertPreparedName(store.getState(),null);
+         !store.getState().nameAudioCompleted){
+        store.dispatch({type:'AUTHORED_TRACK_ENDED',token:state.speechToken,
+          evidence:{type:'authored-track-ended-observed'}});
+        const current=store.getState();
+        if(current.nameSynthesisStatus==='ready'&&current.nameInsertionStatus==='waiting')
+          requestNameInsertion(current,null,'authored-track-ended-observed');
         return;
       }
       store.dispatch(event);
@@ -55,23 +57,29 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
       // The name is inserted only at an observed authored cue boundary.
       // If synthesis is still running, use the NEXT observed paragraph
       // boundary, never splice a name in the middle of recorded speech.
-      if(state.nameDecision==='provided'&&preparedName&&!nameInsertionDone&&
-         !nameInsertionActive&&cue.index>=VISITOR_NAME_SLOT.beforeCueIndex&&
+      if(state.nameDecision==='provided'&&cue.index>=VISITOR_NAME_SLOT.beforeCueIndex&&
          cue.index>previousCueIndex){
-        const boundary=timeline.tracks[selected.track].cues[cue.index].startMs;
-        insertPreparedName(store.getState(),boundary);
+        const current=store.getState();
+        if(current.nameSynthesisStatus==='ready'&&current.nameInsertionStatus==='waiting'){
+          const boundary=timeline.tracks[selected.track].cues[cue.index].startMs;
+          requestNameInsertion(current,boundary,'authored-paragraph-boundary-observed');
+        }
       }
 
     }
   });
 }
 
-function insertPreparedName(state,resumeAtMs){
+function requestNameInsertion(state,resumeAtMs,evidenceType){
+  if(!preparedName||state.nameInsertionStatus!=='waiting'||
+     state.nameSynthesisStatus!=='ready')return;
+  store.dispatch({type:'NAME_INSERTION_REQUESTED',token:state.speechToken,
+    evidence:{type:evidenceType}});
+  const authorized=store.getState();
+  if(authorized.nameInsertionStatus!=='requested')return;
   const generated=preparedName;
-  if(!generated||nameInsertionActive||nameInsertionDone)return;
-  nameInsertionActive=true;
   preparedName=null;
-  const token=state.speechToken;
+  const token=authorized.speechToken;
   activeNameAudio={token,generated};
   const session=voice.playGenerated({
     wav:generated.wav,token,insertAfterAuthored:true,
@@ -87,8 +95,6 @@ function insertPreparedName(state,resumeAtMs){
       if(observed.speechToken!==token)return;
       store.dispatch({type:'NAME_AUDIO_ENDED',token,
         evidence:{type:'observed-generated-heart-ended',assetId:'generated-heart:'+token}});
-      nameInsertionActive=false;
-      nameInsertionDone=true;
       activeNameAudio=null;
       if(observed.speechStatus==='speaking'){
         if(resumeAtMs===null)
@@ -97,20 +103,20 @@ function insertPreparedName(state,resumeAtMs){
       }
     }
   });
-  if(!session)nameInsertionActive=false;
+  if(!session){
+    store.dispatch({type:'SPEECH_FAILED',token,reason:'required generated Heart playback unavailable'});
+  }
 }
 
 async function beginSpeech(state){
   // The selected recorded Heart narration begins immediately after the
   // name decision. Synthesis is concurrent, not a silent prerequisite.
-  nameInsertionActive=false;
-  nameInsertionDone=false;
   preparedName=null;
   nameSynthesisError=null;
-  authoredNarrationEnded=false;
   playApprovedTrack(state);
   if(state.nameDecision!=='provided')return;
   const token=state.speechToken;
+  store.dispatch({type:'NAME_SYNTHESIS_STARTED',token});
   try{
     const generated=await synthesizeHeartName(state.visitorName);
     const current=store.getState();
@@ -118,10 +124,13 @@ async function beginSpeech(state){
        ['failed','interrupted','completed'].includes(current.speechStatus)||
        document.hidden)return;
     preparedName=generated;
-    // The observed later paragraph boundary may already have passed while
-    // on-device Heart synthesis was running. Never discard the visitor name.
-    if(authoredNarrationEnded&&!nameInsertionActive&&!nameInsertionDone&&
-       current.speechStatus==='speaking')insertPreparedName(current,null);
+    store.dispatch({type:'NAME_SYNTHESIS_READY',token});
+    const ready=store.getState();
+    // When the entire authored track has actually ended, its observed end
+    // is the final authorized name insertion boundary.
+    if(ready.authoredAudioEnded&&ready.nameInsertionStatus==='waiting'&&
+       ready.speechStatus==='speaking')
+      requestNameInsertion(ready,null,'authored-track-ended-observed');
   }catch(error){
     // A provided name is a required part of this named-visitor path.
     // Failure is explicit: never silently finish the unnamed narration
