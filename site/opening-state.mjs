@@ -157,12 +157,14 @@ export function reduceOpening(state,event){
       break;
     case 'NAME_AUDIO_STARTED':
       if(state.nameDecision==='provided'&&state.speechStatus==='speaking'&&
-         event.token===state.speechToken&&event.evidence?.type==='observed-generated-heart-playing')
+         state.nameInsertionStatus==='requested'&&event.token===state.speechToken&&
+         event.evidence?.type==='observed-generated-heart-playing')
         patch={nameAudioPlaying:true,nameInsertionStatus:'playing'};
       break;
     case 'NAME_AUDIO_ENDED':
       if(state.nameDecision==='provided'&&
-        state.speechStatus==='speaking'&&!state.nameAudioCompleted&&
+        state.speechStatus==='speaking'&&state.nameInsertionStatus==='playing'&&
+        !state.nameAudioCompleted&&
         event.token===state.speechToken&&
         event.evidence?.type==='observed-generated-heart-ended'&&
         event.evidence.assetId==='generated-heart:'+state.speechToken)
