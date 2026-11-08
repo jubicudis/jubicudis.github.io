@@ -19,6 +19,11 @@ const audioFailure=document.getElementById('audio-failure');
 let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameAudio=null;
 let preparedName=null,nameSynthesisError=null,pendingNameBoundary=null;
 const store=createOpeningStore(render);
+const observedBrowserLocale=(navigator.languages||[])
+  .find(value=>typeof value==='string'&&value.trim())||
+  navigator.language||'en-US';
+store.dispatch({type:'BROWSER_LANGUAGE_OBSERVED',
+  evidence:{type:'browser-language-observed',locale:observedBrowserLocale}});
 const voice=createVioletVoiceEngine();
 activate.disabled=true;
 
@@ -218,14 +223,18 @@ function render(state,previous){
   stage.dataset.speechPose=state.observedSpeechPose||'';
   stage.dataset.nameAudioCompleted=String(state.nameAudioCompleted);
   stage.dataset.renderStatus=state.renderStatus;
-  activate.disabled=state.renderStatus!=='observed'||state.voiceSupported!==true;
+  activate.disabled=state.renderStatus!=='observed'||state.voiceSupported!==true||
+    state.languageStatus!=='qualified';
   failure.hidden=state.renderStatus!=='failed';
   if(state.renderStatus==='failed')
     failure.textContent='Violet could not be rendered on this device. '+state.renderFailure;
   const speechFailed=['failed','unavailable','interrupted'].includes(state.speechStatus);
-  audioFailure.hidden=!narrationLoadFailure&&!speechFailed&&!nameSynthesisError;
+  audioFailure.hidden=!narrationLoadFailure&&!speechFailed&&!nameSynthesisError&&
+    state.languageStatus!=='unavailable';
   if(!audioFailure.hidden)
-    audioFailure.textContent=narrationLoadFailure
+    audioFailure.textContent=state.languageStatus==='unavailable'
+      ?'Violet has detected your browser language ('+state.browserLocale+'), but an approved narration and synchronized captions are not yet available in that language.'
+      :narrationLoadFailure
       ?'Heart narration is unavailable. '+narrationLoadFailure
       :speechFailed?'Heart narration '+(state.speechStatus==='interrupted'
         ?'was interrupted.':'could not be played.')
@@ -242,7 +251,7 @@ function render(state,previous){
 }
 activate.addEventListener('click',()=>{
   const state=store.getState();
-  if(state.renderStatus==='observed'&&state.voiceSupported===true)
+  if(state.renderStatus==='observed'&&state.voiceSupported===true&&state.languageStatus==='qualified')
     store.dispatch({type:'ACTIVATE'});
 });
 form.addEventListener('submit',event=>{
