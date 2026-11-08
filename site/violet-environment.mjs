@@ -77,8 +77,10 @@ function qualifiedExpressionSvg(xml,mode){
     const opening='<g id="'+id+'"';
     if(!qualified.includes(opening))
       throw new Error('Required Violet expression opening tag missing: '+id);
+    // SVG presentation attributes are honored by WebKit's SVG image
+    // decoder; CSS display on nested groups is not consistently applied.
     qualified=qualified.replace(opening,
-      opening+' style="display:'+(active.includes(id)?'inline':'none')+'"');
+      opening+' display="'+(active.includes(id)?'inline':'none')+'"');
   }
   return qualified;
 }
@@ -108,6 +110,8 @@ async function svgTexture(url,mode){
       image.onload=resolve;
       image.onerror=()=>reject(new Error('Violet expression SVG decoding failed'));
     });
+    // onload alone does not guarantee decoded SVG pixels are ready on iOS.
+    if(typeof image.decode==='function')await image.decode();
     // Verify the authored expression at its original 640x440 resolution,
     // then upload a compact 320x220 GPU texture. These are the same SVG
     // paths and expression state, not a replacement asset or fallback.
