@@ -29,6 +29,10 @@ jobs:
         run: npx playwright install --with-deps chromium webkit
       - name: Verify actual A2 rendering in Chromium
         run: node tests/browser.test.mjs
+      - name: Verify actual A2 rendering in WebKit
+        env:
+          VIOLET_BROWSER: webkit
+        run: node tests/browser.test.mjs
       - name: Preserve observed rendering
         if: always()
         uses: actions/upload-artifact@v4
