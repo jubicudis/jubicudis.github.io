@@ -10,7 +10,8 @@ export const initialState=Object.freeze({
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
   playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-  observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false,enteredAt:0,
+  observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false,nameSynthesisStatus:'not-requested',
+  nameInsertionStatus:'not-requested',authoredAudioEnded:false,enteredAt:0,
   context:Object.freeze({
     who:'unidentified visitor',what:'Violet',when:'unstarted',
     where:'TNOS public introduction',why:'arrival',how:'await activation',
@@ -63,7 +64,8 @@ export function reduceOpening(state,event){
         patch={phase:'asking-name',track:'asking-name',cueIndex:0,enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-          observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false};
+          observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false,
+          nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',authoredAudioEnded:false};
       break;
     case 'GIVE_NAME':
       if(!nameChoiceReady(state)||typeof event.name!=='string')break;
@@ -74,7 +76,8 @@ export function reduceOpening(state,event){
           visitorName:name,nameDecision:'provided',enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-          observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false};
+          observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false,
+          nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',authoredAudioEnded:false};
       }
       break;
     case 'SKIP_NAME':
@@ -83,7 +86,8 @@ export function reduceOpening(state,event){
           visitorName:null,nameDecision:'skipped',enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-          observedSpeechPose:null,nameAudioCompleted:false};
+          observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false,
+          nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',authoredAudioEnded:false};
       break;
     case 'SPEECH_STARTED':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
@@ -126,10 +130,35 @@ export function reduceOpening(state,event){
         patch={observedSpeechPose:proof.pose,envelopePositionMs:proof.elapsedMs};
       }
       break;
+    case 'NAME_SYNTHESIS_STARTED':
+      if(event.token===state.speechToken&&state.nameDecision==='provided'&&
+         state.nameSynthesisStatus==='not-requested')
+        patch={nameSynthesisStatus:'generating',nameInsertionStatus:'waiting'};
+      break;
+    case 'NAME_SYNTHESIS_READY':
+      if(event.token===state.speechToken&&state.nameDecision==='provided'&&
+         state.nameSynthesisStatus==='generating'&&
+         ['pending','speaking'].includes(state.speechStatus))
+        patch={nameSynthesisStatus:'ready'};
+      break;
+    case 'NAME_INSERTION_REQUESTED':
+      if(event.token===state.speechToken&&state.nameDecision==='provided'&&
+         state.speechStatus==='speaking'&&state.nameSynthesisStatus==='ready'&&
+         state.nameInsertionStatus==='waiting'&&
+         (event.evidence?.type==='authored-paragraph-boundary-observed'||
+          (state.authoredAudioEnded&&event.evidence?.type==='authored-track-ended-observed')))
+        patch={nameInsertionStatus:'requested'};
+      break;
+    case 'AUTHORED_TRACK_ENDED':
+      if(event.token===state.speechToken&&state.nameDecision==='provided'&&
+         state.speechStatus==='speaking'&&!state.authoredAudioEnded&&
+         event.evidence?.type==='authored-track-ended-observed')
+        patch={authoredAudioEnded:true};
+      break;
     case 'NAME_AUDIO_STARTED':
       if(state.nameDecision==='provided'&&state.speechStatus==='speaking'&&
          event.token===state.speechToken&&event.evidence?.type==='observed-generated-heart-playing')
-        patch={nameAudioPlaying:true};
+        patch={nameAudioPlaying:true,nameInsertionStatus:'playing'};
       break;
     case 'NAME_AUDIO_ENDED':
       if(state.nameDecision==='provided'&&
@@ -137,7 +166,8 @@ export function reduceOpening(state,event){
         event.token===state.speechToken&&
         event.evidence?.type==='observed-generated-heart-ended'&&
         event.evidence.assetId==='generated-heart:'+state.speechToken)
-        patch={nameAudioCompleted:true,nameAudioPlaying:false,observedSpeechPose:null};
+        patch={nameAudioCompleted:true,nameAudioPlaying:false,observedSpeechPose:null,
+          nameInsertionStatus:'completed'};
       break;
     case 'SPEECH_CUE_OBSERVED':
       {
