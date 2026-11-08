@@ -45,9 +45,9 @@ test('production SVG expression qualifier accepts every original face group with
     const output=qualify(svg,mode);
     const expectedEye=eye[mode]||'eye-smile';
     const expectedMouth=mouth[mode]||'mouth-'+mode;
-    assert.match(output,new RegExp('<g id="'+expectedEye+'" style="display:inline"'));
-    assert.match(output,new RegExp('<g id="'+expectedMouth+'" style="display:inline"'));
-    assert.equal((output.match(/style="display:inline"/g)||[]).length,2);
+    assert.match(output,new RegExp('<g id="'+expectedEye+'" display="inline"'));
+    assert.match(output,new RegExp('<g id="'+expectedMouth+'" display="inline"'));
+    assert.equal((output.match(/display="inline"/g)||[]).length,2);
     assert.match(output,/<linearGradient id="lumen"/);
     assert.match(output,/<filter id="bloom"/);
   }
