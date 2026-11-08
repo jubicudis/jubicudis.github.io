@@ -280,11 +280,11 @@ try{
 
   await probe.waitForTimeout(200);
   const baseline=await probe.screenshot({path:'artifacts/renderer-capability-approved-a2.png'});
-  const baselinePixels=await probe.evaluate(()=>
-    window.__visualProbe.visualObservation.captureNextFrame({
+  await probe.evaluate(async()=>{
+    window.__baselinePixels=await window.__visualProbe.visualObservation.captureNextFrame({
       token:3001,columns:32,rows:32
-    })
-  );
+    });
+  });
   const requested=await probe.evaluate(()=>{
     const v=window.__visualProbe.visualCapabilities;
     v.apply({structure:0,center:1,environment:1,features:0});
@@ -334,15 +334,17 @@ try{
     // WebKit can produce different compositor screenshots for the same
     // WebGL frame. Compare actual observed WebGL pixels instead of a
     // screenshot's unrelated browser-compositor bytes.
-    const restoredPixels=await probe.evaluate(()=>
-      window.__visualProbe.visualObservation.captureNextFrame({
+    await probe.evaluate(async()=>{
+      window.__restoredPixels=await window.__visualProbe.visualObservation.captureNextFrame({
         token:3002,columns:32,rows:32
-      })
-    );
-    const comparison=await probe.evaluate(({before,after})=>
-      window.__visualProbe.visualObservation.compare(before,after,{
-        threshold:8,minimumDifferent:2
-      }),{before:baselinePixels,after:restoredPixels});
+      });
+    });
+    const comparison=await probe.evaluate(()=>
+      window.__visualProbe.visualObservation.compare(
+        window.__baselinePixels,window.__restoredPixels,{
+          threshold:8,minimumDifferent:2
+        }
+      ));
     assert.equal(comparison.qualified,false,
       'A2 full presence must restore the actual WebGL image in WebKit');
   }else{
