@@ -1,4 +1,4 @@
-import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261108-name-slot-21';
+import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261108-browser-locale-22';
 import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
 import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261108-name-slot-21';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
