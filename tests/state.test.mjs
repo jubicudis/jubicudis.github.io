@@ -6,7 +6,10 @@ import {OPENING_TRACKS,VISITOR_NAME_SLOT,NAMED_VISITOR_SCRIPT} from '../site/ope
 
 const step=(state,type,data={})=>reduceOpening(state,{type,at:100,...data});
 function ready(){
-  let state=step(initialState,'RENDER_STARTED');
+  let state=step(initialState,'BROWSER_LANGUAGE_OBSERVED',{evidence:{
+    type:'browser-language-observed',locale:'en-US'
+  }});
+  state=step(state,'RENDER_STARTED');
   state=step(state,'RENDER_OBSERVED',{evidence:{
     type:'webgl-pixel-observed',drawCalls:24,nonBackgroundPixel:true
   }});
@@ -27,6 +30,20 @@ function finishQuestion(){
   return step(s,'SPEECH_ENDED',{token:s.speechToken});
 }
 
+test('browser language is observed as authoritative context, not silently replaced',()=>{
+  const spanish=step(initialState,'BROWSER_LANGUAGE_OBSERVED',{evidence:{
+    type:'browser-language-observed',locale:'es-VE'
+  }});
+  assert.equal(spanish.browserLocale,'es-VE');
+  assert.equal(spanish.languageStatus,'unavailable');
+  assert.equal(spanish.presentationLocale,null);
+  assert.equal(step(spanish,'ACTIVATE'),spanish);
+  const english=step(initialState,'BROWSER_LANGUAGE_OBSERVED',{evidence:{
+    type:'browser-language-observed',locale:'en-US'
+  }});
+  assert.equal(english.languageStatus,'qualified');
+  assert.equal(english.presentationLocale,'en-US');
+});
 test('no activation without genuine rendered evidence and qualified audio',()=>{
   assert.equal(step(initialState,'ACTIVATE'),initialState);
   const started=step(initialState,'RENDER_STARTED');
