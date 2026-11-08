@@ -250,6 +250,13 @@ test('approved script reserves a later actual spoken-name slot, not the immediat
   named=progress(named,4,31000);
   assert.equal(named.nameAudioPlaying,false);
   assert.equal(openingMessage(named),OPENING_TRACKS['after-name'][4].text);
+  assert.equal(step(named,'NAME_AUDIO_STARTED',{
+    token:named.speechToken,evidence:{type:'observed-generated-heart-playing'}
+  }),named,'unauthorized generated audio cannot change presentation state');
+  named=step(named,'NAME_SYNTHESIS_STARTED',{token:named.speechToken});
+  named=step(named,'NAME_SYNTHESIS_READY',{token:named.speechToken});
+  named=step(named,'NAME_INSERTION_REQUESTED',{token:named.speechToken,
+    evidence:{type:'authored-paragraph-boundary-observed'}});
   const started=step(named,'NAME_AUDIO_STARTED',{
     token:named.speechToken,evidence:{type:'observed-generated-heart-playing'}
   });
