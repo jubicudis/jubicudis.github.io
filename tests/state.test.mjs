@@ -42,6 +42,18 @@ test('no activation without genuine rendered evidence and qualified audio',()=>{
   assert.equal(step(ready(),'ACTIVATE').phase,'asking-name');
 });
 
+test('Violet expression propagates only from authorized reducer events',()=>{
+  let s=ready();
+  assert.equal(s.visualExpression,'rest');
+  s=step(s,'ACTIVATE');
+  assert.equal(s.visualExpression,'ask');
+  s=step(s,'SPEECH_STARTED',{token:s.speechToken});
+  assert.equal(s.visualExpression,'talk');
+  s=step(s,'SPEECH_ENDED',{token:s.speechToken});
+  assert.equal(s.visualExpression,'ask');
+  assert.equal(step(s,'NEXT'),s,'an unapproved action cannot change the face');
+});
+
 test('the approved informative greeting precedes the optional name choice',()=>{
   const s=step(ready(),'ACTIVATE');
   assert.equal(openingMessage(s),"Hello, I'm Violet.");
