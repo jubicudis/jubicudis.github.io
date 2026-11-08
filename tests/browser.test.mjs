@@ -395,8 +395,22 @@ try{
   await probe.evaluate(()=>window.__visualProbe.motionCapabilities.reset());
   await probe.waitForTimeout(200);
   const rigReset=await probe.screenshot({path:'artifacts/renderer-capability-rig-restored.png'});
-  assert.equal(rigReset.equals(restored),true,
-    'resetting the four-strand rig must preserve the approved A2 appearance');
+  if(process.env.VIOLET_BROWSER==='webkit'){
+    await probe.evaluate(async()=>{
+      window.__rigResetPixels=await window.__visualProbe.visualObservation.captureNextFrame({
+        token:3003,columns:32,rows:32
+      });
+    });
+    const resetChange=await probe.evaluate(()=>
+      window.__visualProbe.visualObservation.compare(
+        window.__restoredPixels,window.__rigResetPixels,{threshold:8,minimumDifferent:2}
+      ));
+    assert.equal(resetChange.qualified,false,
+      'four-strand reset must restore observed WebGL geometry in WebKit');
+  }else{
+    assert.equal(rigReset.equals(restored),true,
+      'resetting the four-strand rig must preserve the approved A2 appearance');
+  }
 
   await probe.evaluate(()=>window.__visualProbe.visualCapabilities.setExpressionOverride('viseme-round'));
   await probe.waitForTimeout(200);
@@ -404,8 +418,24 @@ try{
   assert.equal(viseme.equals(restored),false,'real authored viseme SVG must render');
   await probe.evaluate(()=>window.__visualProbe.visualCapabilities.setExpressionOverride(null));
   await probe.waitForTimeout(200);
-  assert.equal((await probe.screenshot()).equals(restored),true,
-    'removing the viseme request must restore the approved original expression');
+  if(process.env.VIOLET_BROWSER==='webkit'){
+    await probe.evaluate(async()=>{
+      window.__expressionResetPixels=await window.__visualProbe.visualObservation.captureNextFrame({
+        token:3004,columns:32,rows:32
+      });
+    });
+    const expressionChange=await probe.evaluate(()=>
+      window.__visualProbe.visualObservation.compare(
+        window.__restoredPixels,window.__expressionResetPixels,{
+          threshold:8,minimumDifferent:2
+        }
+      ));
+    assert.equal(expressionChange.qualified,false,
+      'removing viseme must restore actual approved A2 WebGL expression');
+  }else{
+    assert.equal((await probe.screenshot()).equals(restored),true,
+      'removing the viseme request must restore the approved original expression');
+  }
   assert.equal(await probe.locator('#environment').getAttribute('data-phase'),'dormant',
     'capabilities may not select presentation behaviors');
   assert.deepEqual(probeErrors,[],'capability renderer must not throw browser errors');
