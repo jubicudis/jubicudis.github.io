@@ -198,15 +198,6 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     // iOS WebKit can terminate a WebGL context under GPU memory pressure.
     // Use the actual required A2 scene at a bounded GPU allocation, rather
     // than trying to restore a lost context or showing substitute artwork.
-    renderer=new THREE.WebGLRenderer({
-      canvas,antialias:false,alpha:false,powerPreference:'low-power',
-      preserveDrawingBuffer:false,stencil:false,depth:true
-    });
-    renderer.outputColorSpace=THREE.SRGBColorSpace;
-    renderer.toneMapping=THREE.NoToneMapping; // keep reference artwork colorimetry, no pastel wash-out
-    // On touch-sized WebKit surfaces, a 2x framebuffer quadruples GPU memory.
-    // Preserve the same authored scene while limiting its framebuffer cost.
-    renderer.setPixelRatio(1);
     const artworkURL=new URL('./violet-a2-art.webp',import.meta.url);
     const faceURL=new URL('./violet-face.svg',import.meta.url);
     const [art,rest,ask,talk,blink,visemeClosed,visemeOpen,visemeWide,visemeRound]=await Promise.all([
@@ -216,6 +207,19 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       svgTexture(faceURL,'viseme-closed'),svgTexture(faceURL,'viseme-open'),
       svgTexture(faceURL,'viseme-wide'),svgTexture(faceURL,'viseme-round')
     ]);
+    // Decode and verify every required A2 asset BEFORE allocating the WebGL
+    // context. The prior implementation created an idle GPU context and then
+    // performed nine parallel image/SVG decodes; on memory-constrained WebKit
+    // that context could be evicted before the first actual scene draw.
+    renderer=new THREE.WebGLRenderer({
+      canvas,antialias:false,alpha:false,powerPreference:'low-power',
+      preserveDrawingBuffer:false,stencil:false,depth:true
+    });
+    renderer.outputColorSpace=THREE.SRGBColorSpace;
+    renderer.toneMapping=THREE.NoToneMapping; // keep reference artwork colorimetry, no pastel wash-out
+    // On touch-sized WebKit surfaces, a 2x framebuffer quadruples GPU memory.
+    // Preserve the same authored scene while limiting its framebuffer cost.
+    renderer.setPixelRatio(1);
     // The art is an authored material of the selected character, not a substitute
     // if a procedural renderer fails. Its presence and decoding are required.
     const faces={rest,ask,talk,blink,
