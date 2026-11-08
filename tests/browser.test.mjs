@@ -245,6 +245,13 @@ try{
   assert.ok(recoverySource.includes('renderer.setPixelRatio(1)'));
   assert.ok(recoverySource.includes('canvas.width=320;canvas.height=220'));
   assert.ok(recoverySource.includes('texture.generateMipmaps=false'));
+  const controllerSource=await readFile(new URL('../site/experience.mjs',import.meta.url),'utf8');
+  const reducerSource=await readFile(new URL('../site/opening-state.mjs',import.meta.url),'utf8');
+  assert.match(controllerSource,/NAME_SYNTHESIS_READY/);
+  assert.match(controllerSource,/NAME_INSERTION_REQUESTED/);
+  assert.doesNotMatch(controllerSource,/nameInsertionActive|nameInsertionDone|authoredNarrationEnded/);
+  assert.match(reducerSource,/next\\.visualExpression=/);
+  assert.match(recoverySource,/const mode=state\\.visualExpression/);
   const faceVolume=await probe.evaluate(()=>{
     const scene=window.__visualProbe.visualCapabilities.readFaceplateEvidence();
     return scene;
