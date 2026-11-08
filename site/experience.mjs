@@ -181,7 +181,11 @@ function observeApprovedSpeechFrame(){
   const source=state.phase==='asking-name'?'asking-name':'after-name';
   const sampled=sampleMeasuredHeartEnvelope(envelope,source,observation);
   if(!sampled)return;
-  if(state.observedSpeechPose===sampled.pose)return;
+  // Acoustic energy changes within the same viseme. Suppressing those
+  // observations disconnected the existing four-point motion rig from
+  // continuous Heart narration.
+  if(state.observedSpeechPose===sampled.pose&&
+     state.observedAudioLevel===sampled.level)return;
   store.dispatch({
     type:'AUTHORED_ENVELOPE_OBSERVED',
     token:state.speechToken,
