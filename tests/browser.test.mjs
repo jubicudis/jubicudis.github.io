@@ -265,6 +265,10 @@ try{
     'idle sculptural animation must deform the actual A2 body');
   assert.match(reducerSource,/next\.bodyMotionMode=/);
   assert.match(reducerSource,/next\.bloomMotion=bloomFromObservedAudio\(next\)/);
+  assert.match(controllerSource,/state\.observedAudioLevel===sampled\.level/,
+    'Heart body energy must propagate even when facial viseme is unchanged');
+  assert.doesNotMatch(controllerSource,/if\(state\.observedSpeechPose===sampled\.pose\)return/,
+    'same-viseme audio frames must not suppress body deformation');
   const faceVolume=await probe.evaluate(()=>{
     const scene=window.__visualProbe.visualCapabilities.readFaceplateEvidence();
     return scene;
