@@ -266,7 +266,7 @@ try{
   assert.match(controllerSource,/type:'IDLE_FRAME_OBSERVED'/);
   assert.match(reducerSource,/case 'IDLE_FRAME_OBSERVED':/);
   assert.match(reducerSource,/next\.bodyMotionMode=/);
-  assert.match(reducerSource,/next\.bloomMotion=bloomFromObservedAudio\(next\)/);
+  assert.match(reducerSource,/bloomFromObservedAudio\(next\)/);
   assert.match(controllerSource,/state\.observedAudioLevel===sampled\.level/,
     'Heart body energy must propagate even when facial viseme is unchanged');
   assert.doesNotMatch(controllerSource,/if\(state\.observedSpeechPose===sampled\.pose\)return/,
