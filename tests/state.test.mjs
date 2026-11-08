@@ -219,6 +219,14 @@ test('approved Heart orientation advances during name generation without invente
   assert.equal(speaking.observedAudioLevel,130);
   assert.ok(speaking.bloomMotion.some(p=>p.x!==0||p.y!==0),
     'observed generated Heart energy must drive the existing four-point A2 rig');
+  const samePoseMoreEnergy=step(speaking,'GENERATED_VISEME_OBSERVED',{token,evidence:{
+    type:'generated-viseme-audio-observed',source:'observed-generated-heart-audio',
+    assetId:'generated-heart:'+token,voiceId:'af_heart',
+    playing:true,elapsedMs:340,pose:'viseme-open',level:200
+  }});
+  assert.equal(samePoseMoreEnergy.observedSpeechPose,speaking.observedSpeechPose);
+  assert.notDeepEqual(samePoseMoreEnergy.bloomMotion,speaking.bloomMotion,
+    'changing observed Heart energy must deform body even with unchanged mouth pose');
   const stale=step(speaking,'GENERATED_VISEME_OBSERVED',{token,evidence:{
     type:'generated-viseme-audio-observed',source:'observed-generated-heart-audio',
     assetId:'generated-heart:'+token,voiceId:'af_heart',
