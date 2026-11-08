@@ -211,6 +211,11 @@ test('approved Heart orientation advances during name generation without invente
     evidence:{type:'authored-paragraph-boundary-observed'}}),named);
   named=step(named,'NAME_SYNTHESIS_READY',{token});
   assert.equal(named.nameSynthesisStatus,'ready');
+  named=progress(named,VISITOR_NAME_SLOT.beforeCueIndex,62352);
+  named=step(named,'NAME_SLOT_OBSERVED',{token,evidence:{
+    type:'authored-name-slot-boundary-observed',
+    cueIndex:VISITOR_NAME_SLOT.beforeCueIndex
+  }});
   named=step(named,'NAME_INSERTION_REQUESTED',{token,
     evidence:{type:'authored-paragraph-boundary-observed'}});
   assert.equal(named.nameInsertionStatus,'requested');
@@ -289,6 +294,11 @@ test('approved script reserves a later actual spoken-name slot, not the immediat
   }),named,'unauthorized generated audio cannot change presentation state');
   named=step(named,'NAME_SYNTHESIS_STARTED',{token:named.speechToken});
   named=step(named,'NAME_SYNTHESIS_READY',{token:named.speechToken});
+  named=progress(named,VISITOR_NAME_SLOT.beforeCueIndex,62352);
+  named=step(named,'NAME_SLOT_OBSERVED',{token:named.speechToken,evidence:{
+    type:'authored-name-slot-boundary-observed',
+    cueIndex:VISITOR_NAME_SLOT.beforeCueIndex
+  }});
   named=step(named,'NAME_INSERTION_REQUESTED',{token:named.speechToken,
     evidence:{type:'authored-paragraph-boundary-observed'}});
   const started=step(named,'NAME_AUDIO_STARTED',{
