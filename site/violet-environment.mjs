@@ -193,7 +193,7 @@ function observedFrame(renderer,canvas){
     return {type:'webgl-pixel-observed',drawCalls:renderer.info.render.calls,nonBackgroundPixel:true};
   return null;
 }
-export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAudioFrame}={}){
+export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAudioFrame,onAnimationFrame}={}){
   let renderer;
   try{
     if(!canvas||!(canvas instanceof HTMLCanvasElement))throw new Error('Required Violet WebGL canvas is missing');
@@ -371,15 +371,13 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       // The reducer authorizes idle sculptural motion. Time supplies only
       // the physical animation phase, not the choice of presentation mode.
       // During Heart playback the rig follows observed acoustic energy.
-      if(state.bodyMotionMode==='idle'&&
+      if(state.bodyMotionMode==='idle'&&onAnimationFrame&&
          now-lastBodyFrame>=1000/12){
         lastBodyFrame=now;
-        const sway=reduced.matches?0:Math.sin(t*.83)*.10;
-        const breath=reduced.matches?0:Math.sin(t*1.07)*.075;
-        motionCapabilities.apply([
-          {x:-sway,y:breath},{x:sway,y:breath},
-          {x:sway*.65,y:-breath*.85},{x:-sway*.65,y:-breath*.85}
-        ]);
+        onAnimationFrame(Object.freeze({
+          type:'observed-animation-frame',
+          elapsedMs:now-start,reducedMotion:reduced.matches
+        }));
       }
       // Sample only an actually playing audio clock on the existing renderer
       // cadence. Rendering frames never authorize speech or invent phonemes.
@@ -409,11 +407,9 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         // the reducer's audio-observed motion state to its real A2 geometry.
         // No renderer timer or generic animation chooses these influences.
         const motion=next.bloomMotion;
-        if(next.bodyMotionMode==='observed-heart'&&motion&&motion!==appliedBloom){
+        if(motion&&motion!==appliedBloom){
           motionCapabilities.apply(motion);
           appliedBloom=motion;
-        }else if(next.bodyMotionMode==='idle'){
-          appliedBloom=null;
         }
       },
       visualCapabilities,motionCapabilities,
