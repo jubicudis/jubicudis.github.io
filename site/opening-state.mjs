@@ -28,7 +28,7 @@ export const initialState=Object.freeze({
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
   playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-  observedSpeechPose:null,observedAudioLevel:0,bloomMotion:STILL_BLOOM,visualExpression:'rest',nameAudioCompleted:false,nameAudioPlaying:false,nameSynthesisStatus:'not-requested',
+  observedSpeechPose:null,observedAudioLevel:0,bloomMotion:STILL_BLOOM,bodyMotionMode:'idle',visualExpression:'rest',nameAudioCompleted:false,nameAudioPlaying:false,nameSynthesisStatus:'not-requested',
   nameInsertionStatus:'not-requested',authoredAudioEnded:false,enteredAt:0,
   context:Object.freeze({
     who:'unidentified visitor',what:'Violet',when:'unstarted',
@@ -238,6 +238,7 @@ export function reduceOpening(state,event){
   const next={...state,...patch};
   // The reducer alone authorizes the facial expression. The WebGL renderer
   // consumes this state; it does not choose an expression from its own clock.
+  next.bodyMotionMode=next.speaking?'observed-heart':'idle';
   next.bloomMotion=bloomFromObservedAudio(next);
   next.visualExpression=next.speaking
     ?(next.observedSpeechPose||'talk')
