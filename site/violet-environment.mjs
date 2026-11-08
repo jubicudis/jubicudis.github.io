@@ -97,10 +97,8 @@ function assertVisibleExpression(ctx,mode){
     throw new Error('Required Violet '+mode+' expression rendered without eyes or mouth');
 }
 
-async function svgTexture(url,mode){
-  const response=await fetch(url,{cache:'no-cache'});
-  if(!response.ok)throw new Error('Required Violet SVG unavailable: '+response.status+' '+url);
-  const xml=qualifiedExpressionSvg(await response.text(),mode);
+async function svgTexture(sourceXml,mode){
+  const xml=qualifiedExpressionSvg(sourceXml,mode);
   const blob=new Blob([xml],{type:'image/svg+xml'});
   const objectURL=URL.createObjectURL(blob);
   const image=new Image();
@@ -204,13 +202,23 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     // than trying to restore a lost context or showing substitute artwork.
     const artworkURL=new URL('./violet-a2-art.webp',import.meta.url);
     const faceURL=new URL('./violet-face.svg',import.meta.url);
-    const [art,rest,ask,talk,blink,visemeClosed,visemeOpen,visemeWide,visemeRound]=await Promise.all([
-      loadRequiredImage(artworkURL,'Structured Bloom artwork'),
-      svgTexture(faceURL,'rest'),svgTexture(faceURL,'ask'),
-      svgTexture(faceURL,'talk'),svgTexture(faceURL,'blink'),
-      svgTexture(faceURL,'viseme-closed'),svgTexture(faceURL,'viseme-open'),
-      svgTexture(faceURL,'viseme-wide'),svgTexture(faceURL,'viseme-round')
-    ]);
+    // WebKit must not decode eight SVG image documents and eight large
+    // verification canvases concurrently. The original asset is fetched
+    // once, and each approved expression is decoded and released in order.
+    // This preserves every authored face path and avoids the iPhone's
+    // intermittent missing-eyes/mouth result under parallel decode pressure.
+    const art=await loadRequiredImage(artworkURL,'Structured Bloom artwork');
+    const faceResponse=await fetch(faceURL,{cache:'no-cache'});
+    if(!faceResponse.ok)throw new Error('Required Violet SVG unavailable: '+faceResponse.status);
+    const faceXml=await faceResponse.text();
+    const rest=await svgTexture(faceXml,'rest');
+    const ask=await svgTexture(faceXml,'ask');
+    const talk=await svgTexture(faceXml,'talk');
+    const blink=await svgTexture(faceXml,'blink');
+    const visemeClosed=await svgTexture(faceXml,'viseme-closed');
+    const visemeOpen=await svgTexture(faceXml,'viseme-open');
+    const visemeWide=await svgTexture(faceXml,'viseme-wide');
+    const visemeRound=await svgTexture(faceXml,'viseme-round');
     // Decode and verify every required A2 asset BEFORE allocating the WebGL
     // context. The prior implementation created an idle GPU context and then
     // performed nine parallel image/SVG decodes; on memory-constrained WebKit
