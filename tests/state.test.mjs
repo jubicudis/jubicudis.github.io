@@ -274,10 +274,10 @@ test('actual named audio failure never advances to generic welcome or name-skipp
 
 test('approved script reserves a later actual spoken-name slot, not the immediate welcome',()=>{
   assert.equal(VISITOR_NAME_SLOT.track,'after-name');
-  assert.equal(NAMED_VISITOR_SCRIPT[4],VISITOR_NAME_SLOT);
+  assert.equal(NAMED_VISITOR_SCRIPT[8],VISITOR_NAME_SLOT);
   assert.equal(NAMED_VISITOR_SCRIPT.length,OPENING_TRACKS['after-name'].length+1);
-  assert.equal(VISITOR_NAME_SLOT.afterCueIndex,3);
-  assert.equal(VISITOR_NAME_SLOT.beforeCueIndex,4);
+  assert.equal(VISITOR_NAME_SLOT.afterCueIndex,7);
+  assert.equal(VISITOR_NAME_SLOT.beforeCueIndex,8);
   assert.equal(VISITOR_NAME_SLOT.text('Morgan'),"Now, Morgan, let's take a closer look.");
   let named=step(finishQuestion(),'GIVE_NAME',{name:'Morgan'});
   named=step(named,'SPEECH_STARTED',{token:named.speechToken});
