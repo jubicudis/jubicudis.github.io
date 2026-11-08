@@ -250,8 +250,8 @@ try{
   assert.match(controllerSource,/NAME_SYNTHESIS_READY/);
   assert.match(controllerSource,/NAME_INSERTION_REQUESTED/);
   assert.doesNotMatch(controllerSource,/nameInsertionActive|nameInsertionDone|authoredNarrationEnded/);
-  assert.match(reducerSource,/next\\.visualExpression=/);
-  assert.match(recoverySource,/const mode=state\\.visualExpression/);
+  assert.match(reducerSource,/next\.visualExpression=/);
+  assert.match(recoverySource,/const mode=state\.visualExpression/);
   const faceVolume=await probe.evaluate(()=>{
     const scene=window.__visualProbe.visualCapabilities.readFaceplateEvidence();
     return scene;
