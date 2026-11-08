@@ -253,18 +253,12 @@ try{
   const {createVioletEnvironment}=await import('./violet-environment.mjs?v=20261107-gpu-cadence-07');
   scene=await createVioletEnvironment(document.getElementById('world'),{
     onObserved:evidence=>store.dispatch({type:'RENDER_OBSERVED',evidence}),
-    onFailure:error=>{
-      // Rendering is required for this state-driven presentation.
-      // A lost renderer cannot leave Heart narration running independently.
-      store.dispatch({type:'RENDER_FAILED',reason:error.message||String(error)});
-      voice.cancel('required Violet renderer failed');
-    },
+    onFailure:error=>store.dispatch({type:'RENDER_FAILED',reason:error.message||String(error)}),
     onAudioFrame:observeSpeechFrame
   });
   scene.update(store.getState());
 }catch(error){
   store.dispatch({type:'RENDER_FAILED',reason:error?.message||String(error)});
-  voice.cancel('required Violet renderer initialization failed');
 }
 await narrationReady;
 render(store.getState(),store.getState());
