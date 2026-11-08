@@ -156,12 +156,21 @@ function observeGeneratedSpeechFrame(){
   // A gap in actual viseme metadata carries a closed mouth, not a fabricated
   // phoneme. Only the observed audio playback clock can drive this expression.
   const pose=sampled?.pose??'viseme-closed';
-  if(pose===state.observedSpeechPose)return;
+  // Read the actual synthesized PCM at the observed playback position.
+  // This is the same audio data driving Heart, not an invented animation.
+  const generated=activeNameAudio.generated;
+  const start=Math.min(generated.pcm.length-1,
+    Math.floor(observation.elapsedMs*generated.sampleRate/1000));
+  const end=Math.min(generated.pcm.length,start+Math.max(1,Math.floor(generated.sampleRate*.02)));
+  let energy=0;
+  for(let i=start;i<end;i++)energy+=generated.pcm[i]*generated.pcm[i];
+  const level=Math.min(255,Math.round(Math.sqrt(energy/(end-start))*255));
+  if(pose===state.observedSpeechPose&&level===state.observedAudioLevel)return;
   store.dispatch({type:'GENERATED_VISEME_OBSERVED',token:state.speechToken,
     evidence:{type:'generated-viseme-audio-observed',
-      source:observation.source,voiceId:activeNameAudio.generated.voiceId,
+      source:observation.source,voiceId:generated.voiceId,
       assetId:observation.assetId,playing:true,elapsedMs:observation.elapsedMs,
-      pose}});
+      pose,level}});
 }
 function observeApprovedSpeechFrame(){
   const state=store.getState();
