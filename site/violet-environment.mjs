@@ -380,10 +380,19 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       frameRequest=requestAnimationFrame(frame);
     }
     frameRequest=requestAnimationFrame(frame);
+    let appliedBloom=null;
     return {
-      update(next){state=next;},
-      // The caller may explicitly propagate a visual snapshot in a later approved pass.
-      // No visitor control, state transition or automatic time-based trigger invokes it now.
+      update(next){
+        state=next;
+        // The four-point physical deformation rig already exists. Apply only
+        // the reducer's audio-observed motion state to its real A2 geometry.
+        // No renderer timer or generic animation chooses these influences.
+        const motion=next.bloomMotion;
+        if(motion&&motion!==appliedBloom){
+          motionCapabilities.apply(motion);
+          appliedBloom=motion;
+        }
+      },
       visualCapabilities,motionCapabilities,
       visualObservation:Object.freeze({
         captureNextFrame:observeNextFrame,
