@@ -10,7 +10,7 @@ export const initialState=Object.freeze({
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
   playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-  observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false,nameSynthesisStatus:'not-requested',
+  observedSpeechPose:null,visualExpression:'rest',nameAudioCompleted:false,nameAudioPlaying:false,nameSynthesisStatus:'not-requested',
   nameInsertionStatus:'not-requested',authoredAudioEnded:false,enteredAt:0,
   context:Object.freeze({
     who:'unidentified visitor',what:'Violet',when:'unstarted',
@@ -217,6 +217,11 @@ export function reduceOpening(state,event){
   }
   if(!patch)return state;
   const next={...state,...patch};
+  // The reducer alone authorizes the facial expression. The WebGL renderer
+  // consumes this state; it does not choose an expression from its own clock.
+  next.visualExpression=next.speaking
+    ?(next.observedSpeechPose||'talk')
+    :next.phase==='asking-name'?'ask':'rest';
   if(!phases.has(next.phase))throw new Error('Illegal opening phase');
   const what={
     dormant:'Violet', 'asking-name':'Violet and the optional visitor name',
