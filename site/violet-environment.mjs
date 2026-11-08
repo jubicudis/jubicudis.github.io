@@ -358,9 +358,11 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       character.scale.setScalar(expansion);
       // Sample only an actually playing audio clock on the existing renderer
       // cadence. Rendering frames never authorize speech or invent phonemes.
+      // The scene consumes the reducer's authorized presentation state.
+      // A free-running blink timer cannot independently change Violet's
+      // expression; no expression is invented outside state propagation.
       const mode=state.speaking&&state.observedSpeechPose
         ?state.observedSpeechPose:state.speaking?'talk':
-        !reduced.matches&&Math.sin(t*.49+.8)>.998?'blink':
         state.phase==='asking-name'&&!state.speaking?'ask':'rest';
       const visualMode=visualCapabilities.desiredExpression(mode);
       if(visualMode!==previousExpression){expression.material.map=faces[visualMode];expression.material.needsUpdate=true;previousExpression=visualMode;}
