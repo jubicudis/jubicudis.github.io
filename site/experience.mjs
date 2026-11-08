@@ -276,7 +276,8 @@ try{
   scene=await createVioletEnvironment(document.getElementById('world'),{
     onObserved:evidence=>store.dispatch({type:'RENDER_OBSERVED',evidence}),
     onFailure:error=>store.dispatch({type:'RENDER_FAILED',reason:error.message||String(error)}),
-    onAudioFrame:observeSpeechFrame
+    onAudioFrame:observeSpeechFrame,
+    onAnimationFrame:evidence=>store.dispatch({type:'IDLE_FRAME_OBSERVED',evidence})
   });
   scene.update(store.getState());
 }catch(error){
