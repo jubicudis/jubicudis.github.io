@@ -5,12 +5,30 @@
 import {OPENING_TRACKS,VISITOR_NAME_SLOT,openingTrackForPhase,visibleOpeningSegment}
   from './opening-script.mjs';
 
+// Four physical A2 structural influences are derived from actual observed
+// Heart sound energy, not an independent animation timer or page phase guess.
+const STILL_BLOOM=Object.freeze(Array.from({length:4},()=>Object.freeze({x:0,y:0})));
+function bloomFromObservedAudio(state){
+  if(!state.speaking||!state.observedSpeechPose)return STILL_BLOOM;
+  const pose=state.observedSpeechPose;
+  const level=state.observedAudioLevel;
+  if(!Number.isFinite(level)||level<=0)return STILL_BLOOM;
+  const strength=Math.min(.20,level/255*.20);
+  const open=pose==='viseme-open'||pose==='viseme-wide'||pose==='viseme-round';
+  const factor=open?1:.55;
+  return Object.freeze([
+    Object.freeze({x:-strength*factor,y:strength*.50}),
+    Object.freeze({x:strength*factor,y:strength*.48}),
+    Object.freeze({x:strength*.60,y:-strength*.65}),
+    Object.freeze({x:-strength*.60,y:-strength*.62})
+  ]);
+}
 export const initialState=Object.freeze({
   phase:'dormant',track:null,cueIndex:0,visitorName:null,nameDecision:null,
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
   playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-  observedSpeechPose:null,visualExpression:'rest',nameAudioCompleted:false,nameAudioPlaying:false,nameSynthesisStatus:'not-requested',
+  observedSpeechPose:null,observedAudioLevel:0,bloomMotion:STILL_BLOOM,visualExpression:'rest',nameAudioCompleted:false,nameAudioPlaying:false,nameSynthesisStatus:'not-requested',
   nameInsertionStatus:'not-requested',authoredAudioEnded:false,enteredAt:0,
   context:Object.freeze({
     who:'unidentified visitor',what:'Violet',when:'unstarted',
@@ -64,7 +82,7 @@ export function reduceOpening(state,event){
         patch={phase:'asking-name',track:'asking-name',cueIndex:0,enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-          observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false,
+          observedSpeechPose:null,observedAudioLevel:0,nameAudioCompleted:false,nameAudioPlaying:false,
           nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',authoredAudioEnded:false};
       break;
     case 'GIVE_NAME':
@@ -76,7 +94,7 @@ export function reduceOpening(state,event){
           visitorName:name,nameDecision:'provided',enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-          observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false,
+          observedSpeechPose:null,observedAudioLevel:0,nameAudioCompleted:false,nameAudioPlaying:false,
           nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',authoredAudioEnded:false};
       }
       break;
@@ -86,7 +104,7 @@ export function reduceOpening(state,event){
           visitorName:null,nameDecision:'skipped',enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-          observedSpeechPose:null,nameAudioCompleted:false,nameAudioPlaying:false,
+          observedSpeechPose:null,observedAudioLevel:0,nameAudioCompleted:false,nameAudioPlaying:false,
           nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',authoredAudioEnded:false};
       break;
     case 'SPEECH_STARTED':
@@ -107,7 +125,7 @@ export function reduceOpening(state,event){
           (state.generatedPositionMs!==null&&proof.elapsedMs<state.generatedPositionMs)||
           !['viseme-closed','viseme-open','viseme-wide','viseme-round'].includes(proof.pose))
           break;
-        patch={observedSpeechPose:proof.pose,generatedPositionMs:proof.elapsedMs};
+        patch={observedSpeechPose:proof.pose,observedAudioLevel:proof.level??(proof.pose==='viseme-closed'?0:140),generatedPositionMs:proof.elapsedMs};
       }
       break;
     case 'AUTHORED_ENVELOPE_OBSERVED':
@@ -127,7 +145,7 @@ export function reduceOpening(state,event){
           !Number.isInteger(proof.level)||proof.level<0||proof.level>255||
           !['viseme-closed','viseme-open','viseme-wide'].includes(proof.pose))
           break;
-        patch={observedSpeechPose:proof.pose,envelopePositionMs:proof.elapsedMs};
+        patch={observedSpeechPose:proof.pose,observedAudioLevel:proof.level,envelopePositionMs:proof.elapsedMs};
       }
       break;
     case 'NAME_SYNTHESIS_STARTED':
@@ -219,6 +237,7 @@ export function reduceOpening(state,event){
   const next={...state,...patch};
   // The reducer alone authorizes the facial expression. The WebGL renderer
   // consumes this state; it does not choose an expression from its own clock.
+  next.bloomMotion=bloomFromObservedAudio(next);
   next.visualExpression=next.speaking
     ?(next.observedSpeechPose||'talk')
     :next.phase==='asking-name'?'ask':'rest';
