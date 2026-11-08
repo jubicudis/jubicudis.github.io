@@ -259,10 +259,12 @@ try{
 
   assert.match(recoverySource,/motionCapabilities\.apply\(motion\)/,
     'observed Heart body motion must reach the real structural rig');
-  assert.match(recoverySource,/state\.bodyMotionMode==='idle'/,
-    'idle breathing must be authorized by reducer state');
-  assert.match(recoverySource,/motionCapabilities\.apply\(\[/,
-    'idle sculptural animation must deform the actual A2 body');
+  assert.match(recoverySource,/onAnimationFrame\(Object\.freeze\(/,
+    'renderer must report observed frame evidence rather than invent idle motion');
+  assert.doesNotMatch(recoverySource,/motionCapabilities\.apply\(\[/,
+    'renderer must not independently calculate idle A2 deformation');
+  assert.match(controllerSource,/type:'IDLE_FRAME_OBSERVED'/);
+  assert.match(reducerSource,/case 'IDLE_FRAME_OBSERVED':/);
   assert.match(reducerSource,/next\.bodyMotionMode=/);
   assert.match(reducerSource,/next\.bloomMotion=bloomFromObservedAudio\(next\)/);
   assert.match(controllerSource,/state\.observedAudioLevel===sampled\.level/,
