@@ -25,6 +25,7 @@ function bloomFromObservedAudio(state){
 }
 export const initialState=Object.freeze({
   phase:'dormant',track:null,cueIndex:0,visitorName:null,nameDecision:null,
+  browserLocale:null,presentationLocale:null,languageStatus:'unobserved',
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
   playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
@@ -72,6 +73,19 @@ export function reduceOpening(state,event){
         ])};
       }
       break;
+    case 'BROWSER_LANGUAGE_OBSERVED':
+      if(state.phase==='dormant'&&state.languageStatus==='unobserved'&&
+         event.evidence?.type==='browser-language-observed'&&
+         typeof event.evidence.locale==='string'){
+        let locale=null;
+        try{locale=Intl.getCanonicalLocales(event.evidence.locale)[0];}catch{}
+        if(locale){
+          const english=locale.split('-')[0].toLowerCase()==='en';
+          patch={browserLocale:locale,presentationLocale:english?locale:null,
+            languageStatus:english?'qualified':'unavailable'};
+        }
+      }
+      break;
     case 'RENDER_STARTED':
       if(state.renderStatus==='uninitialized')patch={renderStatus:'initializing'};
       break;
@@ -94,7 +108,7 @@ export function reduceOpening(state,event){
       patch={voiceSupported:event.value===true};
       break;
     case 'ACTIVATE':
-      if(state.phase==='dormant'&&state.renderStatus==='observed'&&state.voiceSupported===true)
+      if(state.phase==='dormant'&&state.renderStatus==='observed'&&state.voiceSupported===true&&state.languageStatus==='qualified')
         patch={phase:'asking-name',track:'asking-name',cueIndex:0,enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
