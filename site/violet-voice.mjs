@@ -213,6 +213,15 @@ export function createVioletVoiceEngine({
       return null;
     }
   }
+  // Hold the approved Heart recording at the observed name-slot boundary.
+  // This does not mark narration completed, fabricate a cue or change voice.
+  function holdAuthoredForName(token){
+    if(!active||active.kind!=='authored'||active.token!==token||
+       !active.playing||active.audio.paused)return false;
+    active.audio.pause();
+    active.playing=false;
+    return true;
+  }
   function sampleGeneratedClock(token){
     if(!active||active.kind!=='generated'||active.token!==token||
        !active.playing||active.audio.paused===true||active.audio.ended===true)
@@ -236,7 +245,7 @@ export function createVioletVoiceEngine({
       token,playing:true,elapsedMs:Math.floor(seconds*1000)});
   }
   return Object.freeze({
-    speakBrowser,playAuthored,playGenerated,cancel,
+    speakBrowser,playAuthored,playGenerated,holdAuthoredForName,cancel,
     sampleAuthoredClock,sampleGeneratedClock,
     availableVoices:()=>typeof synthesis?.getVoices==='function'
       ?synthesis.getVoices().map(voiceDescriptor):[],
