@@ -191,7 +191,7 @@ test('approved Heart orientation advances during name generation without invente
   const noProof=step(named,'GENERATED_VISEME_OBSERVED',{token,evidence:{
     type:'generated-viseme-audio-observed',source:'fabricated',
     assetId:'generated-heart:'+token,voiceId:'af_heart',
-    playing:true,elapsedMs:300,pose:'viseme-open'
+    playing:true,elapsedMs:300,pose:'viseme-open',level:130
   }});
   assert.equal(noProof,named);
   named=step(named,'NAME_SYNTHESIS_STARTED',{token});
@@ -209,14 +209,17 @@ test('approved Heart orientation advances during name generation without invente
   const speaking=step(named,'GENERATED_VISEME_OBSERVED',{token,evidence:{
     type:'generated-viseme-audio-observed',source:'observed-generated-heart-audio',
     assetId:'generated-heart:'+token,voiceId:'af_heart',
-    playing:true,elapsedMs:300,pose:'viseme-open'
+    playing:true,elapsedMs:300,pose:'viseme-open',level:130
   }});
   assert.equal(speaking.observedSpeechPose,'viseme-open');
   assert.equal(speaking.generatedPositionMs,300);
+  assert.equal(speaking.observedAudioLevel,130);
+  assert.ok(speaking.bloomMotion.some(p=>p.x!==0||p.y!==0),
+    'observed generated Heart energy must drive the existing four-point A2 rig');
   const stale=step(speaking,'GENERATED_VISEME_OBSERVED',{token,evidence:{
     type:'generated-viseme-audio-observed',source:'observed-generated-heart-audio',
     assetId:'generated-heart:'+token,voiceId:'af_heart',
-    playing:true,elapsedMs:250,pose:'viseme-wide'
+    playing:true,elapsedMs:250,pose:'viseme-wide',level:130
   }});
   assert.equal(stale,speaking,'backwards audio cannot change face pose');
   const fakeEnd=step(speaking,'NAME_AUDIO_ENDED',{token,evidence:{
