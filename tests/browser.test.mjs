@@ -252,6 +252,11 @@ try{
   assert.doesNotMatch(controllerSource,/nameInsertionActive|nameInsertionDone|authoredNarrationEnded/);
   assert.match(reducerSource,/next\.visualExpression=/);
   assert.match(recoverySource,/const mode=state\.visualExpression/);
+  assert.doesNotMatch(recoverySource,/Promise\.all\(\[\s*loadRequiredImage/,
+    'iOS must not perform simultaneous A2 SVG image decodes');
+  assert.match(recoverySource,/const faceXml=await faceResponse\.text\(\)/);
+  assert.match(recoverySource,/const visemeWide=await svgTexture\(faceXml,'viseme-wide'\)/);
+
   assert.match(recoverySource,/motionCapabilities\.apply\(motion\)/,
     'observed Heart body motion must reach the real structural rig');
   assert.match(recoverySource,/state\.bodyMotionMode==='idle'/,
