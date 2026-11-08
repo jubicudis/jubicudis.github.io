@@ -27,17 +27,18 @@ export const AFTER_NAME_SEGMENTS=Object.freeze([
   Object.freeze({phase:'presentation',text:"Because the real difference begins with the operating system itself."})
 ]);
 // A named visitor hears the prerecorded Heart orientation FIRST. Its first
-// four paragraphs provide approximately 30 seconds for the separately
-// synthesized name line to finish. The authored paragraph ends in a natural
-// transition to the generated line, and the next authored paragraph continues
-// the same explanation. No name is required immediately after name entry.
+// eight paragraphs provide approximately 62 seconds for the separately
+// synthesized name line to finish on iPhone. The authored paragraph closes
+// "everything you discover builds on what you've already learned." The
+// generated invitation then leads directly into "Let's begin with something
+// familiar." No name is required immediately after name entry.
 // The narration is regenerated whenever this approved script changes.
 export const VISITOR_NAME_SLOT=Object.freeze({
   track:'after-name',
-  phase:'orientation',
+  phase:'presentation',
   kind:'generated-visitor-name',
-  afterCueIndex:3,
-  beforeCueIndex:4,
+  afterCueIndex:7,
+  beforeCueIndex:8,
   text:visitorName=>"Now, "+visitorName+", let's take a closer look."
 });
 // The actual named-visitor script includes this required dynamic speech line.
