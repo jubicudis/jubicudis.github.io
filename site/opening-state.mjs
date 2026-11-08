@@ -123,9 +123,10 @@ export function reduceOpening(state,event){
           proof.assetId!=='generated-heart:'+state.speechToken||
           !Number.isFinite(proof.elapsedMs)||proof.elapsedMs<0||
           (state.generatedPositionMs!==null&&proof.elapsedMs<state.generatedPositionMs)||
-          !['viseme-closed','viseme-open','viseme-wide','viseme-round'].includes(proof.pose))
+          !['viseme-closed','viseme-open','viseme-wide','viseme-round'].includes(proof.pose)||
+          !Number.isInteger(proof.level)||proof.level<0||proof.level>255)
           break;
-        patch={observedSpeechPose:proof.pose,observedAudioLevel:proof.level??(proof.pose==='viseme-closed'?0:140),generatedPositionMs:proof.elapsedMs};
+        patch={observedSpeechPose:proof.pose,observedAudioLevel:proof.level,generatedPositionMs:proof.elapsedMs};
       }
       break;
     case 'AUTHORED_ENVELOPE_OBSERVED':
