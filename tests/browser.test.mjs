@@ -252,6 +252,14 @@ try{
   assert.doesNotMatch(controllerSource,/nameInsertionActive|nameInsertionDone|authoredNarrationEnded/);
   assert.match(reducerSource,/next\.visualExpression=/);
   assert.match(recoverySource,/const mode=state\.visualExpression/);
+  assert.match(recoverySource,/motionCapabilities\.apply\(motion\)/,
+    'observed Heart body motion must reach the real structural rig');
+  assert.match(recoverySource,/state\.bodyMotionMode==='idle'/,
+    'idle breathing must be authorized by reducer state');
+  assert.match(recoverySource,/motionCapabilities\.apply\(\[/,
+    'idle sculptural animation must deform the actual A2 body');
+  assert.match(reducerSource,/next\.bodyMotionMode=/);
+  assert.match(reducerSource,/next\.bloomMotion=bloomFromObservedAudio\(next\)/);
   const faceVolume=await probe.evaluate(()=>{
     const scene=window.__visualProbe.visualCapabilities.readFaceplateEvidence();
     return scene;
