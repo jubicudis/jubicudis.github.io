@@ -46,6 +46,14 @@ test('Violet expression propagates only from authorized reducer events',()=>{
   let s=ready();
   assert.equal(s.visualExpression,'rest');
   assert.equal(s.bodyMotionMode,'idle');
+  const observedIdle=step(s,'IDLE_FRAME_OBSERVED',{evidence:{
+    type:'observed-animation-frame',elapsedMs:1800,reducedMotion:false
+  }});
+  assert.ok(observedIdle.bloomMotion.some(point=>point.x!==0||point.y!==0),
+    'reducer must calculate real structural motion from observed idle frames');
+  assert.equal(step(s,'IDLE_FRAME_OBSERVED',{evidence:{
+    type:'unobserved-timer',elapsedMs:1800,reducedMotion:false
+  }}),s,'unqualified animation timing must not affect presentation state');
   s=step(s,'ACTIVATE');
   assert.equal(s.visualExpression,'ask');
   s=step(s,'SPEECH_STARTED',{token:s.speechToken});
