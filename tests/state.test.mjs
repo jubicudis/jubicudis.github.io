@@ -45,12 +45,15 @@ test('no activation without genuine rendered evidence and qualified audio',()=>{
 test('Violet expression propagates only from authorized reducer events',()=>{
   let s=ready();
   assert.equal(s.visualExpression,'rest');
+  assert.equal(s.bodyMotionMode,'idle');
   s=step(s,'ACTIVATE');
   assert.equal(s.visualExpression,'ask');
   s=step(s,'SPEECH_STARTED',{token:s.speechToken});
   assert.equal(s.visualExpression,'talk');
+  assert.equal(s.bodyMotionMode,'observed-heart');
   s=step(s,'SPEECH_ENDED',{token:s.speechToken});
   assert.equal(s.visualExpression,'ask');
+  assert.equal(s.bodyMotionMode,'idle');
   assert.equal(step(s,'NEXT'),s,'an unapproved action cannot change the face');
 });
 
