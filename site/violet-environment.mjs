@@ -317,7 +317,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     // Bound actual WebGL work on iOS to 30 Hz while the narration clock
     // continues to be sampled on each animation frame.
     const gpuFrameInterval=1000/30;
-    let lastGpuFrame=-Infinity,frameRequest=0;
+    let lastGpuFrame=-Infinity,frameRequest=0,lastBodyFrame=-Infinity;
     let allocatedWidth=0,allocatedHeight=0;
     const resize=()=>{
       const width=Math.max(1,Math.round(canvas.clientWidth));
@@ -360,6 +360,19 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       character.rotation.z=reduced.matches?0:.008*Math.sin(t*.39);
       const expansion=1+(reduced.matches?0:.004*Math.sin(t*.74));
       character.scale.setScalar(expansion);
+      // The reducer authorizes idle sculptural motion. Time supplies only
+      // the physical animation phase, not the choice of presentation mode.
+      // During Heart playback the rig follows observed acoustic energy.
+      if(state.bodyMotionMode==='idle'&&
+         now-lastBodyFrame>=1000/12){
+        lastBodyFrame=now;
+        const sway=reduced.matches?0:Math.sin(t*.83)*.10;
+        const breath=reduced.matches?0:Math.sin(t*1.07)*.075;
+        motionCapabilities.apply([
+          {x:-sway,y:breath},{x:sway,y:breath},
+          {x:sway*.65,y:-breath*.85},{x:-sway*.65,y:-breath*.85}
+        ]);
+      }
       // Sample only an actually playing audio clock on the existing renderer
       // cadence. Rendering frames never authorize speech or invent phonemes.
       // Facial expression is authorized by the opening reducer; the
@@ -388,9 +401,11 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         // the reducer's audio-observed motion state to its real A2 geometry.
         // No renderer timer or generic animation chooses these influences.
         const motion=next.bloomMotion;
-        if(motion&&motion!==appliedBloom){
+        if(next.bodyMotionMode==='observed-heart'&&motion&&motion!==appliedBloom){
           motionCapabilities.apply(motion);
           appliedBloom=motion;
+        }else if(next.bodyMotionMode==='idle'){
+          appliedBloom=null;
         }
       },
       visualCapabilities,motionCapabilities,
