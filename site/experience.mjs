@@ -268,7 +268,7 @@ const narrationReady=(async()=>{
 })();
 store.dispatch({type:'RENDER_STARTED'});
 try{
-  const {createVioletEnvironment}=await import('./violet-environment.mjs?v=20261108-bloom-motion-16');
+  const {createVioletEnvironment}=await import('./violet-environment.mjs?v=20261108-serial-svg-17');
   scene=await createVioletEnvironment(document.getElementById('world'),{
     onObserved:evidence=>store.dispatch({type:'RENDER_OBSERVED',evidence}),
     onFailure:error=>store.dispatch({type:'RENDER_FAILED',reason:error.message||String(error)}),
