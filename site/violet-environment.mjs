@@ -115,8 +115,24 @@ async function svgTexture(sourceXml,mode){
     // paths and expression state, not a replacement asset or fallback.
     const verified=document.createElement('canvas');verified.width=640;verified.height=440;
     const ctx=verified.getContext('2d');if(!ctx)throw new Error('Violet expression verification canvas unavailable');
-    ctx.drawImage(image,0,0,verified.width,verified.height);
-    assertVisibleExpression(ctx,mode);
+    // WebKit can report an SVG image as loaded/decoded before its first
+    // rasterized paint is available to Canvas2D. Require actual pixels,
+    // and give the SAME authored image another paint opportunity before
+    // treating it as a missing expression. Never replace its artwork.
+    let qualified=false;
+    for(let attempt=0;attempt<4;attempt++){
+      ctx.clearRect(0,0,verified.width,verified.height);
+      ctx.drawImage(image,0,0,verified.width,verified.height);
+      try{
+        assertVisibleExpression(ctx,mode);
+        qualified=true;
+        break;
+      }catch(error){
+        if(attempt===3)throw error;
+        await new Promise(resolve=>requestAnimationFrame(()=>resolve()));
+      }
+    }
+    if(!qualified)throw new Error('Required Violet '+mode+' expression not observed');
     const canvas=document.createElement('canvas');canvas.width=320;canvas.height=220;
     const compact=canvas.getContext('2d');if(!compact)throw new Error('Violet expression texture canvas unavailable');
     compact.drawImage(verified,0,0,canvas.width,canvas.height);
