@@ -17,7 +17,7 @@ const skip=document.getElementById('name-skip');
 const failure=document.getElementById('render-failure');
 const audioFailure=document.getElementById('audio-failure');
 let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameAudio=null;
-let preparedName=null,nameSynthesisError=null;
+let preparedName=null,nameSynthesisError=null,pendingNameBoundary=null;
 const store=createOpeningStore(render);
 const voice=createVioletVoiceEngine();
 activate.disabled=true;
@@ -57,12 +57,20 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
       // The name is inserted only at an observed authored cue boundary.
       // If synthesis is still running, use the NEXT observed paragraph
       // boundary, never splice a name in the middle of recorded speech.
-      if(state.nameDecision==='provided'&&cue.index>=VISITOR_NAME_SLOT.beforeCueIndex&&
-         cue.index>previousCueIndex){
-        const current=store.getState();
-        if(current.nameSynthesisStatus==='ready'&&current.nameInsertionStatus==='waiting'){
-          const boundary=timeline.tracks[selected.track].cues[cue.index].startMs;
-          requestNameInsertion(current,boundary,'authored-paragraph-boundary-observed');
+      if(state.nameDecision==='provided'&&
+         cue.index===VISITOR_NAME_SLOT.beforeCueIndex&&
+         cue.index>previousCueIndex&&pendingNameBoundary===null){
+        const boundary=timeline.tracks[selected.track].cues[cue.index].startMs;
+        // Hold the actual Heart recording at the approved paragraph seam.
+        // Never advance into the next paragraph while waiting for synthesis.
+        if(voice.holdAuthoredForName(state.speechToken)){
+          pendingNameBoundary=boundary;
+          store.dispatch({type:'NAME_SLOT_OBSERVED',token:state.speechToken,
+            evidence:{type:'authored-name-slot-boundary-observed',
+              cueIndex:cue.index}});
+          const current=store.getState();
+          if(current.nameSynthesisStatus==='ready'&&current.nameInsertionStatus==='waiting')
+            requestNameInsertion(current,boundary,'authored-paragraph-boundary-observed');
         }
       }
 
@@ -79,6 +87,7 @@ function requestNameInsertion(state,resumeAtMs,evidenceType){
   if(authorized.nameInsertionStatus!=='requested')return;
   const generated=preparedName;
   preparedName=null;
+  pendingNameBoundary=null;
   const token=authorized.speechToken;
   activeNameAudio={token,generated};
   const session=voice.playGenerated({
@@ -112,6 +121,7 @@ async function beginSpeech(state){
   // The selected recorded Heart narration begins immediately after the
   // name decision. Synthesis is concurrent, not a silent prerequisite.
   preparedName=null;
+  pendingNameBoundary=null;
   nameSynthesisError=null;
   playApprovedTrack(state);
   if(state.nameDecision!=='provided')return;
@@ -128,7 +138,11 @@ async function beginSpeech(state){
     const ready=store.getState();
     // When the entire authored track has actually ended, its observed end
     // is the final authorized name insertion boundary.
-    if(ready.authoredAudioEnded&&ready.nameInsertionStatus==='waiting'&&
+    if(pendingNameBoundary!==null&&ready.nameSlotObserved&&
+       ready.nameInsertionStatus==='waiting'&&ready.speechStatus==='speaking')
+      requestNameInsertion(ready,pendingNameBoundary,
+        'authored-paragraph-boundary-observed');
+    else if(ready.authoredAudioEnded&&ready.nameInsertionStatus==='waiting'&&
        ready.speechStatus==='speaking')
       requestNameInsertion(ready,null,'authored-track-ended-observed');
   }catch(error){
