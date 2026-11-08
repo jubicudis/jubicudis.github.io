@@ -264,6 +264,13 @@ try{
   assert.doesNotMatch(recoverySource,/motionCapabilities\.apply\(\[/,
     'renderer must not independently calculate idle A2 deformation');
   assert.match(controllerSource,/type:'IDLE_FRAME_OBSERVED'/);
+  assert.match(controllerSource,/voice\.holdAuthoredForName\(state\.speechToken\)/,
+    'approved Heart track must pause at the exact observed name slot');
+  assert.match(controllerSource,/pendingNameBoundary!==null&&ready\.nameSlotObserved/,
+    'name generation completion must resume the held approved seam');
+  assert.match(reducerSource,/case 'NAME_SLOT_OBSERVED':/,
+    'the name slot must be a qualified state observation');
+  assert.match(voiceSource,/function holdAuthoredForName\(token\)/);
   assert.match(reducerSource,/case 'IDLE_FRAME_OBSERVED':/);
   assert.match(reducerSource,/next\.bodyMotionMode=/);
   assert.match(reducerSource,/bloomFromObservedAudio\(next\)/);
