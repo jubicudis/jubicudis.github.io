@@ -56,6 +56,22 @@ export function reduceOpening(state,event){
   const when=Number.isFinite(event.at)?event.at:null;
   let patch=null;
   switch(event.type){
+    case 'IDLE_FRAME_OBSERVED':
+      if(state.bodyMotionMode==='idle'&&state.renderStatus==='observed'&&
+         event.evidence?.type==='observed-animation-frame'&&
+         Number.isFinite(event.evidence.elapsedMs)&&event.evidence.elapsedMs>=0){
+        const t=event.evidence.elapsedMs/1000;
+        const reduced=event.evidence.reducedMotion===true;
+        const sway=reduced?0:Math.sin(t*.83)*.10;
+        const breath=reduced?0:Math.sin(t*1.07)*.075;
+        patch={bloomMotion:Object.freeze([
+          Object.freeze({x:-sway,y:breath}),
+          Object.freeze({x:sway,y:breath}),
+          Object.freeze({x:sway*.65,y:-breath*.85}),
+          Object.freeze({x:-sway*.65,y:-breath*.85})
+        ])};
+      }
+      break;
     case 'RENDER_STARTED':
       if(state.renderStatus==='uninitialized')patch={renderStatus:'initializing'};
       break;
@@ -239,7 +255,8 @@ export function reduceOpening(state,event){
   // The reducer alone authorizes the facial expression. The WebGL renderer
   // consumes this state; it does not choose an expression from its own clock.
   next.bodyMotionMode=next.speaking?'observed-heart':'idle';
-  next.bloomMotion=bloomFromObservedAudio(next);
+  next.bloomMotion=event.type==='IDLE_FRAME_OBSERVED'
+    ?patch.bloomMotion:bloomFromObservedAudio(next);
   next.visualExpression=next.speaking
     ?(next.observedSpeechPose||'talk')
     :next.phase==='asking-name'?'ask':'rest';
