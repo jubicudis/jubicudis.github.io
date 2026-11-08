@@ -182,8 +182,18 @@ test('approved Heart orientation advances during name generation without invente
     playing:true,elapsedMs:300,pose:'viseme-open'
   }});
   assert.equal(noProof,named);
+  named=step(named,'NAME_SYNTHESIS_STARTED',{token});
+  assert.equal(named.nameSynthesisStatus,'generating');
+  assert.equal(step(named,'NAME_INSERTION_REQUESTED',{token,
+    evidence:{type:'authored-paragraph-boundary-observed'}}),named);
+  named=step(named,'NAME_SYNTHESIS_READY',{token});
+  assert.equal(named.nameSynthesisStatus,'ready');
+  named=step(named,'NAME_INSERTION_REQUESTED',{token,
+    evidence:{type:'authored-paragraph-boundary-observed'}});
+  assert.equal(named.nameInsertionStatus,'requested');
   named=step(named,'NAME_AUDIO_STARTED',{token,
     evidence:{type:'observed-generated-heart-playing'}});
+  assert.equal(named.nameInsertionStatus,'playing');
   const speaking=step(named,'GENERATED_VISEME_OBSERVED',{token,evidence:{
     type:'generated-viseme-audio-observed',source:'observed-generated-heart-audio',
     assetId:'generated-heart:'+token,voiceId:'af_heart',
@@ -206,6 +216,7 @@ test('approved Heart orientation advances during name generation without invente
     type:'observed-generated-heart-ended',assetId:'generated-heart:'+token
   }});
   assert.equal(ended.nameAudioCompleted,true);
+  assert.equal(ended.nameInsertionStatus,'completed');
   assert.equal(ended.observedSpeechPose,null);
   const orientation=progress(ended,1,2400);
   assert.equal(orientation.phase,'orientation');
