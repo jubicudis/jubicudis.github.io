@@ -88,8 +88,17 @@ export function reduceOpening(state,event){
         }
       }
       break;
-    case 'LOCALIZED_NARRATION_READY':
+    case 'ENGLISH_NARRATION_FALLBACK':
+      // A device language is not proof that a translation model is ready.
+      // Preserve the observed browser locale while authorizing the approved
+      // English recording, rather than leaving Violet permanently inert.
       if(state.phase==='dormant'&&state.languageStatus==='unavailable'&&
+         event.evidence?.type==='approved-english-audio-qualified')
+        patch={presentationLocale:'en-US',languageStatus:'qualified'};
+      break;
+    case 'LOCALIZED_NARRATION_READY':
+      if(state.phase==='dormant'&&
+         ['unavailable','qualified'].includes(state.languageStatus)&&
          event.locale===state.browserLocale&&event.tracks&&
          ['asking-name','after-name'].every(track=>
            Array.isArray(event.tracks[track])&&
