@@ -4,7 +4,7 @@
 export function observeBrowserLanguage(browser=globalThis.navigator){
   const value=(browser?.languages||[]).find(x=>typeof x==='string'&&x.trim())||
     browser?.language||'en-US';
-  return Intl.getCanonicalLocales(value)[0];
+  return Intl.getCanonicalLocales(value.split('@')[0].replace(/_/g,'-'))[0];
 }
 export function languageTag(locale){
   return Intl.getCanonicalLocales(locale)[0].split('-')[0].toLowerCase();
