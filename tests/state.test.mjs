@@ -62,7 +62,7 @@ test('no activation without genuine rendered evidence and qualified audio',()=>{
 test('Violet expression propagates only from authorized reducer events',()=>{
   let s=ready();
   assert.equal(s.visualExpression,'rest');
-  assert.equal(s.bodyMotionMode,'idle');
+  assert.equal(s.bodyMotionMode,'flow');
   const observedIdle=step(s,'IDLE_FRAME_OBSERVED',{evidence:{
     type:'observed-animation-frame',elapsedMs:1800,reducedMotion:false
   }});
@@ -75,10 +75,10 @@ test('Violet expression propagates only from authorized reducer events',()=>{
   assert.equal(s.visualExpression,'ask');
   s=step(s,'SPEECH_STARTED',{token:s.speechToken});
   assert.equal(s.visualExpression,'talk');
-  assert.equal(s.bodyMotionMode,'observed-heart');
+  assert.equal(s.bodyMotionMode,'flow');
   s=step(s,'SPEECH_ENDED',{token:s.speechToken});
   assert.equal(s.visualExpression,'ask');
-  assert.equal(s.bodyMotionMode,'idle');
+  assert.equal(s.bodyMotionMode,'flow');
   assert.equal(step(s,'NEXT'),s,'an unapproved action cannot change the face');
 });
 
@@ -202,6 +202,28 @@ test('approved opening covers all three distinct products without invented claim
   assert.doesNotMatch(spoken,/Jubi created everything|done developing|guarantee/i);
   assert.equal(OPENING_TRACKS['asking-name'].length,4);
   assert.equal(OPENING_TRACKS['after-name'].length,17);
+});
+
+test('continuous A2 flow persists during speech and ignores changing audio energy',()=>{
+  let state=step(ready(),'ACTIVATE');
+  const token=state.speechToken;
+  state=step(state,'SPEECH_STARTED',{token});
+  state=step(state,'IDLE_FRAME_OBSERVED',{evidence:{
+    type:'observed-animation-frame',elapsedMs:2100,reducedMotion:false
+  }});
+  const first=state.bloomMotion;
+  state=step(state,'AUTHORED_ENVELOPE_OBSERVED',{token,evidence:{
+    type:'authored-heart-envelope-observed',source:'observed-authored-audio',
+    playing:true,elapsedMs:2100,pose:'viseme-wide',level:220
+  }});
+  assert.deepEqual(state.bloomMotion,first,
+    'a spoken syllable must not pulse Violet ribbons');
+  state=step(state,'IDLE_FRAME_OBSERVED',{evidence:{
+    type:'observed-animation-frame',elapsedMs:3100,reducedMotion:false
+  }});
+  assert.notDeepEqual(state.bloomMotion,first,
+    'ribbon flow must continue on its own during speech');
+  assert.equal(state.bodyMotionMode,'flow');
 });
 
 test('A2 idle motion articulates independently without synchronized breathing',()=>{
@@ -358,16 +380,16 @@ test('approved Heart orientation advances during name generation without invente
   assert.equal(speaking.observedSpeechPose,'viseme-open');
   assert.equal(speaking.generatedPositionMs,300);
   assert.equal(speaking.observedAudioLevel,130);
-  assert.ok(speaking.bloomMotion.some(p=>p.x!==0||p.y!==0),
-    'observed generated Heart energy must drive the existing four-point A2 rig');
+  assert.deepEqual(speaking.bloomMotion,named.bloomMotion,
+    'speech changes the mouth only and cannot drive ribbon motion');
   const samePoseMoreEnergy=step(speaking,'GENERATED_VISEME_OBSERVED',{token,evidence:{
     type:'generated-viseme-audio-observed',source:'observed-generated-heart-audio',
     assetId:'generated-heart:'+token,voiceId:'af_heart',
     playing:true,elapsedMs:340,pose:'viseme-open',level:200
   }});
   assert.equal(samePoseMoreEnergy.observedSpeechPose,speaking.observedSpeechPose);
-  assert.notDeepEqual(samePoseMoreEnergy.bloomMotion,speaking.bloomMotion,
-    'changing observed Heart energy must deform body even with unchanged mouth pose');
+  assert.deepEqual(samePoseMoreEnergy.bloomMotion,speaking.bloomMotion,
+    'even changing Heart energy must never pulse the body');
   const stale=step(speaking,'GENERATED_VISEME_OBSERVED',{token,evidence:{
     type:'generated-viseme-audio-observed',source:'observed-generated-heart-audio',
     assetId:'generated-heart:'+token,voiceId:'af_heart',
