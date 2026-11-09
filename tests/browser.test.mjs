@@ -98,7 +98,19 @@ try{
       'mouth-speak','mouth-viseme-closed','mouth-viseme-open',
       'mouth-viseme-wide','mouth-viseme-round'])
       assert.ok(faceParts.includes(part),'authored Violet SVG part missing: '+part);
-    await page.waitForFunction(()=>!document.querySelector('#violet-activate').disabled,null,{timeout:15000});
+    try{
+      await page.waitForFunction(()=>!document.querySelector('#violet-activate').disabled,null,{timeout:15000});
+    }catch(error){
+      const diagnostics=await page.evaluate(()=>({
+        locale:navigator.language,
+        languages:navigator.languages,
+        renderStatus:document.querySelector('#environment')?.dataset.renderStatus,
+        renderFailure:document.querySelector('#render-failure')?.textContent,
+        audioFailure:document.querySelector('#audio-failure')?.textContent,
+        activateDisabled:document.querySelector('#violet-activate')?.disabled
+      }));
+      throw new Error('Violet activation qualification failed: '+JSON.stringify({diagnostics,errors}),{cause:error});
+    }
     assert.equal(await page.locator('#render-failure').isVisible(),false);
     assert.equal(await page.locator('#audio-failure').isVisible(),false);
     assert.equal(await page.locator('#violet-activate').isVisible(),true);
