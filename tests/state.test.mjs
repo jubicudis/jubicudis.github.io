@@ -204,6 +204,29 @@ test('approved opening covers all three distinct products without invented claim
   assert.equal(OPENING_TRACKS['after-name'].length,17);
 });
 
+test('real media failure permits only visitor-authorized replay of the approved track',()=>{
+  let state=step(finishQuestion(),'SKIP_NAME');
+  const token=state.speechToken;
+  state=step(state,'SPEECH_STARTED',{token});
+  state=progress(state,1,3900);
+  state=step(state,'SPEECH_FAILED',{token,
+    reason:'NotAllowedError: playback denied'});
+  assert.equal(state.speechStatus,'failed');
+  assert.match(state.speechFailureReason,/NotAllowedError/);
+  const previous=state;
+  state=step(state,'RETRY_SPEECH');
+  assert.equal(state.speechToken,token+1);
+  assert.equal(state.track,'after-name');
+  assert.equal(state.cueIndex,0);
+  assert.equal(state.speechStatus,'pending');
+  assert.equal(state.speechFailureReason,null);
+  assert.equal(state.visitorName,previous.visitorName);
+  const duplicate=step(state,'RETRY_SPEECH');
+  assert.equal(duplicate,state,'a second replay cannot be requested during playback');
+  state=step(state,'SPEECH_STARTED',{token:state.speechToken});
+  assert.equal(state.speechStatus,'speaking');
+});
+
 test('failed optional iPhone name inference does not invalidate observed recorded Heart playback',()=>{
   let state=step(finishQuestion(),'GIVE_NAME',{name:'Morgan'});
   const token=state.speechToken;
