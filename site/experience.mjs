@@ -1,6 +1,6 @@
 import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261109-language-state-30';
 import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
-import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261109-gesture-prime-26';
+import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261109-no-fake-prime-27';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
   VIOLET_TIMELINE_URL,VIOLET_HEART_CONTINUATION} from './violet-selected-voice.mjs?v=20261106-name-05';
 import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs?v=20261109-kokoro-singlethread-01';
@@ -426,7 +426,6 @@ activate.addEventListener('click',()=>{
   const state=store.getState();
   if(state.renderStatus!=='observed'||state.voiceSupported!==true||
      state.languageStatus!=='qualified')return;
-  if(localizedPresentation)voice.primeGeneratedPlayback();
   if(['failed','unavailable','interrupted'].includes(state.speechStatus))
     store.dispatch({type:'RETRY_SPEECH'});
   else if(state.phase==='dormant')
@@ -434,11 +433,9 @@ activate.addEventListener('click',()=>{
 });
 form.addEventListener('submit',event=>{
   event.preventDefault();
-  if(localizedPresentation)voice.primeGeneratedPlayback();
   store.dispatch({type:'GIVE_NAME',name:nameInput.value});
 });
 skip.addEventListener('click',()=>{
-  if(localizedPresentation)voice.primeGeneratedPlayback();
   store.dispatch({type:'SKIP_NAME'});
 });
 document.addEventListener('visibilitychange',()=>{
