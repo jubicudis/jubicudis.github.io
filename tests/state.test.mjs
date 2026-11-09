@@ -204,6 +204,26 @@ test('approved opening covers all three distinct products without invented claim
   assert.equal(OPENING_TRACKS['after-name'].length,17);
 });
 
+test('A2 idle motion articulates independently without synchronized breathing',()=>{
+  let state=step(initialState,'RENDER_STARTED');
+  state=step(state,'RENDER_OBSERVED',{evidence:{
+    type:'webgl-pixel-observed',nonBackgroundPixel:true,drawCalls:4
+  }});
+  state=step(state,'IDLE_FRAME_OBSERVED',{evidence:{
+    type:'observed-animation-frame',elapsedMs:1800,reducedMotion:false
+  }});
+  const points=state.bloomMotion;
+  assert.equal(points.length,4);
+  assert.ok(points.some(p=>p.x!==0||p.y!==0));
+  assert.ok(points[0].y!==points[1].y&&points[1].y!==points[2].y,
+    'all ribbons must not expand and contract as a single breathing body');
+  state=step(state,'IDLE_FRAME_OBSERVED',{evidence:{
+    type:'observed-animation-frame',elapsedMs:2300,reducedMotion:true
+  }});
+  assert.ok(state.bloomMotion.every(p=>p.x===0&&p.y===0),
+    'reduced-motion preference must disable ornamental articulation');
+});
+
 test('real media failure permits only visitor-authorized replay of the approved track',()=>{
   let state=step(finishQuestion(),'SKIP_NAME');
   const token=state.speechToken;
