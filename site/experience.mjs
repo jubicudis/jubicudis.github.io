@@ -31,7 +31,7 @@ const observedBrowserLocale=(navigator.languages||[])
   .find(value=>typeof value==='string'&&value.trim())||
   navigator.language||'en-US';
 store.dispatch({type:'BROWSER_LANGUAGE_OBSERVED',
-  evidence:{type:'browser-language-observed',locale:observedBrowserLocale}});
+  evidence:{type:'browser-language-observed',locale:canonicalBrowserLocale}});
 const voice=createVioletVoiceEngine();
 activate.disabled=true;
 
