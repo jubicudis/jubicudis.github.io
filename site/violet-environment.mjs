@@ -73,6 +73,10 @@ function qualifiedExpressionSvg(xml,mode){
   // gradient, glow and other original style declaration unchanged.
   let qualified=xml.slice(0,start)+xml.slice(end);
   qualified=qualified.replace('data-mode="rest"','data-mode="'+mode+'"');
+  // Blob-backed SVG images need intrinsic dimensions for reliable Safari
+  // decoding into Canvas2D; viewBox alone is not sufficient in WebKit.
+  qualified=qualified.replace('<svg xmlns="http://www.w3.org/2000/svg"',
+    '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="440"');
   for(const id of all){
     const opening='<g id="'+id+'"';
     if(!qualified.includes(opening))
