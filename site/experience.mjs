@@ -368,8 +368,12 @@ function render(state,previous){
   stage.dataset.speechPose=state.observedSpeechPose||'';
   stage.dataset.nameAudioCompleted=String(state.nameAudioCompleted);
   stage.dataset.renderStatus=state.renderStatus;
+  const recoverable=['failed','unavailable','interrupted'].includes(state.speechStatus);
   activate.disabled=state.renderStatus!=='observed'||state.voiceSupported!==true||
     state.languageStatus!=='qualified';
+  activate.hidden=state.phase!=='dormant'&&!recoverable;
+  activate.setAttribute('aria-label',recoverable
+    ?'Replay Violet’s approved narration':'Activate Violet');
   failure.hidden=state.renderStatus!=='failed';
   if(state.renderStatus==='failed')
     failure.textContent='Violet could not be rendered on this device. '+state.renderFailure;
@@ -401,7 +405,11 @@ function render(state,previous){
 }
 activate.addEventListener('click',()=>{
   const state=store.getState();
-  if(state.renderStatus==='observed'&&state.voiceSupported===true&&state.languageStatus==='qualified')
+  if(state.renderStatus!=='observed'||state.voiceSupported!==true||
+     state.languageStatus!=='qualified')return;
+  if(['failed','unavailable','interrupted'].includes(state.speechStatus))
+    store.dispatch({type:'RETRY_SPEECH'});
+  else if(state.phase==='dormant')
     store.dispatch({type:'ACTIVATE'});
 });
 form.addEventListener('submit',event=>{
