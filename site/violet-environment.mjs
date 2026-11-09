@@ -354,75 +354,73 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       if(nearest<0)throw new Error('Required A2 ribbon attachment vertex unavailable');
       return nearest;
     }
+    // A2 ribbon roots emerge from behind the faceplate and widen toward
+    // the authored body. These are broad material continuations, not rods
+    // pulled inward from the ribbons or independent glowing ornaments.
     const attachments=attachmentSpecs.map(spec=>{
-      const material=new THREE.MeshBasicMaterial({
-        color:spec.color,transparent:true,opacity:.62,
-        blending:THREE.AdditiveBlending,depthWrite:false
-      });
-      // The same vertex buffer is updated in place. Rebuilding four tube
-      // meshes on every state change exhausted mobile WebGL allocations and
-      // could leave the visible face detached when the renderer failed.
-      const radial=6,segments=18;
-      const positions=new Float32Array((segments+1)*(radial+1)*3);
-      const indices=[];
-      for(let i=0;i<segments;i++)for(let j=0;j<radial;j++){
-        const n=i*(radial+1)+j;
-        indices.push(n,n+radial+1,n+1,n+1,n+radial+1,n+radial+2);
-      }
+      const segments=24;
       const geometry=new THREE.BufferGeometry();
+      const positions=new Float32Array((segments+1)*2*3);
+      const indices=[];
+      for(let i=0;i<segments;i++){
+        const n=i*2;
+        indices.push(n,n+2,n+1,n+1,n+2,n+3);
+      }
       geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));
       geometry.setIndex(indices);
-      const mesh=new THREE.Mesh(geometry,material);
+      const mesh=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({
+        color:spec.color,transparent:true,opacity:.22,
+        side:THREE.DoubleSide,depthWrite:false,
+        blending:THREE.NormalBlending,toneMapped:false
+      }));
+      mesh.frustumCulled=false;
       character.add(mesh);
-      return {...spec,mesh,segments,radial,
-        ribbonVertex:nearestRibbonVertex(spec.body)};
+      return {...spec,mesh,segments,ribbonVertex:nearestRibbonVertex(spec.body)};
     });
+    const attachmentScratch={
+      rim:new THREE.Vector3(),end:new THREE.Vector3(),
+      control:new THREE.Vector3(),point:new THREE.Vector3(),
+      tangent:new THREE.Vector3()
+    };
     function updateFaceAttachments(){
       const rx=A2_FACEPLATE.widthPixels*artPixelToWorld*.5;
       const ry=A2_FACEPLATE.heightPixels*artPixelToWorld*.5;
+      const {rim,end,control,point,tangent}=attachmentScratch;
       for(const attachment of attachments){
-        const {angle,body,mesh}=attachment;
-        const rimPoint=new THREE.Vector3(
-          rx*.93*Math.cos(angle),ry*.93*Math.sin(angle),0);
-        rimPoint.applyEuler(faceAssembly.rotation).add(faceAssembly.position);
-        // Read the *deformed physical ribbon vertex*, not a second
-        // independent approximation of where the ribbon ought to be.
-        // The faceplate connection therefore follows the actual material.
-        const end=new THREE.Vector3(
-          ribbonPositions.getX(attachment.ribbonVertex),
-          ribbonPositions.getY(attachment.ribbonVertex),.065);
-        const start=new THREE.Vector3(rimPoint.x,rimPoint.y,.12);
-        const mid=start.clone().lerp(end,.52);
-        // Curvature makes the connection visibly travel behind the plate,
-        // rather than looking like a straight line pasted onto the face.
-        mid.z=.085;
-        const curve=new THREE.QuadraticBezierCurve3(start,mid,end);
-        const {segments,radial}=attachment;
+        const {angle,mesh,segments}=attachment;
+        // Direction is unambiguously FACE -> BODY. The root sits under
+        // the existing faceplate edge; the far end is the actual displaced
+        // ribbon vertex. The curve never traverses the front of the face.
+        rim.set(rx*.87*Math.cos(angle),ry*.87*Math.sin(angle),0);
+        rim.applyEuler(faceAssembly.rotation).add(faceAssembly.position);
+        end.set(ribbonPositions.getX(attachment.ribbonVertex),
+          ribbonPositions.getY(attachment.ribbonVertex),.031);
+        rim.z=.039;
+        control.copy(rim).lerp(end,.58);
+        // Preserve a continuous outward tangent instead of folding back
+        // into the faceplate or crossing another ribbon root.
+        const outwardX=Math.cos(angle),outwardY=Math.sin(angle);
+        control.x+=outwardX*.12;
+        control.y+=outwardY*.12;
+        control.z=.034;
         const attr=mesh.geometry.getAttribute('position');
-        const tangent=new THREE.Vector3();
-        const axis=new THREE.Vector3();
-        const normal=new THREE.Vector3();
-        const point=new THREE.Vector3();
         for(let i=0;i<=segments;i++){
-          const t=i/segments;
-          curve.getPoint(t,point);
-          curve.getTangent(t,tangent).normalize();
-          axis.set(0,0,1);
-          if(Math.abs(tangent.dot(axis))>.92)axis.set(0,1,0);
-          normal.crossVectors(tangent,axis).normalize();
-          axis.crossVectors(tangent,normal).normalize();
-          for(let j=0;j<=radial;j++){
-            const angle=j/radial*Math.PI*2;
-            const taper=.019*(.85+.15*Math.sin(Math.PI*t));
-            const index=i*(radial+1)+j;
-            attr.setXYZ(index,
-              point.x+taper*(normal.x*Math.cos(angle)+axis.x*Math.sin(angle)),
-              point.y+taper*(normal.y*Math.cos(angle)+axis.y*Math.sin(angle)),
-              point.z+taper*(normal.z*Math.cos(angle)+axis.z*Math.sin(angle)));
-          }
+          const t=i/segments,u=1-t;
+          point.set(
+            u*u*rim.x+2*u*t*control.x+t*t*end.x,
+            u*u*rim.y+2*u*t*control.y+t*t*end.y,
+            u*u*rim.z+2*u*t*control.z+t*t*end.z);
+          tangent.set(
+            2*u*(control.x-rim.x)+2*t*(end.x-control.x),
+            2*u*(control.y-rim.y)+2*t*(end.y-control.y),0).normalize();
+          // The attachment is a ribbon surface, tapering under the plate
+          // and broadening as it merges with the original A2 ribbon.
+          const width=.035+.13*t;
+          const nx=-tangent.y*width,ny=tangent.x*width;
+          attr.setXYZ(i*2,point.x+nx,point.y+ny,point.z);
+          attr.setXYZ(i*2+1,point.x-nx,point.y-ny,point.z);
         }
         attr.needsUpdate=true;
-        mesh.geometry.computeVertexNormals();
         mesh.geometry.computeBoundingSphere();
       }
     }
