@@ -323,6 +323,12 @@ try{
     'only observed media position at the authorized cue can hold the name seam');
   assert.match(controllerSource,/continueAfterGenerated:true/,
     'return to recorded Heart must preserve the current narration session');
+  assert.match(controllerSource,/const resumeAtMs=seamMs/,
+    'approved 62.352-second timeline seam must own the continuation position');
+  assert.match(controllerSource,/voice\.holdAuthoredForName\(state\.speechToken,resumeAtMs\)/,
+    'audio player must seek to the exact authorized seam when held');
+  assert.doesNotMatch(controllerSource,/requestNameInsertion\(current,null,'authored-track-ended-observed'\)/,
+    'name must not be relocated to the end of the presentation');
   assert.match(controllerSource,/if\(observedClock\)observeAuthoredPosition\(observedClock\)/,
     'sample the actual Heart audio clock during the existing scene frame');
   assert.match(controllerSource,/if\(observation\)localizedFrameObserver\(observation\)/,
