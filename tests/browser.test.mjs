@@ -271,7 +271,7 @@ try{
   assert.match(recoverySource,/const visemeWide=await svgTexture\(faceXml,'viseme-wide'\)/);
 
   assert.match(recoverySource,/motionCapabilities\.apply\(motion\)/,
-    'the structural rig remains addressable without speech-driven pulsing');
+    'observed Heart body motion must reach the real structural rig');
   assert.match(recoverySource,/onAnimationFrame\(Object\.freeze\(/,
     'renderer must report observed frame evidence rather than invent idle motion');
   assert.doesNotMatch(recoverySource,/motionCapabilities\.apply\(\[/,
@@ -286,7 +286,7 @@ try{
   assert.match(voiceSource,/function holdAuthoredForName\(token\)/);
   assert.match(reducerSource,/case 'IDLE_FRAME_OBSERVED':/);
   assert.match(reducerSource,/next\.bodyMotionMode=/);
-  assert.match(reducerSource,/next\.bloomMotion=STILL_BLOOM/);
+  assert.match(reducerSource,/bloomFromObservedAudio\(next\)/);
   assert.match(controllerSource,/state\.observedAudioLevel===sampled\.level/,
     'Heart body energy must propagate even when facial viseme is unchanged');
   assert.doesNotMatch(controllerSource,/if\(state\.observedSpeechPose===sampled\.pose\)return/,
