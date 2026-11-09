@@ -48,8 +48,8 @@ async function playLocalizedTrack(state){
         const line=localizedPresentation.nameLine(visitorName);
         store.dispatch({type:'LOCALIZED_NAME_LINE_READY',token,text:line});
         store.dispatch({type:'NAME_SYNTHESIS_STARTED',token});
-        store.dispatch({type:'NAME_SYNTHESIS_READY',token});
-        // Synthesis readiness is not evidence of audio playback. The
+        // Synthesis readiness is observed after actual PCM generation.
+        // Playback evidence is established independently. The
         // localized name slot is observed only when the generated PCM plays.
         await playLocalizedClip(line,token,{name:true,nameCueIndex:i});
       }
@@ -69,10 +69,7 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
   const generated=await localizedAdapter.synthesize(text);
   if(store.getState().speechToken!==token||document.hidden)
     throw new Error('Localized narration session interrupted');
-  if(Number.isInteger(cueIndex)){
-    store.dispatch({type:'LOCALIZED_CUE_OBSERVED',token,
-      evidence:{type:'localized-pcm-cue-playing',cueIndex}});
-  }
+  if(name)store.dispatch({type:'NAME_SYNTHESIS_READY',token});
   await new Promise((resolve,reject)=>{
     let started=false,cueObserved=false;
     const session=voice.playGenerated({
@@ -81,6 +78,11 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
         if(event.type==='SPEECH_STARTED'){
           started=true;
           store.dispatch(event);
+          if(Number.isInteger(cueIndex)){
+            cueObserved=true;
+            store.dispatch({type:'LOCALIZED_CUE_OBSERVED',token,
+              evidence:{type:'localized-pcm-cue-playing',cueIndex}});
+          }
           if(name){
             store.dispatch({type:'LOCALIZED_CUE_OBSERVED',token,
               evidence:{type:'localized-pcm-cue-playing',cueIndex:nameCueIndex}});
