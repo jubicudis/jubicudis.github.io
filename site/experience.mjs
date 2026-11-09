@@ -137,12 +137,11 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
   });
 }
 
-function playApprovedTrack(state,{resumeAtMs=0}={}){
+function playApprovedTrack(state,{resumeAtMs=0,continueAfterGenerated=false}={}){
   observeAuthoredPosition=null;
   const selected=resolveVioletOpeningAudio(state);
   if(!selected||!timeline)throw new Error('No qualified Heart audio for authorized state');
   const source=selected.src;
-  const offset=0;
   const onPosition=observation=>{
     if(observation.assetId!==source||
        observation.source!=='observed-authored-audio'||!observation.playing)return;
@@ -165,7 +164,10 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
           cueIndex:VISITOR_NAME_SLOT.beforeCueIndex}});
     if(cue.index!==VISITOR_NAME_SLOT.beforeCueIndex)return;
     const seamMs=timeline.tracks[selected.track].cues[cue.index].startMs;
-    if(observation.elapsedMs<seamMs||observation.elapsedMs-seamMs>250)return;
+    // Safari timeupdate is not guaranteed to fire within 250ms of a cue.
+    // The first qualified sample inside the exact approved cue is sufficient;
+    // never hold at a later cue or fabricate an earlier playback position.
+    if(observation.elapsedMs<seamMs)return;
     // Preserve the authored ordering even if mobile Heart synthesis has not
     // finished. Holding is an observed media action; readiness is separate.
     // Continuing past this point would speak the name after its introduction.
@@ -184,6 +186,7 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
   voice.playAuthored({
     src:source+'?voice=heart-character-tnos-01',
     token:state.speechToken,startAtMs:resumeAtMs,
+    continueAfterGenerated,
     emit:event=>{
       if(event.type==='SPEECH_ENDED'&&state.nameDecision==='provided'&&
          !store.getState().nameAudioCompleted&&
@@ -230,7 +233,8 @@ function requestNameInsertion(state,resumeAtMs,evidenceType){
       if(observed.speechStatus==='speaking'){
         if(resumeAtMs===null)
           store.dispatch({type:'SPEECH_ENDED',token});
-        else playApprovedTrack(store.getState(),{resumeAtMs});
+        else playApprovedTrack(store.getState(),{
+          resumeAtMs,continueAfterGenerated:true});
       }
     }
   });
