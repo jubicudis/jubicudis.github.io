@@ -131,8 +131,15 @@ export function createVioletVoiceEngine({
   // Premium recorded narration may be supplied as approved audio assets later.
   // The caller must explicitly request this transport; a missing or broken
   // file NEVER triggers silent substitution by browser text-to-speech.
-  function playAuthored({src,token,emit,onPosition,startAtMs=0}){
-    cancel('replaced');
+  function playAuthored({src,token,emit,onPosition,startAtMs=0,
+    continueAfterGenerated=false}){
+    // The approved recording and generated visitor name belong to ONE
+    // narration token. Replacing the media source is not a visitor
+    // interruption and must not dispatch SPEECH_INTERRUPTED.
+    if(continueAfterGenerated&&active?.kind==='generated'&&active.token===token){
+      const prior=active;active=null;
+      prior.audio.pause();prior.revoke?.();
+    }else cancel('replaced');
     if(typeof src!=='string'||!src||!Number.isSafeInteger(token))
       throw new TypeError('Authored narration requires an actual file URL and state token');
     if(!AudioCtor||!baseURL){
@@ -177,6 +184,9 @@ export function createVioletVoiceEngine({
   function playGenerated({wav,token,emit,onPosition,onEnded,insertAfterAuthored=false}){
     if(insertAfterAuthored&&active?.kind==='authored'&&active.token===token){
       active=null;media.pause();
+    }else if(insertAfterAuthored&&active===null){
+      // A genuinely observed authored end leaves no active media session.
+      // The same narration token continues without a synthetic interruption.
     }else cancel('replaced');
     if(!(wav instanceof ArrayBuffer)||wav.byteLength<=44||!Number.isSafeInteger(token))
       throw new TypeError('Generated speech requires qualified WAV and current token');
