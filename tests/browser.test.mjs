@@ -280,8 +280,14 @@ try{
     'the actual A2 center material must share the ribbon deformation field');
   assert.match(recoverySource,/updateFaceAttachments\(\)/,
     'physical junctions must follow the same deformed body and faceplate');
-  assert.match(recoverySource,/new THREE\.TubeGeometry\(curve,18/,
-    'A2 faceplate and ribbons require curved material junctions, not an independent floating overlay');
+  assert.match(recoverySource,/ribbonVertex:nearestRibbonVertex\(spec\.body\)/,
+    'face junctions must bind to vertices of the actual structural ribbon mesh');
+  assert.match(recoverySource,/ribbonPositions\.getX\(attachment\.ribbonVertex\)/,
+    'junctions must read observed deformed ribbon geometry, not independent approximations');
+  assert.match(recoverySource,/attr\.needsUpdate=true;\s*mesh\.geometry\.computeVertexNormals\(\)/,
+    'connected junction material must update its existing GPU buffer in place');
+  assert.doesNotMatch(recoverySource,/mesh\.geometry\.dispose\(\);\s*mesh\.geometry=next/,
+    'no GPU mesh replacement on every propagated motion update');
   assert.match(recoverySource,/character\.position\.y=lift\*\.12/,
     'whole-body lift must derive from the qualified four-point field');
   assert.match(recoverySource,/character\.rotation\.z=\(smoothed\[1\]\.y-smoothed\[0\]\.y\)\*\.025/,
