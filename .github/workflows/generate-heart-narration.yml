@@ -1,0 +1,55 @@
+name: Generate approved Heart narration family
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/generate_heart_narration.py'
+      - 'site/opening-script.mjs'
+      - '.github/workflows/generate-heart-narration.yml'
+permissions:
+  contents: write
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg espeak-ng
+          python -m pip install --upgrade pip
+          python -m pip install 'kokoro>=0.9.4,<1' soundfile numpy
+      - name: Generate both approved narration paths with af_heart
+        run: python scripts/generate_heart_narration.py
+      - name: Check generated audio and cue coverage
+        run: |
+          python - <<'PY'
+          import json,subprocess
+          from pathlib import Path
+          p=Path('site/audio')
+          m=json.loads((p/'heart-narration-family.json').read_text())
+          for key in ('asking','unnamed'):
+              assert (p/Path(m[key]['file']).name).stat().st_size>1000
+          for key in ('before','after'):
+              assert (p/Path(m['named'][key]['file']).name).stat().st_size>1000
+          assert len(m['unnamed']['cues'])==17
+          assert len(m['named']['before']['cues'])==8
+          assert len(m['named']['after']['cues'])==9
+          for f in p.glob('violet-heart-*.mp3'):
+              subprocess.run(['ffmpeg','-v','error','-i',str(f),'-f','null','-'],
+                             check=True)
+          PY
+      - name: Commit generated recordings and timelines
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add site/audio/violet-heart-asking-name.mp3 site/audio/violet-heart-after-name.mp3 site/audio/violet-heart-named-before.mp3 site/audio/violet-heart-named-after.mp3 site/audio/heart-timeline.json site/audio/heart-narration-family.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Regenerate approved Heart named and unnamed audio family'
+            git push
+          fi
