@@ -134,8 +134,10 @@ test('a held Heart seam resumes the same qualified media clock after optional sy
   engine.playAuthored({src:'/site/audio/violet-heart-after-name.mp3',
     token:14,emit:e=>events.push(e)});
   player.observe('playing');
-  player.currentTime=62.352;
+  player.currentTime=62.68;
   assert.equal(engine.holdAuthoredForName(14,62352),true);
+  assert.equal(player.currentTime,62.352,
+    'a late Safari observation must not shift the inventor-approved name seam');
   assert.equal(player.paused,true);
   assert.equal(engine.sampleAuthoredClock(14),null);
   assert.equal(engine.resumeHeldAuthored(14),true);
