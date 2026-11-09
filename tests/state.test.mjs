@@ -204,6 +204,39 @@ test('approved opening covers all three distinct products without invented claim
   assert.equal(OPENING_TRACKS['after-name'].length,17);
 });
 
+test('held approved name seam keeps captions and expression aligned until Heart actually plays',()=>{
+  let state=step(finishQuestion(),'GIVE_NAME',{name:'Morgan'});
+  const token=state.speechToken;
+  state=step(state,'SPEECH_STARTED',{token});
+  state=step(state,'NAME_SYNTHESIS_STARTED',{token});
+  state=progress(state,VISITOR_NAME_SLOT.beforeCueIndex,62352);
+  state=step(state,'NAME_SLOT_OBSERVED',{token,evidence:{
+    type:'authored-name-slot-boundary-observed',
+    cueIndex:VISITOR_NAME_SLOT.beforeCueIndex
+  }});
+  const unobserved=step(state,'NAME_SEAM_HELD',{token,evidence:{
+    type:'fabricated-pause'
+  }});
+  assert.equal(unobserved,state);
+  state=step(state,'NAME_SEAM_HELD',{token,evidence:{
+    type:'authored-media-paused-at-name-seam'
+  }});
+  assert.equal(state.nameSeamHeld,true);
+  assert.equal(state.nameInsertionStatus,'waiting');
+  assert.equal(state.observedSpeechPose,null);
+  assert.equal(openingMessage(state),OPENING_TRACKS['after-name'][7].text);
+  state=step(state,'NAME_SYNTHESIS_READY',{token});
+  state=step(state,'NAME_INSERTION_REQUESTED',{token,evidence:{
+    type:'authored-paragraph-boundary-observed'
+  }});
+  assert.equal(state.nameInsertionStatus,'requested');
+  state=step(state,'NAME_AUDIO_STARTED',{token,evidence:{
+    type:'observed-generated-heart-playing'
+  }});
+  assert.equal(state.nameSeamHeld,false);
+  assert.equal(openingMessage(state),VISITOR_NAME_SLOT.text('Morgan'));
+});
+
 test('approved Heart orientation advances during name generation without invented name completion',()=>{
   let named=step(finishQuestion(),'GIVE_NAME',{name:'Morgan'});
   assert.equal(named.nameDecision,'provided');
