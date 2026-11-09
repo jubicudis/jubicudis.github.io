@@ -135,7 +135,7 @@ test('a held Heart seam resumes the same qualified media clock after optional sy
     token:14,emit:e=>events.push(e)});
   player.observe('playing');
   player.currentTime=62.352;
-  assert.equal(engine.holdAuthoredForName(14),true);
+  assert.equal(engine.holdAuthoredForName(14,62352),true);
   assert.equal(player.paused,true);
   assert.equal(engine.sampleAuthoredClock(14),null);
   assert.equal(engine.resumeHeldAuthored(14),true);
@@ -279,7 +279,7 @@ test('visitor-name handoff keeps the same media player and narration token witho
     const audio=instances[0];
     audio.fire('playing');
     audio.currentTime=62;
-    assert.equal(engine.holdAuthoredForName(token),true);
+    assert.equal(engine.holdAuthoredForName(token,62352),true);
     assert.equal(audio.paused,true);
     engine.playGenerated({wav:new ArrayBuffer(80),token,insertAfterAuthored:true,
       emit,onEnded:()=>{
