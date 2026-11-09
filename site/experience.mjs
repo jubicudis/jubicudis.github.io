@@ -30,6 +30,7 @@ const store=createOpeningStore(render);
 const observedBrowserLocale=(navigator.languages||[])
   .find(value=>typeof value==='string'&&value.trim())||
   navigator.language||'en-US';
+const canonicalBrowserLocale=observedBrowserLocale.split('@')[0].replace(/_/g,'-');
 store.dispatch({type:'BROWSER_LANGUAGE_OBSERVED',
   evidence:{type:'browser-language-observed',locale:canonicalBrowserLocale}});
 const voice=createVioletVoiceEngine();
