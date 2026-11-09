@@ -325,8 +325,10 @@ export function reduceOpening(state,event){
   // The reducer alone authorizes the facial expression. The WebGL renderer
   // consumes this state; it does not choose an expression from its own clock.
   next.bodyMotionMode=next.speaking?'observed-heart':'idle';
-  next.bloomMotion=event.type==='IDLE_FRAME_OBSERVED'
-    ?patch.bloomMotion:bloomFromObservedAudio(next);
+  // Speech articulation belongs to the face; a separate body pulse made the
+  // A2 ribbons appear detached from the curved faceplate. Keep the whole
+  // sculptural assembly coherent while observed visemes animate normally.
+  next.bloomMotion=STILL_BLOOM;
   next.visualExpression=next.speaking
     ?(next.observedSpeechPose||'talk')
     :next.phase==='asking-name'?'ask':'rest';
