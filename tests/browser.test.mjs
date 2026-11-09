@@ -317,8 +317,12 @@ try{
     'frame observation must not wait for synthesis readiness to notice the seam');
   assert.match(controllerSource,/cue\.index!==VISITOR_NAME_SLOT\.beforeCueIndex\)return/,
     'later narration cues must never become substitute name seams');
-  assert.match(controllerSource,/observation\.elapsedMs-seamMs>250/,
-    'name insertion must not interrupt an already-started paragraph');
+  assert.doesNotMatch(controllerSource,/observation\.elapsedMs-seamMs>250/,
+    'Safari coarse playback clocks must not silently discard the only approved name seam');
+  assert.match(controllerSource,/if\(observation\.elapsedMs<seamMs\)return/,
+    'only observed media position at the authorized cue can hold the name seam');
+  assert.match(controllerSource,/continueAfterGenerated:true/,
+    'return to recorded Heart must preserve the current narration session');
   assert.match(controllerSource,/if\(observedClock\)observeAuthoredPosition\(observedClock\)/,
     'sample the actual Heart audio clock during the existing scene frame');
   assert.match(controllerSource,/if\(observation\)localizedFrameObserver\(observation\)/,
