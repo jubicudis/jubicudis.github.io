@@ -204,20 +204,6 @@ export function createVioletVoiceEngine({
   // The full presentation completes only after the separate approved Heart
   // continuation has actually played; generated welcome completion alone
   // must never manufacture the final SPEECH_ENDED state.
-  // Prime the one shared media element inside the actual visitor gesture.
-  // Model downloads and inference happen later; Safari must not be asked
-  // to authorize a newly created player after those asynchronous operations.
-  function primeGeneratedPlayback(){
-    if(!AudioCtor)return false;
-    const audio=sharedMedia();
-    audio.muted=true;
-    const attempt=audio.play();
-    if(attempt&&typeof attempt.catch==='function')
-      attempt.catch(()=>{});
-    audio.pause();
-    audio.muted=false;
-    return true;
-  }
   function playGenerated({wav,token,emit,onPosition,onEnded,insertAfterAuthored=false}){
     if(insertAfterAuthored&&active?.kind==='authored'&&active.token===token){
       active=null;media.pause();
@@ -313,7 +299,7 @@ export function createVioletVoiceEngine({
       token,playing:true,elapsedMs:Math.floor(seconds*1000)});
   }
   return Object.freeze({
-    speakBrowser,playAuthored,playGenerated,primeGeneratedPlayback,holdAuthoredForName,resumeHeldAuthored,cancel,
+    speakBrowser,playAuthored,playGenerated,holdAuthoredForName,resumeHeldAuthored,cancel,
     sampleAuthoredClock,sampleGeneratedClock,
     availableVoices:()=>typeof synthesis?.getVoices==='function'
       ?synthesis.getVoices().map(voiceDescriptor):[],
