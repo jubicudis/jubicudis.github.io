@@ -3,7 +3,7 @@
 // Model download and per-language phonemization must succeed before support
 // can be declared. HeadTTS is English-only and is not used for these voices.
 import {kokoroVoiceForLocale} from './violet-language-voices.mjs';
-import {encodeSpeechWav} from './violet-dynamic-name.mjs';
+import {encodeSpeechWav,requireSingleThreadWasm} from './violet-dynamic-name.mjs';
 
 export const KOKORO_JS_MODULE='https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm';
 export const KOKORO_ONNX_MODEL='onnx-community/Kokoro-82M-v1.0-ONNX';
@@ -14,16 +14,16 @@ export async function createBrowserKokoroAdapter(locale,{
 }={}){
   const voice=kokoroVoiceForLocale(locale);
   if(!voice)throw new Error('Kokoro has no configured voice for '+locale);
-  const {KokoroTTS}=await loadModule();
+  const {KokoroTTS,env}=await loadModule();
   if(typeof KokoroTTS?.from_pretrained!=='function')
     throw new Error('Kokoro browser inference module unavailable');
+  requireSingleThreadWasm(env);
   const tts=await KokoroTTS.from_pretrained(modelId,{
     dtype:'q8',device:'wasm'
   });
-  const available=await tts.list_voices();
-  const voices=Array.isArray(available)?available:
-    Object.keys(available||{});
-  if(!voices.includes(voice.voiceId))
+  // list_voices() only console.tables and returns undefined.
+  const catalog=tts.voices||{};
+  if(!Object.prototype.hasOwnProperty.call(catalog,voice.voiceId))
     throw new Error('Requested Kokoro voice not available: '+voice.voiceId);
   return Object.freeze({
     locale,voiceId:voice.voiceId,language:voice.language,
