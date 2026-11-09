@@ -35,12 +35,16 @@ export function solveCoupledMotion(input){
     y:p.y*(1-COUPLING)+mean.y*COUPLING
   })));
 }
-export function createBloomMotionCapabilities({structureSurface,artWidth,artHeight,onActiveChange}){
+export function createBloomMotionCapabilities({structureSurface,centerSurface,artWidth,artHeight,onActiveChange}){
   if(!structureSurface?.geometry?.getAttribute||typeof onActiveChange!=='function')
     throw new TypeError('Motion rig requires the actual structural geometry and a rendering-mode authority');
-  const geo=structureSurface.geometry,attr=geo.getAttribute('position');
-  if(attr.count<100)throw new Error('Structural geometry is not sufficiently subdivided to deform');
-  const base=new Float32Array(attr.array);
+  if(!centerSurface?.geometry?.getAttribute)
+    throw new TypeError('Face-to-body coupling requires the center material geometry');
+  const surfaces=[structureSurface,centerSurface].map(surface=>{
+    const geo=surface.geometry,attr=geo.getAttribute('position');
+    if(attr.count<100)throw new Error('A2 material geometry is not sufficiently subdivided to deform');
+    return {geo,attr,base:new Float32Array(attr.array)};
+  });
   const widthPx=970,heightPx=687;
   const anchors=ANCHOR_PIXELS.map(p=>({
     x:(p.x/widthPx-.5)*artWidth,
@@ -65,9 +69,9 @@ export function createBloomMotionCapabilities({structureSurface,artWidth,artHeig
     const active=input.some(p=>p.x!==0||p.y!==0);
     const radius=Math.min(artWidth,artHeight)*.27;
     const radiusSq=radius*radius;
+    for(const {geo,attr,base} of surfaces){
     if(!active){
-      // Bit-exact restoration matters: preserve source vertex signs and
-      // -0 coordinates, rather than recomputing x + 0 for a neutral pose.
+      // Restore both material layers without accumulating positional drift.
       attr.array.set(base);
     }else for(let i=0;i<attr.count;i++){
       const x=base[i*3],y=base[i*3+1];
@@ -85,6 +89,7 @@ export function createBloomMotionCapabilities({structureSurface,artWidth,artHeig
       attr.array[i*3+2]=base[i*3+2];
     }
     attr.needsUpdate=true;geo.computeBoundingSphere();
+    }
     requested=input;
     onActiveChange(active);
     return Object.freeze({type:'deformation-requested',active,
@@ -92,6 +97,7 @@ export function createBloomMotionCapabilities({structureSurface,artWidth,artHeig
   }
   return Object.freeze({
     apply,displacementAt,readRequested:()=>requested,readGeometry:()=>structureSurface.geometry,
+    readCenterGeometry:()=>centerSurface.geometry,
     reset:()=>apply(ZERO_BLOOM_MOTION)
   });
 }
