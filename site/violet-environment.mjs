@@ -424,12 +424,12 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       }
       lastGpuFrame=now;
       updatePhysicalRig(now);
-      const t=reduced.matches?0:(now-start)/1000;
-      character.position.y=reduced.matches?0:.038*Math.sin(t*.7);
-      character.rotation.z=reduced.matches?0:.008*Math.sin(t*.39);
-      // Keep the A2 character's authored proportions fixed. The observed
-      // four-point deformation moves the body and faceplate together;
-      // uniform scaling made the entire figure pulse mechanically.
+      // The entire presence follows the same reducer-authorized four-point
+      // field as its ribbons and faceplate. Independent sine-driven floating
+      // and rocking made its movement disagree with the observed state.
+      const lift=smoothed.reduce((sum,point)=>sum+point.y,0)/smoothed.length;
+      character.position.y=lift*.12;
+      character.rotation.z=(smoothed[1].y-smoothed[0].y)*.025;
       character.scale.setScalar(1);
       // The reducer authorizes idle sculptural motion. Time supplies only
       // the physical animation phase, not the choice of presentation mode.
