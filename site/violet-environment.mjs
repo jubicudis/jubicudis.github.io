@@ -46,6 +46,8 @@ const EXPRESSION_PARTS=Object.freeze({
   talk:['eye-smile','mouth-speak'],
   blink:['eye-blink','mouth-smile'],
   'viseme-closed':['eye-smile','mouth-viseme-closed'],
+  'viseme-opening-1':['eye-smile','mouth-viseme-open'],
+  'viseme-opening-2':['eye-smile','mouth-viseme-open'],
   'viseme-open':['eye-smile','mouth-viseme-open'],
   'viseme-wide':['eye-smile','mouth-viseme-wide'],
   'viseme-round':['eye-smile','mouth-viseme-round']
@@ -85,6 +87,14 @@ function qualifiedExpressionSvg(xml,mode){
     // decoder; CSS display on nested groups is not consistently applied.
     qualified=qualified.replace(opening,
       opening+' display="'+(active.includes(id)?'inline':'none')+'"');
+  }
+  // Two actual intermediate mouth shapes, derived from the inventor's
+  // authored open-mouth path. Only vertical aperture changes; original
+  // eye geometry, glow, colors and faceplate material remain intact.
+  if(mode==='viseme-opening-1'||mode==='viseme-opening-2'){
+    const aperture=mode==='viseme-opening-1'?.38:.69;
+    qualified=qualified.replace('<g id="mouth-viseme-open" display="inline"',
+      '<g id="mouth-viseme-open" display="inline" transform="translate(320 305) scale(1 '+aperture+') translate(-320 -305)"');
   }
   return qualified;
 }
@@ -236,6 +246,8 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     const talk=await svgTexture(faceXml,'talk');
     const blink=await svgTexture(faceXml,'blink');
     const visemeClosed=await svgTexture(faceXml,'viseme-closed');
+    const opening1=await svgTexture(faceXml,'viseme-opening-1');
+    const opening2=await svgTexture(faceXml,'viseme-opening-2');
     const visemeOpen=await svgTexture(faceXml,'viseme-open');
     const visemeWide=await svgTexture(faceXml,'viseme-wide');
     const visemeRound=await svgTexture(faceXml,'viseme-round');
@@ -255,7 +267,9 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     // The art is an authored material of the selected character, not a substitute
     // if a procedural renderer fails. Its presence and decoding are required.
     const faces={rest,ask,talk,blink,
-      'viseme-closed':visemeClosed,'viseme-open':visemeOpen,
+      'viseme-closed':visemeClosed,
+      'viseme-opening-1':opening1,'viseme-opening-2':opening2,
+      'viseme-open':visemeOpen,
       'viseme-wide':visemeWide,'viseme-round':visemeRound};
     const scene=new THREE.Scene();scene.background=new THREE.Color(0x070b1d);
     const camera=new THREE.OrthographicCamera(-4,4,4,-4,.1,50);
