@@ -33,3 +33,39 @@ test('translated invitation cannot drop visitor placeholder',async()=>{
   await assert.rejects(()=>localizeApprovedOpening(OPENING_TRACKS,VISITOR_NAME_SLOT,t),
     /visitor placeholder/);
 });
+
+test('localized approved script is authorized by the reducer and shown in captions',async()=>{
+  const {initialState,reduceOpening,openingMessage}=await import('../site/opening-state.mjs');
+  const dispatch=(state,type,extra={})=>reduceOpening(state,{type,at:100,...extra});
+  let state=dispatch(initialState,'BROWSER_LANGUAGE_OBSERVED',{evidence:{
+    type:'browser-language-observed',locale:'es-VE'
+  }});
+  const translated={
+    'asking-name':OPENING_TRACKS['asking-name'].map(x=>({...x,text:'ES: '+x.text})),
+    'after-name':OPENING_TRACKS['after-name'].map(x=>({...x,text:'ES: '+x.text}))
+  };
+  state=dispatch(state,'LOCALIZED_NARRATION_READY',{
+    locale:'es-VE',tracks:translated,nameLine:name=>'Hola, '+name
+  });
+  assert.equal(state.languageStatus,'qualified');
+  assert.equal(state.presentationLocale,'es-VE');
+  state=dispatch(state,'RENDER_STARTED');
+  state=dispatch(state,'RENDER_OBSERVED',{evidence:{
+    type:'webgl-pixel-observed',drawCalls:12,nonBackgroundPixel:true
+  }});
+  state=dispatch(state,'VOICE_AVAILABLE',{value:true});
+  state=dispatch(state,'ACTIVATE');
+  assert.equal(state.phase,'asking-name');
+  assert.equal(openingMessage(state),'ES: '+OPENING_TRACKS['asking-name'][0].text);
+  const token=state.speechToken;
+  state=dispatch(state,'SPEECH_STARTED',{token});
+  state=dispatch(state,'LOCALIZED_AUDIO_FRAME_OBSERVED',{token,evidence:{
+    type:'localized-pcm-clock-observed',playing:true,elapsedMs:20,level:130
+  }});
+  assert.equal(state.observedSpeechPose,'viseme-open');
+  assert.ok(state.bloomMotion.some(p=>p.x!==0));
+  state=dispatch(state,'LOCALIZED_CUE_OBSERVED',{token,evidence:{
+    type:'localized-pcm-cue-playing',cueIndex:1
+  }});
+  assert.equal(openingMessage(state),'ES: '+OPENING_TRACKS['asking-name'][1].text);
+});
