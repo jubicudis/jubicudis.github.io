@@ -334,11 +334,16 @@ try{
   assert.match(voiceSource,/function holdAuthoredForName\(token\)/);
   assert.match(reducerSource,/case 'IDLE_FRAME_OBSERVED':/);
   assert.match(reducerSource,/next\.bodyMotionMode=/);
-  assert.match(reducerSource,/bloomFromObservedAudio\(next\)/);
-  assert.match(controllerSource,/state\.observedAudioLevel===sampled\.level/,
-    'Heart body energy must propagate even when facial viseme is unchanged');
-  assert.doesNotMatch(controllerSource,/if\(state\.observedSpeechPose===sampled\.pose\)return/,
-    'same-viseme audio frames must not suppress body deformation');
+  assert.match(reducerSource,/next\.bloomMotion=event\.type==='IDLE_FRAME_OBSERVED'/,
+    'only scene-frame flow is authorized to change the ribbon field');
+  assert.doesNotMatch(reducerSource,/bloomFromObservedAudio/,
+    'audio energy must not control the ribbon geometry');
+  assert.match(recoverySource,/const mouthFrames=Object\.freeze\(\[0,\.22,\.5,\.78,1\]\)/,
+    'speech mouth changes must render intermediate opening and closing frames');
+  assert.match(recoverySource,/expressionBlend\.material\.opacity=alpha/,
+    'intermediate mouth frames must be applied to the curved A2 faceplate');
+  assert.match(recoverySource,/state\.bodyMotionMode==='flow'/,
+    'ribbon flow must remain active during narration');
   const faceVolume=await probe.evaluate(()=>{
     const scene=window.__visualProbe.visualCapabilities.readFaceplateEvidence();
     return scene;
