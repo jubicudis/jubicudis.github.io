@@ -584,8 +584,11 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       const mode=state.visualExpression;
       const visualMode=visualCapabilities.desiredExpression(mode);
       if(visualMode!==previousExpression){
+        const openMouth=mode=>['talk','viseme-open','viseme-wide','viseme-round'].includes(mode);
+        const closedToOpen=previousExpression==='viseme-closed'&&openMouth(visualMode);
+        const openToClosed=openMouth(previousExpression)&&visualMode==='viseme-closed';
         // Keep the current authored expression visible while stepping through
-        // three intermediate mouth frames toward the new observed pose.
+        // intermediate mouth frames toward the new observed pose.
         // State selects the target; the renderer only interpolates its display.
         if(mouthTransition&&
            mouthFrames[Math.min(mouthTransition.frame,mouthFrames.length-1)]>=.5){
@@ -597,15 +600,29 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         }
         expressionBlend.material.map=faces[visualMode];
         expressionBlend.material.needsUpdate=true;
-        mouthTransition={target:visualMode,frame:0};
+        mouthTransition={target:visualMode,frame:0,
+          sequence:closedToOpen
+            ?['viseme-closed','viseme-opening-1','viseme-opening-2',visualMode]
+            :openToClosed
+              ?[previousExpression,'viseme-opening-2','viseme-opening-1','viseme-closed']
+              :null};
         previousExpression=visualMode;
       }
       if(mouthTransition){
-        const alpha=mouthFrames[Math.min(mouthTransition.frame,mouthFrames.length-1)];
-        expressionBlend.material.opacity=alpha;
-        expressionBlend.visible=expression.visible&&alpha>0;
+        const sequence=mouthTransition.sequence;
+        if(sequence){
+          // Actual authored intermediate shapes, not a two-pose blink.
+          const frame=Math.min(mouthTransition.frame,sequence.length-1);
+          expression.material.map=faces[sequence[frame]];
+          expression.material.needsUpdate=true;
+          expressionBlend.visible=false;
+        }else{
+          const alpha=mouthFrames[Math.min(mouthTransition.frame,mouthFrames.length-1)];
+          expressionBlend.material.opacity=alpha;
+          expressionBlend.visible=expression.visible&&alpha>0;
+        }
         mouthTransition.frame++;
-        if(mouthTransition.frame>=mouthFrames.length){
+        if(mouthTransition.frame>=(sequence?.length||mouthFrames.length)){
           expression.material.map=faces[mouthTransition.target];
           expression.material.needsUpdate=true;
           expressionBlend.visible=false;
