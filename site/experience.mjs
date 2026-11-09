@@ -159,17 +159,22 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
          cue.index>previousCueIndex&&
          cue.index>=VISITOR_NAME_SLOT.beforeCueIndex&&
          store.getState().nameInsertionStatus==='waiting'){
-        if(cue.index===VISITOR_NAME_SLOT.beforeCueIndex){
+        // A coarse WebKit timeupdate may cross more than one cue. The
+        // observed position establishes that the approved seam was crossed,
+        // even when its exact cue index was not delivered as a frame.
+        if(!store.getState().nameSlotObserved){
           store.dispatch({type:'NAME_SLOT_OBSERVED',token:state.speechToken,
             evidence:{type:'authored-name-slot-boundary-observed',
-              cueIndex:cue.index}});
+              cueIndex:VISITOR_NAME_SLOT.beforeCueIndex}});
         }
         const current=store.getState();
         if(current.nameSlotObserved&&current.nameSynthesisStatus==='ready'){
-          const boundary=timeline.tracks[selected.track].cues[cue.index].startMs;
+          // Preserve the real playback clock. Seeking back to cue.startMs
+          // repeats already-heard words after the generated name.
+          const resumeAtMs=observation.elapsedMs;
           if(voice.holdAuthoredForName(state.speechToken)){
-            pendingNameBoundary=boundary;
-            requestNameInsertion(store.getState(),boundary,
+            pendingNameBoundary=resumeAtMs;
+            requestNameInsertion(store.getState(),resumeAtMs,
               'authored-paragraph-boundary-observed');
           }
         }
