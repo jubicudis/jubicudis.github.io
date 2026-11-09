@@ -346,13 +346,22 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         color:spec.color,transparent:true,opacity:.62,
         blending:THREE.AdditiveBlending,depthWrite:false
       });
-      const mesh=new THREE.Mesh(
-        new THREE.TubeGeometry(new THREE.LineCurve3(
-          new THREE.Vector3(0,0,0),new THREE.Vector3(.001,0,0)),16,.019,5,false),
-        material);
-      mesh.position.z=.08;
+      // The same vertex buffer is updated in place. Rebuilding four tube
+      // meshes on every state change exhausted mobile WebGL allocations and
+      // could leave the visible face detached when the renderer failed.
+      const radial=6,segments=18;
+      const positions=new Float32Array((segments+1)*(radial+1)*3);
+      const indices=[];
+      for(let i=0;i<segments;i++)for(let j=0;j<radial;j++){
+        const n=i*(radial+1)+j;
+        indices.push(n,n+radial+1,n+1,n+1,n+radial+1,n+radial+2);
+      }
+      const geometry=new THREE.BufferGeometry();
+      geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));
+      geometry.setIndex(indices);
+      const mesh=new THREE.Mesh(geometry,material);
       character.add(mesh);
-      return {...spec,mesh};
+      return {...spec,mesh,segments,radial};
     });
     function updateFaceAttachments(){
       const rx=A2_FACEPLATE.widthPixels*artPixelToWorld*.5;
@@ -371,9 +380,33 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         // rather than looking like a straight line pasted onto the face.
         mid.z=.085;
         const curve=new THREE.QuadraticBezierCurve3(start,mid,end);
-        const next=new THREE.TubeGeometry(curve,18,.019,5,false);
-        mesh.geometry.dispose();
-        mesh.geometry=next;
+        const {segments,radial}=attachment;
+        const attr=mesh.geometry.getAttribute('position');
+        const tangent=new THREE.Vector3();
+        const axis=new THREE.Vector3();
+        const normal=new THREE.Vector3();
+        const point=new THREE.Vector3();
+        for(let i=0;i<=segments;i++){
+          const t=i/segments;
+          curve.getPoint(t,point);
+          curve.getTangent(t,tangent).normalize();
+          axis.set(0,0,1);
+          if(Math.abs(tangent.dot(axis))>.92)axis.set(0,1,0);
+          normal.crossVectors(tangent,axis).normalize();
+          axis.crossVectors(tangent,normal).normalize();
+          for(let j=0;j<=radial;j++){
+            const angle=j/radial*Math.PI*2;
+            const taper=.019*(.85+.15*Math.sin(Math.PI*t));
+            const index=i*(radial+1)+j;
+            attr.setXYZ(index,
+              point.x+taper*(normal.x*Math.cos(angle)+axis.x*Math.sin(angle)),
+              point.y+taper*(normal.y*Math.cos(angle)+axis.y*Math.sin(angle)),
+              point.z+taper*(normal.z*Math.cos(angle)+axis.z*Math.sin(angle)));
+          }
+        }
+        attr.needsUpdate=true;
+        mesh.geometry.computeVertexNormals();
+        mesh.geometry.computeBoundingSphere();
       }
     }
     updateFaceAttachments();
