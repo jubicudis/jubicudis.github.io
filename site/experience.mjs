@@ -326,13 +326,15 @@ function render(state,previous){
   if(state.renderStatus==='failed')
     failure.textContent='Violet could not be rendered on this device. '+state.renderFailure;
   const speechFailed=['failed','unavailable','interrupted'].includes(state.speechStatus);
-  audioFailure.hidden=!narrationLoadFailure&&!speechFailed&&!nameSynthesisError&&
-    !localizedFailure&&state.languageStatus!=='unavailable';
+  const englishNarration=state.browserLocale?.split('-')[0]==='en';
+  audioFailure.hidden=!(englishNarration&&narrationLoadFailure)&&
+    !speechFailed&&!nameSynthesisError&&!localizedFailure&&
+    state.languageStatus!=='unavailable';
   if(!audioFailure.hidden)
     audioFailure.textContent=state.languageStatus==='unavailable'
       ?'Violet is preparing on-device narration for '+state.browserLocale+'. '+(localizedFailure||'The language model is still loading.')
       :localizedFailure?'Localized narration unavailable. '+localizedFailure
-      :narrationLoadFailure
+      :englishNarration&&narrationLoadFailure
       ?'Heart narration is unavailable. '+narrationLoadFailure
       :speechFailed?'Heart narration '+(state.speechStatus==='interrupted'
         ?'was interrupted.':'could not be played.')
