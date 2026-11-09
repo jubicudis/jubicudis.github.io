@@ -380,6 +380,41 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       onFailure?.(error);
     };
     canvas.addEventListener('webglcontextlost',loss);
+    // A single continuous, damped deformation drives ribbons and faceplate.
+    // Acoustic observations set targets; the renderer interpolates geometry
+    // without inventing additional speech cues.
+    const neutral=Array.from({length:4},()=>({x:0,y:0}));
+    let smoothed=neutral.map(p=>({...p}));
+    let motionTarget=neutral;
+    let lastMotionTime=0;
+    const faceRestRotation=faceAssembly.rotation.clone();
+    function updatePhysicalRig(now){
+      const elapsed=lastMotionTime?Math.min(80,now-lastMotionTime):33;
+      lastMotionTime=now;
+      const blend=1-Math.exp(-elapsed/105);
+      let changed=false;
+      smoothed=smoothed.map((point,i)=>{
+        const target=motionTarget[i]||neutral[i];
+        const x=point.x+(target.x-point.x)*blend;
+        const y=point.y+(target.y-point.y)*blend;
+        if(Math.abs(x-point.x)+Math.abs(y-point.y)>0.00002)changed=true;
+        return {x:Math.abs(x)<0.00002?0:x,y:Math.abs(y)<0.00002?0:y};
+      });
+      if(!changed)return;
+      motionCapabilities.apply(smoothed);
+      const cx=faceRestPosition.x,cy=faceRestPosition.y;
+      const center=motionCapabilities.displacementAt(cx,cy);
+      const left=motionCapabilities.displacementAt(cx-.45,cy);
+      const right=motionCapabilities.displacementAt(cx+.45,cy);
+      const upper=motionCapabilities.displacementAt(cx,cy+.32);
+      const lower=motionCapabilities.displacementAt(cx,cy-.32);
+      faceAssembly.position.set(cx+center.x,cy+center.y,faceRestPosition.z);
+      // Follow local material shear and tilt, not only translation.
+      faceAssembly.rotation.set(
+        faceRestRotation.x+(upper.y-lower.y)*.12,
+        faceRestRotation.y+(upper.x-lower.x)*.18,
+        faceRestRotation.z+Math.atan2(right.y-left.y,.9)*.65);
+    }
     function frame(now){
       if(!live)return;
       onAudioFrame?.();
@@ -388,6 +423,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         return;
       }
       lastGpuFrame=now;
+      updatePhysicalRig(now);
       const t=reduced.matches?0:(now-start)/1000;
       character.position.y=reduced.matches?0:.038*Math.sin(t*.7);
       character.rotation.z=reduced.matches?0:.008*Math.sin(t*.39);
@@ -425,25 +461,12 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       frameRequest=requestAnimationFrame(frame);
     }
     frameRequest=requestAnimationFrame(frame);
-    let appliedBloom=null;
     return {
       update(next){
         state=next;
-        // The four-point physical deformation rig already exists. Apply only
-        // the reducer's audio-observed motion state to its real A2 geometry.
-        // No renderer timer or generic animation chooses these influences.
-        const motion=next.bloomMotion;
-        if(motion&&motion!==appliedBloom){
-          motionCapabilities.apply(motion);
-          // The curved faceplate is attached to the same deforming A2
-          // structure. Follow the measured rig displacement at its anchor,
-          // rather than leaving the head fixed while the ribbons move.
-          const displacement=motionCapabilities.displacementAt(
-            faceRestPosition.x,faceRestPosition.y);
-          faceAssembly.position.set(faceRestPosition.x+displacement.x,
-            faceRestPosition.y+displacement.y,faceRestPosition.z);
-          appliedBloom=motion;
-        }
+        // Reducer-observed acoustic or idle influences remain the sole
+        // authority for motion. Rendering only smooths their physical response.
+        if(next.bloomMotion)motionTarget=next.bloomMotion;
       },
       setInferenceMode(enabled){
         const next=enabled===true;
