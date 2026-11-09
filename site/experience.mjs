@@ -164,15 +164,14 @@ function playApprovedTrack(state,{resumeAtMs=0,continueAfterGenerated=false}={})
           cueIndex:VISITOR_NAME_SLOT.beforeCueIndex}});
     if(cue.index!==VISITOR_NAME_SLOT.beforeCueIndex)return;
     const seamMs=timeline.tracks[selected.track].cues[cue.index].startMs;
-    // Safari timeupdate is not guaranteed to fire within 250ms of a cue.
-    // The first qualified sample inside the exact approved cue is sufficient;
-    // never hold at a later cue or fabricate an earlier playback position.
+    // The authored timeline, not a coarse Safari sampling instant, owns
+    // the insertion point. A late observation authorizes holding the real
+    // player, but must never shift the approved line or its continuation.
     if(observation.elapsedMs<seamMs)return;
-    // Preserve the authored ordering even if mobile Heart synthesis has not
-    // finished. Holding is an observed media action; readiness is separate.
-    // Continuing past this point would speak the name after its introduction.
-    const resumeAtMs=observation.elapsedMs;
+    const resumeAtMs=seamMs;
     if(voice.holdAuthoredForName(state.speechToken)){
+      // The first sound after the generated name is exactly cue 8,
+      // regardless of how late WebKit delivered its playback observation.
       pendingNameBoundary=resumeAtMs;
       store.dispatch({type:'NAME_SEAM_HELD',token:state.speechToken,
         evidence:{type:'authored-media-paused-at-name-seam'}});
@@ -191,11 +190,12 @@ function playApprovedTrack(state,{resumeAtMs=0,continueAfterGenerated=false}={})
       if(event.type==='SPEECH_ENDED'&&state.nameDecision==='provided'&&
          !store.getState().nameAudioCompleted&&
          store.getState().nameSynthesisStatus!=='failed'){
+        // Reaching the end is not an alternative insertion location.
+        // The approved 62.352s seam is the only valid place for the name.
         store.dispatch({type:'AUTHORED_TRACK_ENDED',token:state.speechToken,
           evidence:{type:'authored-track-ended-observed'}});
-        const current=store.getState();
-        if(current.nameSynthesisStatus==='ready'&&current.nameInsertionStatus==='waiting')
-          requestNameInsertion(current,null,'authored-track-ended-observed');
+        store.dispatch({type:'SPEECH_FAILED',token:state.speechToken,
+          reason:'Approved visitor-name seam was missed before narration ended'});
         return;
       }
       store.dispatch(event);
@@ -275,9 +275,8 @@ async function beginSpeech(state){
        ready.nameInsertionStatus==='waiting'&&ready.speechStatus==='speaking')
       requestNameInsertion(ready,pendingNameBoundary,
         'authored-paragraph-boundary-observed');
-    else if(ready.authoredAudioEnded&&ready.nameInsertionStatus==='waiting'&&
-       ready.speechStatus==='speaking')
-      requestNameInsertion(ready,null,'authored-track-ended-observed');
+    // Never append the visitor name at the end of the recording.
+    // Only the held, timeline-qualified paragraph seam may authorize it.
   }catch(error){
     // The independently observed recorded Heart track must remain audible
     // when the optional on-device pronunciation model cannot initialize.
@@ -292,11 +291,6 @@ async function beginSpeech(state){
       if(!voice.resumeHeldAuthored(token))
         store.dispatch({type:'SPEECH_FAILED',token,
           reason:'Heart narration could not resume after name synthesis failed'});
-    }else if(store.getState().authoredAudioEnded&&
-             store.getState().speechStatus==='speaking'){
-      // A real authored-track end was already observed while the optional
-      // model was working. Its failure cannot leave the presentation stuck.
-      store.dispatch({type:'SPEECH_ENDED',token});
     }
   }finally{
     if(constrained)scene?.setInferenceMode?.(false);
