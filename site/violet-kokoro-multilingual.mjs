@@ -21,10 +21,15 @@ export async function createBrowserKokoroAdapter(locale,{
   const tts=await KokoroTTS.from_pretrained(modelId,{
     dtype:'q8',device:'wasm'
   });
-  // list_voices() only console.tables and returns undefined.
-  const catalog=tts.voices||{};
-  if(!Object.prototype.hasOwnProperty.call(catalog,voice.voiceId))
-    throw new Error('Requested Kokoro voice not available: '+voice.voiceId);
+  // Kokoro's voice catalogue varies across published builds. A missing
+  // introspection property is not evidence of an absent voice; the model's
+  // actual generate() call establishes whether it can speak with this ID.
+  const catalog=tts.voices;
+  if(catalog&&typeof catalog==='object'){
+    const ids=Array.isArray(catalog)?catalog:Object.keys(catalog);
+    if(!ids.includes(voice.voiceId))
+      throw new Error('Requested Kokoro voice not available: '+voice.voiceId);
+  }
   return Object.freeze({
     locale,voiceId:voice.voiceId,language:voice.language,
     supports:(language,id)=>language===voice.language&&id===voice.voiceId,
