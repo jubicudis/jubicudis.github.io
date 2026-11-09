@@ -41,10 +41,11 @@ export async function prepareQualifiedTranslator(locale,options={}){
       translate:async text=>text});
   try{return await prepareDeviceTranslator(locale,options);}
   catch(error){
-    if(error?.message?.includes('does not provide on-device translation')||
-       error?.message?.includes('translation model unavailable'))
-      return prepareTransformersTranslator(locale,options);
-    throw error;
+    // Device translation may be exposed but fail during model creation,
+    // download or execution. Use the configured WASM translator rather
+    // than leaving the visitor stranded on an inert activation surface.
+    if(!LOCAL_TRANSLATION_MODELS[languageTag(locale)])throw error;
+    return prepareTransformersTranslator(locale,options);
   }
 }
 export async function prepareDeviceTranslator(locale,{
@@ -88,7 +89,16 @@ export async function localizeApprovedOpening(openingTracks,nameSlot,translator)
     tracks[track]=Object.freeze(translated);
   }
   const template='Now, {visitor}, let\'s take a closer look.';
-  const named=await translator.translate(template);
+  // Translation models often rewrite or drop brace-delimited tokens.
+  // Translate the surrounding approved text independently and insert the
+  // visitor's literal name only after both fragments are qualified.
+  const marker='JUBI_VISITOR_NAME_TOKEN';
+  let named=await translator.translate(template.replace('{visitor}',marker));
+  if(!named.includes(marker)){
+    const prefix=await translator.translate('Now,');
+    const suffix=await translator.translate("let's take a closer look.");
+    named=prefix+' {visitor}, '+suffix;
+  }else named=named.replace(marker,'{visitor}');
   if(!named.includes('{visitor}'))
     throw new Error('Translated name invitation must retain the visitor placeholder');
   return Object.freeze({
