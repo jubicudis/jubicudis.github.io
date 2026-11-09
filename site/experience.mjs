@@ -48,8 +48,12 @@ async function playLocalizedTrack(state){
         store.dispatch({type:'LOCALIZED_NAME_LINE_READY',token,text:line});
         store.dispatch({type:'NAME_SYNTHESIS_STARTED',token});
         store.dispatch({type:'NAME_SYNTHESIS_READY',token});
+        store.dispatch({type:'LOCALIZED_CUE_OBSERVED',token,
+          evidence:{type:'localized-pcm-cue-playing',cueIndex:i}});
         store.dispatch({type:'NAME_SLOT_OBSERVED',token,
           evidence:{type:'authored-name-slot-boundary-observed',cueIndex:i}});
+        store.dispatch({type:'NAME_INSERTION_REQUESTED',token,
+          evidence:{type:'authored-paragraph-boundary-observed'}});
         // Localized name insertion uses its own observed generated PCM.
         await playLocalizedClip(line,token,{name:true});
       }
@@ -81,6 +85,8 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false}={}){
         if(event.type==='SPEECH_STARTED'){
           started=true;
           store.dispatch(event);
+          if(name)store.dispatch({type:'NAME_AUDIO_STARTED',token,
+            evidence:{type:'observed-generated-heart-playing'}});
         }else if(['SPEECH_FAILED','SPEECH_UNAVAILABLE'].includes(event.type)){
           reject(new Error(event.reason||'Localized audio unavailable'));
         }
@@ -98,7 +104,11 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false}={}){
           evidence:{type:'localized-pcm-clock-observed',playing:true,
             elapsedMs:observation.elapsedMs,level}});
       },
-      onEnded:()=>started?resolve():reject(new Error('Localized audio ended without playing'))
+      onEnded:()=>{
+        if(name)store.dispatch({type:'NAME_AUDIO_ENDED',token,
+          evidence:{type:'observed-generated-heart-ended',assetId:'generated-heart:'+token}});
+        started?resolve():reject(new Error('Localized audio ended without playing'));
+      }
     });
     if(!session)reject(new Error('Localized audio playback unavailable'));
   });
