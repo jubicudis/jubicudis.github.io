@@ -224,6 +224,8 @@ test('held approved name seam keeps captions and expression aligned until Heart 
   assert.equal(state.nameSeamHeld,true);
   assert.equal(state.nameInsertionStatus,'waiting');
   assert.equal(state.observedSpeechPose,null);
+  assert.equal(state.visualExpression,'viseme-closed',
+    'Violet cannot appear to keep talking while the Heart player is paused');
   assert.equal(openingMessage(state),OPENING_TRACKS['after-name'][7].text);
   state=step(state,'NAME_SYNTHESIS_READY',{token});
   state=step(state,'NAME_INSERTION_REQUESTED',{token,evidence:{
