@@ -372,16 +372,19 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       const segments=24;
       const geometry=new THREE.BufferGeometry();
       const positions=new Float32Array((segments+1)*2*3);
+      const colors=new Float32Array((segments+1)*2*3);
+      colors.fill(1);
       const indices=[];
       for(let i=0;i<segments;i++){
         const n=i*2;
         indices.push(n,n+2,n+1,n+1,n+2,n+3);
       }
       geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));
+      geometry.setAttribute('color',new THREE.BufferAttribute(colors,3));
       geometry.setIndex(indices);
       const mesh=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({
         color:spec.color,transparent:true,opacity:.22,
-        side:THREE.DoubleSide,depthWrite:false,
+        side:THREE.DoubleSide,depthWrite:false,vertexColors:true,
         blending:THREE.NormalBlending,toneMapped:false
       }));
       mesh.frustumCulled=false;
@@ -415,6 +418,8 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         control.y+=outwardY*.12;
         control.z=.034;
         const attr=mesh.geometry.getAttribute('position');
+        const colorAttr=mesh.geometry.getAttribute('color');
+        const flowPhase=state?.flowPhase||0;
         for(let i=0;i<=segments;i++){
           const t=i/segments,u=1-t;
           point.set(
@@ -430,8 +435,16 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
           const nx=-tangent.y*width,ny=tangent.x*width;
           attr.setXYZ(i*2,point.x+nx,point.y+ny,point.z);
           attr.setXYZ(i*2+1,point.x-nx,point.y-ny,point.z);
+          // A restrained highlight travels outward along each ribbon
+          // surface, driven solely by established sculptural flow phase.
+          // It is not synchronized to syllables or the audio envelope.
+          const wave=.82+.18*Math.max(0,
+            Math.sin(flowPhase*.85-t*Math.PI*2+angle*.25));
+          colorAttr.setXYZ(i*2,wave,wave,wave);
+          colorAttr.setXYZ(i*2+1,wave*.92,wave*.92,wave*.92);
         }
         attr.needsUpdate=true;
+        colorAttr.needsUpdate=true;
         mesh.geometry.computeBoundingSphere();
       }
     }
