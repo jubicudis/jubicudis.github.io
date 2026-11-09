@@ -347,16 +347,20 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     const gpuFrameInterval=1000/30;
     let lastGpuFrame=-Infinity,frameRequest=0,lastBodyFrame=-Infinity;
     let allocatedWidth=0,allocatedHeight=0;
+    let inferenceMode=false;
     const resize=()=>{
-      const width=Math.max(1,Math.round(canvas.clientWidth));
-      const height=Math.max(1,Math.round(canvas.clientHeight));
+      const cssWidth=Math.max(1,Math.round(canvas.clientWidth));
+      const cssHeight=Math.max(1,Math.round(canvas.clientHeight));
+      // Reduce iPhone framebuffer memory while the approved Heart model loads.
+      const width=Math.max(1,Math.round(cssWidth*(inferenceMode?0.5:1)));
+      const height=Math.max(1,Math.round(cssHeight*(inferenceMode?0.5:1)));
       // ResizeObserver can fire repeatedly for an unchanged CSS box on
       // WebKit. Reallocating an identical WebGL drawing buffer is unnecessary
       // GPU work and can evict the active context during Heart playback.
       if(width===allocatedWidth&&height===allocatedHeight)return;
       allocatedWidth=width;allocatedHeight=height;
       const aspect=width/height;
-      const worldWidth=width<=620?7.25:clamp(aspect*7.25,8.0,13.1);
+      const worldWidth=cssWidth<=620?7.25:clamp(aspect*7.25,8.0,13.1);
       const worldHeight=worldWidth/aspect;
       camera.left=-worldWidth/2;camera.right=worldWidth/2;
       camera.top=worldHeight/2;camera.bottom=-worldHeight/2;
@@ -378,7 +382,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     function frame(now){
       if(!live)return;
       onAudioFrame?.();
-      if(now-lastGpuFrame<gpuFrameInterval){
+      if(now-lastGpuFrame<(inferenceMode?1000/12:gpuFrameInterval)){
         frameRequest=requestAnimationFrame(frame);
         return;
       }
@@ -431,6 +435,12 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
           motionCapabilities.apply(motion);
           appliedBloom=motion;
         }
+      },
+      setInferenceMode(enabled){
+        const next=enabled===true;
+        if(next===inferenceMode)return;
+        inferenceMode=next;
+        resize();
       },
       visualCapabilities,motionCapabilities,
       visualObservation:Object.freeze({
