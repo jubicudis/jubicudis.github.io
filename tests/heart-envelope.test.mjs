@@ -57,7 +57,8 @@ test('acoustic mouth positions are calculated only from observed same-asset cloc
 });
 
 test('only real authored speech observations update visible pose; phonemes never invented',()=>{
-  let state=dispatch(initialState,'RENDER_STARTED');
+  let state=dispatch(initialState,'BROWSER_LANGUAGE_OBSERVED',{evidence:{type:'browser-language-observed',locale:'en-US'}});
+  state=dispatch(state,'RENDER_STARTED');
   state=dispatch(state,'RENDER_OBSERVED',{evidence:{
     type:'webgl-pixel-observed',nonBackgroundPixel:true,drawCalls:10
   }});
