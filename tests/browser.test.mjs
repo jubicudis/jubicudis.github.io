@@ -270,17 +270,23 @@ try{
   assert.match(recoverySource,/const faceXml=await faceResponse\.text\(\)/);
   assert.match(recoverySource,/const visemeWide=await svgTexture\(faceXml,'viseme-wide'\)/);
 
-  assert.match(recoverySource,/motionCapabilities\.apply\(motion\)/,
-    'observed Heart body motion must reach the real structural rig');
+  assert.match(recoverySource,/motionCapabilities\.apply\(smoothed\)/,
+    'observed Heart body motion must reach the real structural rig through continuous coupling');
+  assert.match(recoverySource,/motionTarget=next\.bloomMotion/,
+    'renderer must use reducer-authorized motion as its only target');
+  assert.match(recoverySource,/faceAssembly\.position\.set\(cx\+center\.x,cy\+center\.y/,
+    'faceplate must follow the same material displacement as the body');
   assert.match(recoverySource,/onAnimationFrame\(Object\.freeze\(/,
     'renderer must report observed frame evidence rather than invent idle motion');
   assert.doesNotMatch(recoverySource,/motionCapabilities\.apply\(\[/,
     'renderer must not independently calculate idle A2 deformation');
   assert.match(controllerSource,/type:'IDLE_FRAME_OBSERVED'/);
   assert.match(controllerSource,/voice\.holdAuthoredForName\(state\.speechToken\)/,
-    'approved Heart track must pause at the exact observed name slot');
+    'approved Heart track may pause only at an observed boundary after the generated name is ready');
   assert.match(controllerSource,/pendingNameBoundary!==null&&ready\.nameSlotObserved/,
-    'name generation completion must resume the held approved seam');
+    'name generation completion must use an observed insertion boundary');
+  assert.match(controllerSource,/current\.nameSlotObserved&&current\.nameSynthesisStatus==='ready'/,
+    'the authored track must not be held while Heart name synthesis is unfinished');
   assert.match(reducerSource,/case 'NAME_SLOT_OBSERVED':/,
     'the name slot must be a qualified state observation');
   assert.match(voiceSource,/function holdAuthoredForName\(token\)/);
