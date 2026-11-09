@@ -26,6 +26,7 @@ const audioFailure=document.getElementById('audio-failure');
 let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameAudio=null;
 let preparedName=null,nameSynthesisError=null,pendingNameBoundary=null;
 let localizedPresentation=null,localizedAdapter=null,localizedFailure=null;
+let observeAuthoredPosition=null;
 const store=createOpeningStore(render);
 const observedBrowserLocale=(navigator.languages||[])
   .find(value=>typeof value==='string'&&value.trim())||
@@ -126,10 +127,44 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
 }
 
 function playApprovedTrack(state,{resumeAtMs=0}={}){
+  observeAuthoredPosition=null;
   const selected=resolveVioletOpeningAudio(state);
   if(!selected||!timeline)throw new Error('No qualified Heart audio for authorized state');
   const source=selected.src;
   const offset=0;
+  const onPosition=observation=>{
+    if(observation.assetId!==source||
+       observation.source!=='observed-authored-audio'||!observation.playing)return;
+    const cue=cueAtObservedPosition(timeline,selected.track,observation.elapsedMs);
+    if(!cue)return;
+    const currentBefore=store.getState();
+    if(cue.index!==currentBefore.cueIndex||
+       observation.elapsedMs!==currentBefore.playbackPositionMs)
+      store.dispatch({type:'SPEECH_CUE_OBSERVED',token:state.speechToken,
+        evidence:{...observation,track:selected.track,cueIndex:cue.index,
+          elapsedMs:observation.elapsedMs}});
+    // Only the approved paragraph boundary can interrupt the recording.
+    // A later cue cannot masquerade as a second name insertion seam.
+    if(state.nameDecision!=='provided'||
+       cue.index<VISITOR_NAME_SLOT.beforeCueIndex||
+       store.getState().nameInsertionStatus!=='waiting')return;
+    if(!store.getState().nameSlotObserved)
+      store.dispatch({type:'NAME_SLOT_OBSERVED',token:state.speechToken,
+        evidence:{type:'authored-name-slot-boundary-observed',
+          cueIndex:VISITOR_NAME_SLOT.beforeCueIndex}});
+    const current=store.getState();
+    if(current.nameSynthesisStatus!=='ready'||
+       cue.index!==VISITOR_NAME_SLOT.beforeCueIndex)return;
+    const seamMs=timeline.tracks[selected.track].cues[cue.index].startMs;
+    if(observation.elapsedMs<seamMs||observation.elapsedMs-seamMs>250)return;
+    const resumeAtMs=observation.elapsedMs;
+    if(voice.holdAuthoredForName(state.speechToken)){
+      pendingNameBoundary=resumeAtMs;
+      requestNameInsertion(store.getState(),resumeAtMs,
+        'authored-paragraph-boundary-observed');
+    }
+  };
+  observeAuthoredPosition=onPosition;
   voice.playAuthored({
     src:source+'?voice=heart-character-tnos-01',
     token:state.speechToken,startAtMs:resumeAtMs,
@@ -145,55 +180,7 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
       }
       store.dispatch(event);
     },
-    onPosition:observation=>{
-      if(observation.assetId!==source||
-         observation.source!=='observed-authored-audio'||!observation.playing)
-        return;
-      const cue=cueAtObservedPosition(timeline,selected.track,observation.elapsedMs+offset);
-      if(!cue)return;
-      const previousCueIndex=store.getState().cueIndex;
-      store.dispatch({
-        type:'SPEECH_CUE_OBSERVED',token:state.speechToken,
-        evidence:{...observation,track:selected.track,cueIndex:cue.index,
-          elapsedMs:observation.elapsedMs+offset}
-      });
-      // Observe the approved name seam without blocking narration while the
-      // Heart model is still generating. On constrained mobile devices the
-      // model may take longer than the recorded paragraph.
-      if(state.nameDecision==='provided'&&
-         cue.index>previousCueIndex&&
-         cue.index>=VISITOR_NAME_SLOT.beforeCueIndex&&
-         store.getState().nameInsertionStatus==='waiting'){
-        // A coarse WebKit timeupdate may cross more than one cue. The
-        // observed position establishes that the approved seam was crossed,
-        // even when its exact cue index was not delivered as a frame.
-        if(!store.getState().nameSlotObserved){
-          store.dispatch({type:'NAME_SLOT_OBSERVED',token:state.speechToken,
-            evidence:{type:'authored-name-slot-boundary-observed',
-              cueIndex:VISITOR_NAME_SLOT.beforeCueIndex}});
-        }
-        const current=store.getState();
-        if(current.nameSlotObserved&&current.nameSynthesisStatus==='ready'){
-          const cueStartMs=timeline.tracks[selected.track].cues[cue.index].startMs;
-          // timeupdate is not sample-accurate. Do not interrupt a sentence
-          // when Safari reports a cue well after its approved boundary.
-          // Continue to the next observed seam (or the actual track end).
-          const atSeam=observation.elapsedMs>=cueStartMs&&
-            observation.elapsedMs-cueStartMs<=250;
-          if(atSeam){
-            // Resume from the observed clock, never replay the paragraph.
-            const resumeAtMs=observation.elapsedMs;
-            if(voice.holdAuthoredForName(state.speechToken)){
-              pendingNameBoundary=resumeAtMs;
-              requestNameInsertion(store.getState(),resumeAtMs,
-                'authored-paragraph-boundary-observed');
-            }
-          }
-        }
-      }
-
-    }
-  });
+    onPosition  });
 }
 
 function requestNameInsertion(state,resumeAtMs,evidenceType){
@@ -315,6 +302,12 @@ function observeGeneratedSpeechFrame(){
 }
 function observeApprovedSpeechFrame(){
   const state=store.getState();
+  if(observeAuthoredPosition&&voice.activeSource()==='authored'&&
+     state.nameDecision==='provided'&&state.nameInsertionStatus==='waiting'&&
+     state.nameSynthesisStatus==='ready'){
+    const observedClock=voice.sampleAuthoredClock(state.speechToken);
+    if(observedClock)observeAuthoredPosition(observedClock);
+  }
   if(!envelope||state.speechStatus!=='speaking'||
     voice.activeSource()!=='authored')return;
   const observation=voice.sampleAuthoredClock(state.speechToken);
