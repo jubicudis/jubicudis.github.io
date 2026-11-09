@@ -152,16 +152,19 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
       store.dispatch({type:'NAME_SLOT_OBSERVED',token:state.speechToken,
         evidence:{type:'authored-name-slot-boundary-observed',
           cueIndex:VISITOR_NAME_SLOT.beforeCueIndex}});
-    const current=store.getState();
-    if(current.nameSynthesisStatus!=='ready'||
-       cue.index!==VISITOR_NAME_SLOT.beforeCueIndex)return;
+    if(cue.index!==VISITOR_NAME_SLOT.beforeCueIndex)return;
     const seamMs=timeline.tracks[selected.track].cues[cue.index].startMs;
     if(observation.elapsedMs<seamMs||observation.elapsedMs-seamMs>250)return;
+    // Preserve the authored ordering even if mobile Heart synthesis has not
+    // finished. Holding is an observed media action; readiness is separate.
+    // Continuing past this point would speak the name after its introduction.
     const resumeAtMs=observation.elapsedMs;
     if(voice.holdAuthoredForName(state.speechToken)){
       pendingNameBoundary=resumeAtMs;
-      requestNameInsertion(store.getState(),resumeAtMs,
-        'authored-paragraph-boundary-observed');
+      const current=store.getState();
+      if(current.nameSynthesisStatus==='ready')
+        requestNameInsertion(current,resumeAtMs,
+          'authored-paragraph-boundary-observed');
     }
   };
   observeAuthoredPosition=onPosition;
@@ -248,8 +251,8 @@ async function beginSpeech(state){
     preparedName=generated;
     store.dispatch({type:'NAME_SYNTHESIS_READY',token});
     const ready=store.getState();
-    // When the entire authored track has actually ended, its observed end
-    // is the final authorized name insertion boundary.
+    // The approved paragraph seam is held until this synthesis is ready.
+    // Only an actually observed track end can authorize the fallback.
     if(pendingNameBoundary!==null&&ready.nameSlotObserved&&
        ready.nameInsertionStatus==='waiting'&&ready.speechStatus==='speaking')
       requestNameInsertion(ready,pendingNameBoundary,
@@ -303,8 +306,7 @@ function observeGeneratedSpeechFrame(){
 function observeApprovedSpeechFrame(){
   const state=store.getState();
   if(observeAuthoredPosition&&voice.activeSource()==='authored'&&
-     state.nameDecision==='provided'&&state.nameInsertionStatus==='waiting'&&
-     state.nameSynthesisStatus==='ready'){
+     state.nameDecision==='provided'&&state.nameInsertionStatus==='waiting'){
     const observedClock=voice.sampleAuthoredClock(state.speechToken);
     if(observedClock)observeAuthoredPosition(observedClock);
   }
