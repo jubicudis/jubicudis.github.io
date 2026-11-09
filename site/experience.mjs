@@ -391,7 +391,8 @@ function render(state,previous,event){
   const speechFailed=['failed','unavailable','interrupted'].includes(state.speechStatus);
   const englishNarration=state.browserLocale?.split('-')[0]==='en';
   audioFailure.hidden=!(englishNarration&&narrationLoadFailure)&&
-    !speechFailed&&!nameSynthesisError&&!localizedFailure&&
+    !speechFailed&&!nameSynthesisError&&
+    !(localizedFailure&&state.presentationLocale!=='en-US')&&
     state.languageStatus!=='unavailable';
   if(!audioFailure.hidden)
     audioFailure.textContent=state.languageStatus==='unavailable'
