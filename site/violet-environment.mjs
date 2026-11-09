@@ -573,7 +573,11 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         // Keep the current authored expression visible while stepping through
         // three intermediate mouth frames toward the new observed pose.
         // State selects the target; the renderer only interpolates its display.
-        if(mouthTransition&&mouthTransition.frame>=mouthFrames.length-2){
+        if(mouthTransition&&
+           mouthFrames[Math.min(mouthTransition.frame,mouthFrames.length-1)]>=.5){
+          // A new observed phoneme can arrive before the prior transition
+          // finishes. Begin from the nearest *already rendered* pose rather
+          // than snapping backward to a stale closed-mouth texture.
           expression.material.map=faces[mouthTransition.target];
           expression.material.needsUpdate=true;
         }
