@@ -340,6 +340,14 @@ try{
     'audio energy must not control the ribbon geometry');
   assert.match(recoverySource,/const mouthFrames=Object\.freeze\(\[0,\.22,\.5,\.78,1\]\)/,
     'speech mouth changes must render intermediate opening and closing frames');
+  assert.match(recoverySource,/const opening1=await svgTexture\(faceXml,'viseme-opening-1'\)/,
+    'first intermediate mouth aperture must be authored and decoded');
+  assert.match(recoverySource,/const opening2=await svgTexture\(faceXml,'viseme-opening-2'\)/,
+    'second intermediate mouth aperture must be authored and decoded');
+  assert.match(recoverySource,/\['viseme-closed','viseme-opening-1','viseme-opening-2',visualMode\]/,
+    'opening must progress from closed through intermediate apertures');
+  assert.match(recoverySource,/\[previousExpression,'viseme-opening-2','viseme-opening-1','viseme-closed'\]/,
+    'closing must progress through intermediate apertures in reverse');
   assert.match(recoverySource,/expressionBlend\.material\.opacity=alpha/,
     'intermediate mouth frames must be applied to the curved A2 faceplate');
   assert.match(recoverySource,/state\.bodyMotionMode==='flow'/,
