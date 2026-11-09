@@ -88,6 +88,12 @@ export function reduceOpening(state,event){
         }
       }
       break;
+    case 'LOCALIZED_NARRATION_FAILED':
+      if(state.phase==='dormant'&&state.languageStatus==='unavailable'&&
+         event.locale===state.browserLocale&&
+         typeof event.reason==='string')
+        patch={languageStatus:'failed',languageFailureReason:event.reason.slice(0,280)};
+      break;
     case 'LOCALIZED_NARRATION_READY':
       if(state.phase==='dormant'&&state.languageStatus==='unavailable'&&
          event.locale===state.browserLocale&&event.tracks&&
