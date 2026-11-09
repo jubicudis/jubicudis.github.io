@@ -26,6 +26,7 @@ function bloomFromObservedAudio(state){
 export const initialState=Object.freeze({
   phase:'dormant',track:null,cueIndex:0,visitorName:null,nameDecision:null,
   browserLocale:null,presentationLocale:null,languageStatus:'unobserved',
+  localizedTracks:null,localizedNameLine:null,localizedAudioPositionMs:null,
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
   playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
@@ -44,8 +45,9 @@ export function openingMessage(state){
   if(state.phase==='dormant')return '';
   const track=state.track||openingTrackForPhase(state.phase);
   if(state.nameAudioPlaying&&state.nameDecision==='provided')
-    return VISITOR_NAME_SLOT.text(state.visitorName);
-  return visibleOpeningSegment(track,state.cueIndex,null);
+    return state.localizedNameLine||VISITOR_NAME_SLOT.text(state.visitorName);
+  return state.localizedTracks?.[track]?.[state.cueIndex]?.text||
+    visibleOpeningSegment(track,state.cueIndex,null);
 }
 export function nameChoiceReady(state){
   return state.phase==='asking-name' && state.speechStatus==='completed'
@@ -86,6 +88,51 @@ export function reduceOpening(state,event){
         }
       }
       break;
+    case 'LOCALIZED_NARRATION_READY':
+      if(state.phase==='dormant'&&state.languageStatus==='unavailable'&&
+         event.locale===state.browserLocale&&event.tracks&&
+         ['asking-name','after-name'].every(track=>
+           Array.isArray(event.tracks[track])&&
+           event.tracks[track].length===OPENING_TRACKS[track].length&&
+           event.tracks[track].every((segment,i)=>
+             typeof segment.text==='string'&&segment.text.trim()&&
+             segment.phase===OPENING_TRACKS[track][i].phase))&&
+         typeof event.nameLine==='function')
+        patch={presentationLocale:event.locale,languageStatus:'qualified',
+          localizedTracks:event.tracks,localizedNameLine:null};
+      break;
+    case 'LOCALIZED_NAME_LINE_READY':
+      if(state.nameDecision==='provided'&&
+         event.token===state.speechToken&&typeof event.text==='string'&&
+         event.text.includes(state.visitorName))
+        patch={localizedNameLine:event.text};
+      break;
+    case 'LOCALIZED_AUDIO_FRAME_OBSERVED':
+      if(state.localizedTracks&&state.speechStatus==='speaking'&&
+         event.token===state.speechToken&&
+         event.evidence?.type==='localized-pcm-clock-observed'&&
+         event.evidence.playing===true&&
+         Number.isFinite(event.evidence.elapsedMs)&&event.evidence.elapsedMs>=0&&
+         (state.localizedAudioPositionMs===null||
+          event.evidence.elapsedMs>=state.localizedAudioPositionMs)&&
+         Number.isInteger(event.evidence.level)&&
+         event.evidence.level>=0&&event.evidence.level<=255)
+        patch={localizedAudioPositionMs:event.evidence.elapsedMs,
+          observedAudioLevel:event.evidence.level,
+          observedSpeechPose:event.evidence.level>20?'viseme-open':'viseme-closed'};
+      break;
+    case 'LOCALIZED_CUE_OBSERVED':
+      if(state.localizedTracks&&state.speechStatus==='speaking'&&
+         event.token===state.speechToken&&
+         event.evidence?.type==='localized-pcm-cue-playing'&&
+         Number.isInteger(event.evidence.cueIndex)&&
+         event.evidence.cueIndex>=state.cueIndex&&
+         event.evidence.cueIndex<OPENING_TRACKS[state.track].length){
+        const segment=OPENING_TRACKS[state.track][event.evidence.cueIndex];
+        patch={cueIndex:event.evidence.cueIndex,phase:segment.phase,
+          localizedAudioPositionMs:null,observedSpeechPose:null,observedAudioLevel:0};
+      }
+      break;
     case 'RENDER_STARTED':
       if(state.renderStatus==='uninitialized')patch={renderStatus:'initializing'};
       break;
@@ -111,7 +158,7 @@ export function reduceOpening(state,event){
       if(state.phase==='dormant'&&state.renderStatus==='observed'&&state.voiceSupported===true&&state.languageStatus==='qualified')
         patch={phase:'asking-name',track:'asking-name',cueIndex:0,enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
-          playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
+          playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,localizedAudioPositionMs:null,
           observedSpeechPose:null,observedAudioLevel:0,nameAudioCompleted:false,nameAudioPlaying:false,
           nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',nameSlotObserved:false,authoredAudioEnded:false};
       break;
