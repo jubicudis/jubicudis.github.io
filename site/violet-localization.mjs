@@ -39,14 +39,14 @@ export async function prepareQualifiedTranslator(locale,options={}){
   if(languageTag(locale)==='en')
     return Object.freeze({locale,language:'en',kind:'approved-english',
       translate:async text=>text});
-  try{return await prepareDeviceTranslator(locale,options);}
-  catch(error){
-    // Device translation may be exposed but fail during model creation,
-    // download or execution. Use the configured WASM translator rather
-    // than leaving the visitor stranded on an inert activation surface.
-    if(!LOCAL_TRANSLATION_MODELS[languageTag(locale)])throw error;
+  // Select the explicitly configured translation engine. Failure is an
+  // observed unavailable state, never permission to substitute an engine.
+  const engine=options.engine||'transformers-wasm';
+  if(engine==='transformers-wasm')
     return prepareTransformersTranslator(locale,options);
-  }
+  if(engine==='device-translator')
+    return prepareDeviceTranslator(locale,options);
+  throw new Error('Unrecognized authorized translation engine: '+engine);
 }
 export async function prepareDeviceTranslator(locale,{
   TranslatorAPI=globalThis.Translator
@@ -90,15 +90,13 @@ export async function localizeApprovedOpening(openingTracks,nameSlot,translator)
   }
   const template='Now, {visitor}, let\'s take a closer look.';
   // Translation models often rewrite or drop brace-delimited tokens.
-  // Translate the surrounding approved text independently and insert the
-  // visitor's literal name only after both fragments are qualified.
+  // Keep the visitor's literal name out of model translation. A model
+  // that drops the marker must not manufacture a successful named line.
   const marker='JUBI_VISITOR_NAME_TOKEN';
   let named=await translator.translate(template.replace('{visitor}',marker));
-  if(!named.includes(marker)){
-    const prefix=await translator.translate('Now,');
-    const suffix=await translator.translate("let's take a closer look.");
-    named=prefix+' {visitor}, '+suffix;
-  }else named=named.replace(marker,'{visitor}');
+  if(!named.includes(marker))
+    throw new Error('Translation did not preserve the authorized name slot');
+  named=named.replace(marker,'{visitor}');
   if(!named.includes('{visitor}'))
     throw new Error('Translated name invitation must retain the visitor placeholder');
   return Object.freeze({
