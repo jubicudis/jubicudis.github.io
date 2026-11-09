@@ -7,6 +7,13 @@ import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.m
 import {HEART_ENVELOPE_URL,validateHeartEnvelope,sampleMeasuredHeartEnvelope}
   from './violet-heart-envelope.mjs';
 
+import {prepareQualifiedTranslator,localizeApprovedOpening}
+  from './violet-localization.mjs?v=20261109-multilingual-1';
+import {createBrowserKokoroAdapter}
+  from './violet-kokoro-multilingual.mjs?v=20261109-multilingual-1';
+import {OPENING_TRACKS,VISITOR_NAME_SLOT as NAME_SLOT}
+  from './opening-script.mjs?v=20261108-name-slot-21';
+
 const stage=document.getElementById('environment');
 const activate=document.getElementById('violet-activate');
 const dialogue=document.getElementById('visitor-dialogue');
@@ -18,6 +25,7 @@ const failure=document.getElementById('render-failure');
 const audioFailure=document.getElementById('audio-failure');
 let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameAudio=null;
 let preparedName=null,nameSynthesisError=null,pendingNameBoundary=null;
+let localizedPresentation=null,localizedAdapter=null,localizedFailure=null;
 const store=createOpeningStore(render);
 const observedBrowserLocale=(navigator.languages||[])
   .find(value=>typeof value==='string'&&value.trim())||
@@ -26,6 +34,75 @@ store.dispatch({type:'BROWSER_LANGUAGE_OBSERVED',
   evidence:{type:'browser-language-observed',locale:observedBrowserLocale}});
 const voice=createVioletVoiceEngine();
 activate.disabled=true;
+
+async function playLocalizedTrack(state){
+  const token=state.speechToken,track=state.track;
+  const segments=localizedPresentation.tracks[track];
+  const visitorName=state.visitorName;
+  try{
+    for(let i=0;i<segments.length;i++){
+      if(store.getState().speechToken!==token||document.hidden)return;
+      // The name is a separate synthesized line at the approved seam.
+      if(track==='after-name'&&i===NAME_SLOT.beforeCueIndex&&visitorName){
+        const line=localizedPresentation.nameLine(visitorName);
+        store.dispatch({type:'LOCALIZED_NAME_LINE_READY',token,text:line});
+        store.dispatch({type:'NAME_SYNTHESIS_STARTED',token});
+        store.dispatch({type:'NAME_SYNTHESIS_READY',token});
+        store.dispatch({type:'NAME_SLOT_OBSERVED',token,
+          evidence:{type:'authored-name-slot-boundary-observed',cueIndex:i}});
+        // Localized name insertion uses its own observed generated PCM.
+        await playLocalizedClip(line,token,{name:true});
+      }
+      await playLocalizedClip(segments[i].text,token,{cueIndex:i});
+    }
+    if(store.getState().speechToken===token&&
+       store.getState().speechStatus==='speaking')
+      store.dispatch({type:'SPEECH_ENDED',token});
+  }catch(error){
+    if(store.getState().speechToken!==token)return;
+    localizedFailure=String(error?.message||error);
+    voice.cancel('localized-narration-failed');
+    store.dispatch({type:'SPEECH_FAILED',token,reason:localizedFailure});
+  }
+}
+async function playLocalizedClip(text,token,{cueIndex=null,name=false}={}){
+  const generated=await localizedAdapter.synthesize(text);
+  if(store.getState().speechToken!==token||document.hidden)
+    throw new Error('Localized narration session interrupted');
+  if(Number.isInteger(cueIndex)){
+    store.dispatch({type:'LOCALIZED_CUE_OBSERVED',token,
+      evidence:{type:'localized-pcm-cue-playing',cueIndex}});
+  }
+  await new Promise((resolve,reject)=>{
+    let started=false;
+    const session=voice.playGenerated({
+      wav:generated.wav,token,
+      emit:event=>{
+        if(event.type==='SPEECH_STARTED'){
+          started=true;
+          store.dispatch(event);
+        }else if(['SPEECH_FAILED','SPEECH_UNAVAILABLE'].includes(event.type)){
+          reject(new Error(event.reason||'Localized audio unavailable'));
+        }
+      },
+      onPosition:observation=>{
+        if(!observation?.playing||observation.source!=='observed-generated-heart-audio')return;
+        const start=Math.min(generated.pcm.length-1,
+          Math.floor(observation.elapsedMs*generated.sampleRate/1000));
+        const end=Math.min(generated.pcm.length,start+
+          Math.max(1,Math.floor(generated.sampleRate*.02)));
+        let sum=0;
+        for(let i=start;i<end;i++)sum+=generated.pcm[i]*generated.pcm[i];
+        const level=Math.min(255,Math.round(Math.sqrt(sum/(end-start))*255));
+        store.dispatch({type:'LOCALIZED_AUDIO_FRAME_OBSERVED',token,
+          evidence:{type:'localized-pcm-clock-observed',playing:true,
+            elapsedMs:observation.elapsedMs,level}});
+      },
+      onEnded:()=>started?resolve():reject(new Error('Localized audio ended without playing'))
+    });
+    if(!session)reject(new Error('Localized audio playback unavailable'));
+  });
+}
 
 function playApprovedTrack(state,{resumeAtMs=0}={}){
   const selected=resolveVioletOpeningAudio(state);
@@ -123,6 +200,10 @@ function requestNameInsertion(state,resumeAtMs,evidenceType){
 }
 
 async function beginSpeech(state){
+  if(localizedPresentation){
+    await playLocalizedTrack(state);
+    return;
+  }
   // The selected recorded Heart narration begins immediately after the
   // name decision. Synthesis is concurrent, not a silent prerequisite.
   preparedName=null;
@@ -230,10 +311,11 @@ function render(state,previous){
     failure.textContent='Violet could not be rendered on this device. '+state.renderFailure;
   const speechFailed=['failed','unavailable','interrupted'].includes(state.speechStatus);
   audioFailure.hidden=!narrationLoadFailure&&!speechFailed&&!nameSynthesisError&&
-    state.languageStatus!=='unavailable';
+    !localizedFailure&&state.languageStatus!=='unavailable';
   if(!audioFailure.hidden)
     audioFailure.textContent=state.languageStatus==='unavailable'
-      ?'Violet has detected your browser language ('+state.browserLocale+'), but an approved narration and synchronized captions are not yet available in that language.'
+      ?'Violet is preparing on-device narration for '+state.browserLocale+'. '+(localizedFailure||'The language model is still loading.')
+      :localizedFailure?'Localized narration unavailable. '+localizedFailure
       :narrationLoadFailure
       ?'Heart narration is unavailable. '+narrationLoadFailure
       :speechFailed?'Heart narration '+(state.speechStatus==='interrupted'
@@ -287,10 +369,32 @@ const narrationReady=(async()=>{
     }
     timeline=parsed;
     envelope=measured;
-    store.dispatch({type:'VOICE_AVAILABLE',value:true});
+    if(store.getState().browserLocale?.split('-')[0]==='en')
+      store.dispatch({type:'VOICE_AVAILABLE',value:true});
   }catch(error){
     narrationLoadFailure=String(error?.message||error);
+    if(store.getState().browserLocale?.split('-')[0]==='en')
+      store.dispatch({type:'VOICE_AVAILABLE',value:false});
+  }
+})();
+const localizedReady=(async()=>{
+  const locale=store.getState().browserLocale;
+  if(!locale||locale.split('-')[0]==='en')return;
+  try{
+    const translator=await prepareQualifiedTranslator(locale);
+    const [presentation,adapter]=await Promise.all([
+      localizeApprovedOpening(OPENING_TRACKS,NAME_SLOT,translator),
+      createBrowserKokoroAdapter(locale)
+    ]);
+    localizedPresentation=presentation;
+    localizedAdapter=adapter;
+    store.dispatch({type:'LOCALIZED_NARRATION_READY',
+      locale,tracks:presentation.tracks,nameLine:presentation.nameLine});
+    store.dispatch({type:'VOICE_AVAILABLE',value:true});
+  }catch(error){
+    localizedFailure=String(error?.message||error);
     store.dispatch({type:'VOICE_AVAILABLE',value:false});
+    render(store.getState(),store.getState());
   }
 })();
 store.dispatch({type:'RENDER_STARTED'});
@@ -307,4 +411,7 @@ try{
   store.dispatch({type:'RENDER_FAILED',reason:error?.message||String(error)});
 }
 await narrationReady;
+// Language models continue loading independently; activation is gated by
+// observed qualified speech capability, not by an assumed model download.
+void localizedReady;
 render(store.getState(),store.getState());
