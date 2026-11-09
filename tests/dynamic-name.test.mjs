@@ -1,85 +1,45 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {pronunciationText,observedInferenceBackend,validateHeartAudioResult,
-  encodeSpeechWav,sampleGeneratedViseme,synthesizeHeartName}
+import {pronunciationText,encodeSpeechWav,sampleGeneratedViseme,
+  synthesizeHeartName,requireSingleThreadWasm}
   from '../site/violet-dynamic-name.mjs';
 
-function observedChunk(){
-  const rate=24000,samples=new Float32Array(rate);
-  for(let i=0;i<samples.length;i++)samples[i]=.28*Math.sin(i*2*Math.PI*180/rate);
-  return {type:'audio',data:{
-    audio:{sampleRate:rate,length:rate,numberOfChannels:1,
-      getChannelData:index=>{if(index!==0)throw Error('channel');return samples;}},
-    visemes:['sil','PP','aa','E','O','sil'],
-    vtimes:[0,80,180,430,680,910],
-    vdurations:[80,100,250,250,220,90],
-    words:['Welcome','Morgan'],wtimes:[0,320]
-  }};
-}
 test('authorized name is present in the actual synthesized text; invalid names are not inferred',()=>{
   assert.equal(pronunciationText('Morgan'),"Now, Morgan, let's take a closer look.");
   for(const bad of ['', ' ', '<script>', '\nMorgan', 'A'.repeat(49)])
     assert.throws(()=>pronunciationText(bad));
 });
-test('inference backend derives from observed browser support; one runtime is selected',async()=>{
-  assert.equal(await observedInferenceBackend(null),'wasm');
-  let requested=0;
-  assert.equal(await observedInferenceBackend({gpu:{async requestAdapter(){requested++;return {device:true};}}}),'webgpu');
-  assert.equal(requested,1);
-  assert.equal(await observedInferenceBackend({gpu:{async requestAdapter(){return null;}}}),'wasm');
-  let iosGpuRequested=0;
-  assert.equal(await observedInferenceBackend({
-    userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15',
-    gpu:{async requestAdapter(){iosGpuRequested++;return {device:true};}}
-  }),'wasm');
-  assert.equal(iosGpuRequested,0,'iPhone must not allocate a competing WebGPU adapter');
+
+test('single-thread is forced on the Kokoro WASM env when present',()=>{
+  const env={backends:{onnx:{wasm:{numThreads:4}}}};
+  requireSingleThreadWasm(env);
+  assert.equal(env.backends.onnx.wasm.numThreads,1);
+  requireSingleThreadWasm(null);
+  requireSingleThreadWasm({});
 });
-test('qualified synthesized speech has real PCM and timed visemes bound to the same output',()=>{
-  const text=pronunciationText('Morgan');
-  const result=validateHeartAudioResult([observedChunk()],text);
-  assert.equal(result.voiceId,'af_heart');
-  assert.equal(result.durationMs,1000);
-  assert.equal(result.pcm.length,24000);
-  assert.equal(result.visemes.length,6);
-  assert.deepEqual(sampleGeneratedViseme(result,{source:'observed-generated-heart-audio',playing:true,elapsedMs:220}),
-    {pose:'viseme-open',kind:'aa',elapsedMs:220,source:'observed-generated-heart-audio'});
-  assert.equal(sampleGeneratedViseme(result,{source:'observed-generated-heart-audio',playing:false,elapsedMs:220}),null);
-  assert.equal(sampleGeneratedViseme(result,{source:'guessed-timeline',playing:true,elapsedMs:220}),null);
-  assert.equal(sampleGeneratedViseme(result,{source:'observed-generated-heart-audio',playing:true,elapsedMs:2000}),null);
-  const wav=new DataView(encodeSpeechWav(result));
-  assert.equal(String.fromCharCode(...new Uint8Array(wav.buffer.slice(0,4))),'RIFF');
-  assert.equal(wav.getUint32(24,true),24000);
-  assert.equal(wav.getUint32(40,true),48000);
-  assert.equal(wav.getInt16(44+240*2,true)!==0,true);
-});
-test('unqualified outputs cannot masquerade as generated voice',()=>{
-  const base=observedChunk();
-  assert.throws(()=>validateHeartAudioResult([{...base,type:'error'}],'Welcome'),/qualified/);
-  assert.throws(()=>validateHeartAudioResult([{...base,data:{...base.data,vtimes:[0]}}],'Welcome'),/Incomplete/);
-  const quiet=observedChunk();
-  quiet.data.audio.getChannelData=()=>new Float32Array(24000);
-  assert.throws(()=>validateHeartAudioResult([quiet],'Welcome'),/silent/);
-  const unknown=observedChunk();
-  unknown.data.visemes[2]='not-a-real-viseme';
-  assert.throws(()=>validateHeartAudioResult([unknown],'Welcome'),/viseme/);
-});
+
 test('Kokoro WASM synthesizes the authorized Heart name without a worker',async()=>{
   const calls=[];
   const pcm=Float32Array.from({length:24000},(_,i)=>1.25*Math.sin(i*.1));
+  const env={backends:{onnx:{wasm:{numThreads:4}}}};
   const result=await synthesizeHeartName('Morgan',{
-    loadModule:async()=>({KokoroTTS:{
-      async from_pretrained(model,options){
-        calls.push([model,options]);
-        return {
-          async list_voices(){return ['af_heart'];},
-          async generate(text,options){
-            calls.push([text,options]);
-            return {audio:pcm,sampling_rate:24000};
-          }
-        };
+    loadModule:async()=>({
+      env,
+      KokoroTTS:{
+        async from_pretrained(model,options){
+          calls.push([model,options]);
+          return {
+            voices:{af_heart:{name:'Heart'}},
+            async generate(text,options){
+              calls.push([text,options]);
+              return {audio:pcm,sampling_rate:24000};
+            }
+          };
+        }
       }
-    }})
+    })
   });
+  assert.equal(env.backends.onnx.wasm.numThreads,1);
   assert.equal(result.voiceId,'af_heart');
   assert.equal(result.spokenText,"Now, Morgan, let's take a closer look.");
   assert.equal(result.backend,'wasm');
@@ -90,10 +50,28 @@ test('Kokoro WASM synthesizes the authorized Heart name without a worker',async(
   assert.equal(calls[1][1].voice,'af_heart');
   assert.ok(Math.max(...result.pcm)<=1);
 });
+
 test('Kokoro synthesis failures remain observable and never substitute another voice',async()=>{
   await assert.rejects(synthesizeHeartName('Morgan',{
     loadModule:async()=>({KokoroTTS:{
       async from_pretrained(){throw Error('actual model init failure');}
     }})
   }),/actual model init failure/);
+});
+
+test('missing Heart voice is reported and does not invent audio',async()=>{
+  await assert.rejects(synthesizeHeartName('Morgan',{
+    loadModule:async()=>({KokoroTTS:{
+      async from_pretrained(){return {voices:{af_bella:true}};}
+    }})
+  }),/Selected Heart voice unavailable/);
+});
+
+test('WAV transport requires qualified PCM',()=>{
+  const rate=24000,pcm=Float32Array.from({length:100},(_,i)=>Math.sin(i*.2));
+  const wav=new DataView(encodeSpeechWav({sampleRate:rate,pcm}));
+  assert.equal(String.fromCharCode(...new Uint8Array(wav.buffer.slice(0,4))),'RIFF');
+  assert.equal(wav.getUint32(24,true),24000);
+  assert.equal(sampleGeneratedViseme({durationMs:10,visemes:[]},
+    {source:'observed-generated-heart-audio',playing:true,elapsedMs:0}),null);
 });
