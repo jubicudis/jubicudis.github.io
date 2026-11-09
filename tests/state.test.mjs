@@ -66,7 +66,7 @@ test('Violet expression propagates only from authorized reducer events',()=>{
   const observedIdle=step(s,'IDLE_FRAME_OBSERVED',{evidence:{
     type:'observed-animation-frame',elapsedMs:1800,reducedMotion:false
   }});
-  assert.ok(observedIdle.bloomMotion.every(point=>point.x===0&&point.y===0),
+  assert.ok(observedIdle.bloomMotion.some(point=>point.x!==0||point.y!==0),
     'reducer must calculate real structural motion from observed idle frames');
   assert.equal(step(s,'IDLE_FRAME_OBSERVED',{evidence:{
     type:'unobserved-timer',elapsedMs:1800,reducedMotion:false
@@ -247,16 +247,16 @@ test('approved Heart orientation advances during name generation without invente
   assert.equal(speaking.observedSpeechPose,'viseme-open');
   assert.equal(speaking.generatedPositionMs,300);
   assert.equal(speaking.observedAudioLevel,130);
-  assert.ok(speaking.bloomMotion.every(p=>p.x===0&&p.y===0),
-    'speech must not pulse the body independently of the faceplate');
+  assert.ok(speaking.bloomMotion.some(p=>p.x!==0||p.y!==0),
+    'observed generated Heart energy must drive the existing four-point A2 rig');
   const samePoseMoreEnergy=step(speaking,'GENERATED_VISEME_OBSERVED',{token,evidence:{
     type:'generated-viseme-audio-observed',source:'observed-generated-heart-audio',
     assetId:'generated-heart:'+token,voiceId:'af_heart',
     playing:true,elapsedMs:340,pose:'viseme-open',level:200
   }});
   assert.equal(samePoseMoreEnergy.observedSpeechPose,speaking.observedSpeechPose);
-  assert.deepEqual(samePoseMoreEnergy.bloomMotion,speaking.bloomMotion,
-    'changing speech intensity must not deform the body independently');
+  assert.notDeepEqual(samePoseMoreEnergy.bloomMotion,speaking.bloomMotion,
+    'changing observed Heart energy must deform body even with unchanged mouth pose');
   const stale=step(speaking,'GENERATED_VISEME_OBSERVED',{token,evidence:{
     type:'generated-viseme-audio-observed',source:'observed-generated-heart-audio',
     assetId:'generated-heart:'+token,voiceId:'af_heart',
