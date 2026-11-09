@@ -341,8 +341,8 @@ export function reduceOpening(state,event){
   // sculptural assembly coherent while observed visemes animate normally.
   next.bloomMotion=event.type==='IDLE_FRAME_OBSERVED'
     ?patch.bloomMotion:bloomFromObservedAudio(next);
-  next.visualExpression=next.speaking
-    ?(next.observedSpeechPose||'talk')
+  next.visualExpression=next.nameSeamHeld?'viseme-closed'
+    :next.speaking?(next.observedSpeechPose||'talk')
     :next.phase==='asking-name'?'ask':'rest';
   if(!phases.has(next.phase))throw new Error('Illegal opening phase');
   const what={
