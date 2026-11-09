@@ -3,7 +3,7 @@ import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
 import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261109-metadata-seek-25';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
   VIOLET_TIMELINE_URL,VIOLET_HEART_CONTINUATION} from './violet-selected-voice.mjs?v=20261106-name-05';
-import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs?v=20261107-name-slot-08';
+import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs?v=20261109-kokoro-heart-wasm-09';
 import {HEART_ENVELOPE_URL,validateHeartEnvelope,sampleMeasuredHeartEnvelope}
   from './violet-heart-envelope.mjs';
 
@@ -309,7 +309,10 @@ function observeGeneratedSpeechFrame(){
   const sampled=sampleGeneratedViseme(activeNameAudio.generated,observation);
   // A gap in actual viseme metadata carries a closed mouth, not a fabricated
   // phoneme. Only the observed audio playback clock can drive this expression.
-  const pose=sampled?.pose??'viseme-closed';
+  // Kokoro supplies real PCM but no aligned phoneme labels. Drive the
+  // established A2 mouth from observed audio energy instead of inventing
+  // viseme timestamps or holding the mouth closed for the entire name.
+  let pose=sampled?.pose??null;
   // Read the actual synthesized PCM at the observed playback position.
   // This is the same audio data driving Heart, not an invented animation.
   const generated=activeNameAudio.generated;
@@ -319,6 +322,7 @@ function observeGeneratedSpeechFrame(){
   let energy=0;
   for(let i=start;i<end;i++)energy+=generated.pcm[i]*generated.pcm[i];
   const level=Math.min(255,Math.round(Math.sqrt(energy/(end-start))*255));
+  if(!pose)pose=level<3?'viseme-closed':level<22?'viseme-open':'viseme-wide';
   if(pose===state.observedSpeechPose&&level===state.observedAudioLevel)return;
   store.dispatch({type:'GENERATED_VISEME_OBSERVED',token:state.speechToken,
     evidence:{type:'generated-viseme-audio-observed',
