@@ -134,30 +134,51 @@ export function sampleGeneratedViseme(result,observation){
     elapsedMs:observation.elapsedMs,source:observation.source}):null;
 }
 
+// The same Kokoro-82M Heart model already used by the localized adapter
+// can generate English Heart without the HeadTTS module Web Worker that
+// fails on iPhone Safari. The visitor name is still synthesized on demand.
+export const HEART_KOKORO_MODULE='https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/+esm';
+export const HEART_KOKORO_MODEL='onnx-community/Kokoro-82M-v1.0-ONNX';
+
 export async function synthesizeHeartName(visitorName,{
-  loadModule=()=>import(HEADTTS_MODULE),
-  browser=typeof navigator==='undefined'?null:navigator
+  loadModule=()=>import(HEART_KOKORO_MODULE),
+  modelId=HEART_KOKORO_MODEL
 }={}){
   const text=pronunciationText(visitorName);
-  const backend=await observedInferenceBackend(browser);
-  const {HeadTTS}=await loadModule();
-  if(typeof HeadTTS!=='function')throw new Error('HeadTTS module unavailable');
-  const instance=new HeadTTS({
-    endpoints:[backend],
-    workerModule:HEADTTS_WORKER,
-    dictionaryURL:HEADTTS_DICTIONARY,
-    languages:['en-us'],voices:[VIOLET_SELECTED_VOICE.voiceId],
-    defaultVoice:VIOLET_SELECTED_VOICE.voiceId,
-    defaultLanguage:'en-us',defaultSpeed:1,
-    defaultAudioEncoding:'wav',
-    splitSentences:false,
-    dtypeWebgpu:'fp16',dtypeWasm:'q4'
+  const {KokoroTTS}=await loadModule();
+  if(typeof KokoroTTS?.from_pretrained!=='function')
+    throw new Error('Kokoro Heart synthesis module unavailable');
+  const tts=await KokoroTTS.from_pretrained(modelId,{
+    dtype:'q8',device:'wasm'
   });
-  await instance.connect();
-  await instance.setup({voice:VIOLET_SELECTED_VOICE.voiceId,
-    language:'en-us',speed:1,audioEncoding:'wav'});
-  const messages=await instance.synthesize({input:text});
-  const qualified=validateHeartAudioResult(messages,text);
+  const available=await tts.list_voices();
+  const voices=Array.isArray(available)?available:Object.keys(available||{});
+  if(!voices.includes(VIOLET_SELECTED_VOICE.voiceId))
+    throw new Error('Selected Heart voice unavailable');
+  const result=await tts.generate(text,{
+    voice:VIOLET_SELECTED_VOICE.voiceId,speed:1
+  });
+  const source=result?.audio, sampleRate=result?.sampling_rate;
+  if(!(source instanceof Float32Array)||source.length<100||
+     !finite(sampleRate)||sampleRate<8000)
+    throw new Error('Kokoro Heart returned no qualified PCM');
+  let peak=0;
+  for(const sample of source){
+    if(!finite(sample))throw new Error('Non-finite Heart audio');
+    peak=Math.max(peak,Math.abs(sample));
+  }
+  if(peak<.005)throw new Error('Kokoro Heart returned silent audio');
+  // Model output may legitimately exceed unity. Normalize before PCM16
+  // encoding rather than misdiagnosing finite audible speech as clipping.
+  const gain=peak>1?1/peak:1;
+  const pcm=gain===1?source:Float32Array.from(source,x=>x*gain);
+  const durationMs=pcm.length*1000/sampleRate;
+  const qualified=Object.freeze({
+    voiceId:VIOLET_SELECTED_VOICE.voiceId,spokenText:text,
+    sampleRate,pcm,durationMs,
+    visemes:Object.freeze([]),
+    visemeStatus:'unavailable-without-observed-phoneme-alignment'
+  });
   return Object.freeze({...qualified,wav:encodeSpeechWav(qualified),
-    backend});
+    backend:'wasm',engine:'kokoro-js'});
 }
