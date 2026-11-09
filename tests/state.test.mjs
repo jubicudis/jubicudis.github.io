@@ -212,17 +212,22 @@ test('continuous A2 flow persists during speech and ignores changing audio energ
     type:'observed-animation-frame',elapsedMs:2100,reducedMotion:false
   }});
   const first=state.bloomMotion;
+  const firstPhase=state.flowPhase;
   state=step(state,'AUTHORED_ENVELOPE_OBSERVED',{token,evidence:{
     type:'authored-heart-envelope-observed',source:'observed-authored-audio',
     playing:true,elapsedMs:2100,pose:'viseme-wide',level:220
   }});
   assert.deepEqual(state.bloomMotion,first,
     'a spoken syllable must not pulse Violet ribbons');
+  assert.equal(state.flowPhase,firstPhase,
+    'audio must not advance the independent ribbon highlight phase');
   state=step(state,'IDLE_FRAME_OBSERVED',{evidence:{
     type:'observed-animation-frame',elapsedMs:3100,reducedMotion:false
   }});
   assert.notDeepEqual(state.bloomMotion,first,
     'ribbon flow must continue on its own during speech');
+  assert.ok(state.flowPhase>firstPhase,
+    'scene observation alone advances the outward highlight');
   assert.equal(state.bodyMotionMode,'flow');
 });
 
