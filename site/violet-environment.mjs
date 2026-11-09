@@ -327,9 +327,56 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     });
     const motionCapabilities=createBloomMotionCapabilities({
       structureSurface:visualCapabilities.getStructureSurface(),
+      centerSurface:visualCapabilities.getCenterSurface(),
       artWidth,artHeight,
       onActiveChange:visualCapabilities.setStructuralWarpActive
     });
+    // Four articulated, luminous junctions bridge the physical faceplate
+    // rim to the existing ribbon material. They are not autonomous rings or
+    // breathing effects: both endpoints use the same structural displacement
+    // as the A2 raster, while the face endpoint follows the curved plate.
+    const attachmentSpecs=[
+      {angle:2.42,body:{x:-1.63,y:1.12},color:0x4bcaff},
+      {angle:.70,body:{x:1.54,y:1.10},color:0xb05bff},
+      {angle:-.67,body:{x:1.56,y:-1.07},color:0xffb95c},
+      {angle:-2.44,body:{x:-1.65,y:-1.08},color:0xa05aff}
+    ];
+    const attachments=attachmentSpecs.map(spec=>{
+      const material=new THREE.MeshBasicMaterial({
+        color:spec.color,transparent:true,opacity:.62,
+        blending:THREE.AdditiveBlending,depthWrite:false
+      });
+      const mesh=new THREE.Mesh(
+        new THREE.TubeGeometry(new THREE.LineCurve3(
+          new THREE.Vector3(0,0,0),new THREE.Vector3(.001,0,0)),16,.019,5,false),
+        material);
+      mesh.position.z=.08;
+      character.add(mesh);
+      return {...spec,mesh};
+    });
+    function updateFaceAttachments(){
+      const rx=A2_FACEPLATE.widthPixels*artPixelToWorld*.5;
+      const ry=A2_FACEPLATE.heightPixels*artPixelToWorld*.5;
+      for(const attachment of attachments){
+        const {angle,body,mesh}=attachment;
+        const rimPoint=new THREE.Vector3(
+          rx*.93*Math.cos(angle),ry*.93*Math.sin(angle),0);
+        rimPoint.applyEuler(faceAssembly.rotation).add(faceAssembly.position);
+        const displacement=motionCapabilities.displacementAt(body.x,body.y);
+        const end=new THREE.Vector3(
+          body.x+displacement.x,body.y+displacement.y,.065);
+        const start=new THREE.Vector3(rimPoint.x,rimPoint.y,.12);
+        const mid=start.clone().lerp(end,.52);
+        // Curvature makes the connection visibly travel behind the plate,
+        // rather than looking like a straight line pasted onto the face.
+        mid.z=.085;
+        const curve=new THREE.QuadraticBezierCurve3(start,mid,end);
+        const next=new THREE.TubeGeometry(curve,18,.019,5,false);
+        mesh.geometry.dispose();
+        mesh.geometry=next;
+      }
+    }
+    updateFaceAttachments();
     // Explicit observation requests are served after a real WebGL draw.
     // No independent timer decides when to inspect the scene.
     const pendingObservations=[];
@@ -414,6 +461,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         faceRestRotation.x+(upper.y-lower.y)*.12,
         faceRestRotation.y+(upper.x-lower.x)*.18,
         faceRestRotation.z+Math.atan2(right.y-left.y,.9)*.65);
+      updateFaceAttachments();
     }
     function frame(now){
       if(!live)return;
