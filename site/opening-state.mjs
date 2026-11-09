@@ -28,7 +28,7 @@ export const initialState=Object.freeze({
   browserLocale:null,presentationLocale:null,languageStatus:'unobserved',
   localizedTracks:null,localizedNameLine:null,localizedAudioPositionMs:null,
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
-  speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
+  speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',speechFailureReason:null,
   playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
   observedSpeechPose:null,observedAudioLevel:0,bloomMotion:STILL_BLOOM,bodyMotionMode:'idle',visualExpression:'rest',nameAudioCompleted:false,nameAudioPlaying:false,nameSynthesisStatus:'not-requested',
   nameInsertionStatus:'not-requested',nameSlotObserved:false,nameSeamHeld:false,authoredAudioEnded:false,enteredAt:0,
@@ -327,17 +327,20 @@ export function reduceOpening(state,event){
     case 'SPEECH_FAILED':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
           !finalSpeechStatuses.has(state.speechStatus))
-        patch={speaking:false,speechStatus:'failed',observedSpeechPose:null};
+        patch={speaking:false,speechStatus:'failed',observedSpeechPose:null,
+          speechFailureReason:String(event.reason||'Unknown media error').slice(0,280)};
       break;
     case 'SPEECH_UNAVAILABLE':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
           state.speechStatus==='pending')
-        patch={speaking:false,speechStatus:'unavailable',observedSpeechPose:null};
+        patch={speaking:false,speechStatus:'unavailable',observedSpeechPose:null,
+          speechFailureReason:'Required audio transport unavailable'};
       break;
     case 'SPEECH_INTERRUPTED':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
           ['speaking','pending'].includes(state.speechStatus))
-        patch={speaking:false,speechStatus:'interrupted',observedSpeechPose:null};
+        patch={speaking:false,speechStatus:'interrupted',observedSpeechPose:null,
+          speechFailureReason:String(event.reason||'Page or audio interruption').slice(0,280)};
       break;
   }
   if(!patch)return state;
