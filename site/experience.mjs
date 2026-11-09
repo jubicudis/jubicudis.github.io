@@ -375,6 +375,10 @@ function render(state,previous,event){
   stage.dataset.speechStatus=state.speechStatus;
   stage.dataset.speechPose=state.observedSpeechPose||'';
   stage.dataset.nameAudioCompleted=String(state.nameAudioCompleted);
+  stage.dataset.nameSynthesisStatus=state.nameSynthesisStatus;
+  stage.dataset.nameInsertionStatus=state.nameInsertionStatus;
+  stage.dataset.nameSlotObserved=String(state.nameSlotObserved);
+  stage.dataset.nameSeamHeld=String(state.nameSeamHeld);
   stage.dataset.renderStatus=state.renderStatus;
   const recoverable=['failed','unavailable','interrupted'].includes(state.speechStatus);
   activate.disabled=state.renderStatus!=='observed'||state.voiceSupported!==true||
