@@ -117,6 +117,35 @@ test('authored speech timing derives from observed playback clock, never a guess
   assert.deepEqual(events.map(x=>x.type),['SPEECH_STARTED','SPEECH_ENDED']);
 });
 
+test('a held Heart seam resumes the same qualified media clock after optional synthesis failure',async()=>{
+  let player;
+  class FakeAudio{
+    constructor(){player=this;this.paused=true;this.ended=false;
+      this.currentTime=0;this.handlers={};this.playCount=0;}
+    addEventListener(type,handler){this.handlers[type]=handler;}
+    play(){this.playCount++;this.paused=false;return Promise.resolve();}
+    pause(){this.paused=true;}
+    removeAttribute(){}load(){}
+    observe(type){this.handlers[type]?.();}
+  }
+  const events=[];
+  const engine=createVioletVoiceEngine({AudioCtor:FakeAudio,
+    baseURL:'https://jubicudis.github.io/'});
+  engine.playAuthored({src:'/site/audio/violet-heart-after-name.mp3',
+    token:14,emit:e=>events.push(e)});
+  player.observe('playing');
+  player.currentTime=62.352;
+  assert.equal(engine.holdAuthoredForName(14),true);
+  assert.equal(player.paused,true);
+  assert.equal(engine.sampleAuthoredClock(14),null);
+  assert.equal(engine.resumeHeldAuthored(14),true);
+  player.observe('playing');
+  assert.equal(player.playCount,2);
+  assert.equal(engine.sampleAuthoredClock(14).elapsedMs,62352);
+  assert.equal(events.filter(e=>e.type==='SPEECH_STARTED').length,2);
+  assert.equal(engine.activeSource(),'authored');
+});
+
 test('observed generated Heart welcome produces actual audio events and does not complete the whole presentation',()=>{
   let audio;
   class FakeAudio{
