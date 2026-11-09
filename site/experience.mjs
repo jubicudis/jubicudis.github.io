@@ -3,14 +3,14 @@ import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
 import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261109-metadata-seek-25';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
   VIOLET_TIMELINE_URL,VIOLET_HEART_CONTINUATION} from './violet-selected-voice.mjs?v=20261106-name-05';
-import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs?v=20261109-kokoro-heart-wasm-09';
+import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs?v=20261109-kokoro-singlethread-01';
 import {HEART_ENVELOPE_URL,validateHeartEnvelope,sampleMeasuredHeartEnvelope}
   from './violet-heart-envelope.mjs';
 
 import {prepareQualifiedTranslator,localizeApprovedOpening}
   from './violet-localization.mjs?v=20261109-multilingual-1';
 import {createBrowserKokoroAdapter}
-  from './violet-kokoro-multilingual.mjs?v=20261109-multilingual-1';
+  from './violet-kokoro-multilingual.mjs?v=20261109-kokoro-singlethread-01';
 import {OPENING_TRACKS,VISITOR_NAME_SLOT as NAME_SLOT}
   from './opening-script.mjs?v=20261108-name-slot-21';
 
