@@ -3,7 +3,7 @@
 .environment{position:relative;isolation:isolate;width:100%;height:100svh;min-height:480px;overflow:hidden;background:#080b1a;touch-action:pan-y}
 #world{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 .violet-activate{position:absolute;left:50%;top:45%;width:min(59vw,630px);height:min(58vw,570px);max-height:65svh;transform:translate(-50%,-50%);z-index:2;background:transparent;border:0;border-radius:50%;padding:0;outline-offset:-15px;touch-action:manipulation}
-.environment:not([data-phase="dormant"]) .violet-activate{pointer-events:none}
+.environment:not([data-phase="dormant"]):not([data-speech-status="failed"]):not([data-speech-status="unavailable"]):not([data-speech-status="interrupted"]) .violet-activate{pointer-events:none}
 .visitor-dialogue{position:absolute;z-index:4;bottom:max(3svh,env(safe-area-inset-bottom));left:50%;width:min(750px,calc(100% - 32px));transform:translateX(-50%);text-align:center;pointer-events:none}
 .visitor-dialogue[hidden],.name-form[hidden]{display:none!important}
 .violet-caption{margin:0 auto 14px;max-width:730px;font-size:clamp(1.13rem,2.1vw,1.58rem);font-weight:400;letter-spacing:-.008em;line-height:1.52;text-wrap:balance;text-shadow:0 2px 18px #050a25,0 0 25px rgba(125,84,200,.20);color:#f2edff}
