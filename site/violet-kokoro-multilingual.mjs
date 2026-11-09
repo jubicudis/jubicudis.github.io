@@ -42,13 +42,14 @@ export async function createBrowserKokoroAdapter(locale,{
         if(!Number.isFinite(value))throw new Error('Non-finite Kokoro PCM');
         peak=Math.max(peak,Math.abs(value));
       }
-      if(peak<.005||peak>1.1)
-        throw new Error('Kokoro generated silent or clipped PCM');
+      if(peak<.005)
+        throw new Error('Kokoro generated silent PCM');
+      const normalized=peak>1?Float32Array.from(pcm,x=>x/peak):pcm;
       return Object.freeze({
         voiceId:voice.voiceId,language:voice.language,
-        spokenText:text,sampleRate,pcm,
-        durationMs:pcm.length*1000/sampleRate,
-        wav:encodeSpeechWav({sampleRate,pcm}),
+        spokenText:text,sampleRate,pcm:normalized,
+        durationMs:normalized.length*1000/sampleRate,
+        wav:encodeSpeechWav({sampleRate,pcm:normalized}),
         visemes:Object.freeze([]),
         visemeStatus:'unavailable-without-observed-phoneme-alignment'
       });
