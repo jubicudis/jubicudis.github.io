@@ -398,7 +398,7 @@ function render(state,previous,event){
       :speechFailed?'Heart narration '+(state.speechStatus==='interrupted'
         ?'was interrupted.':'could not be played.')+
         (state.speechFailureReason?' '+state.speechFailureReason:'')
-      :nameSynthesisError?'On-device Heart name pronunciation unavailable; the approved narration continues without claiming your name was spoken. '+nameSynthesisError
+      :nameSynthesisError?'Named Heart narration could not be completed. Your name is retained; use Replay Violet to retry this named path. '+nameSynthesisError
       :'';
   dialogue.hidden=state.phase==='dormant';
   if(state.phase==='dormant')return;
