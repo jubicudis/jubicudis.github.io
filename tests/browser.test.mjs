@@ -303,6 +303,10 @@ try{
     'name insertion must not interrupt an already-started paragraph');
   assert.match(controllerSource,/if\(observedClock\)observeAuthoredPosition\(observedClock\)/,
     'sample the actual Heart audio clock during the existing scene frame');
+  assert.match(controllerSource,/if\(observation\)localizedFrameObserver\(observation\)/,
+    'localized PCM expression must follow the same observed scene-frame clock');
+  assert.match(controllerSource,/localizedFrameObserver=onPosition/,
+    'localized clip must own its active audio observation callback');
   assert.match(controllerSource,/const resumeAtMs=observation\.elapsedMs/,
     'Heart narration must resume at its observed position, not replay the cue');
   assert.match(controllerSource,/cueIndex:VISITOR_NAME_SLOT\.beforeCueIndex/,
