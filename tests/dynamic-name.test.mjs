@@ -63,31 +63,37 @@ test('unqualified outputs cannot masquerade as generated voice',()=>{
   unknown.data.visemes[2]='not-a-real-viseme';
   assert.throws(()=>validateHeartAudioResult([unknown],'Welcome'),/viseme/);
 });
-test('a single observed synthesis result selects Heart only; no alternate provider or invented narration',async()=>{
-  const calls=[],chunk=observedChunk();
-  class Runtime{
-    constructor(options){calls.push(['construct',options]);}
-    async connect(){calls.push(['connect']);}
-    async setup(config){calls.push(['setup',config]);}
-    async synthesize(data){calls.push(['synthesize',data]);return [chunk];}
-  }
+test('Kokoro WASM synthesizes the authorized Heart name without a worker',async()=>{
+  const calls=[];
+  const pcm=Float32Array.from({length:24000},(_,i)=>1.25*Math.sin(i*.1));
   const result=await synthesizeHeartName('Morgan',{
-    loadModule:async()=>({HeadTTS:Runtime}),browser:null
+    loadModule:async()=>({KokoroTTS:{
+      async from_pretrained(model,options){
+        calls.push([model,options]);
+        return {
+          async list_voices(){return ['af_heart'];},
+          async generate(text,options){
+            calls.push([text,options]);
+            return {audio:pcm,sampling_rate:24000};
+          }
+        };
+      }
+    }})
   });
   assert.equal(result.voiceId,'af_heart');
   assert.equal(result.spokenText,"Now, Morgan, let's take a closer look.");
   assert.equal(result.backend,'wasm');
+  assert.equal(result.engine,'kokoro-js');
   assert.equal(result.wav.byteLength,48044);
-  assert.deepEqual(calls[0][1].endpoints,['wasm']);
-  assert.deepEqual(calls[0][1].voices,['af_heart']);
-  assert.equal(calls[2][1].voice,'af_heart');
-  assert.equal(calls[3][1].input,result.spokenText);
+  assert.equal(result.visemes.length,0);
+  assert.equal(calls[0][1].device,'wasm');
+  assert.equal(calls[1][1].voice,'af_heart');
+  assert.ok(Math.max(...result.pcm)<=1);
 });
-test('synthesis refusal is preserved as an error, not an alternate spoken message',async()=>{
-  class Refuses{
-    async connect(){throw Error('actual model init failure');}
-  }
+test('Kokoro synthesis failures remain observable and never substitute another voice',async()=>{
   await assert.rejects(synthesizeHeartName('Morgan',{
-    loadModule:async()=>({HeadTTS:Refuses}),browser:null
+    loadModule:async()=>({KokoroTTS:{
+      async from_pretrained(){throw Error('actual model init failure');}
+    }})
   }),/actual model init failure/);
 });
