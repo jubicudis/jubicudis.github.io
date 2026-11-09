@@ -282,11 +282,15 @@ try{
     'renderer must not independently calculate idle A2 deformation');
   assert.match(controllerSource,/type:'IDLE_FRAME_OBSERVED'/);
   assert.match(controllerSource,/voice\.holdAuthoredForName\(state\.speechToken\)/,
-    'approved Heart track may pause only at an observed boundary after the generated name is ready');
+    'the approved name seam must hold the actual Heart player until synthesized speech is ready');
   assert.match(controllerSource,/pendingNameBoundary!==null&&ready\.nameSlotObserved/,
     'name generation completion must use an observed insertion boundary');
-  assert.match(controllerSource,/current\.nameSlotObserved&&current\.nameSynthesisStatus==='ready'/,
-    'the authored track must not be held while Heart name synthesis is unfinished');
+  assert.match(controllerSource,/if\(current\.nameSynthesisStatus==='ready'\)/,
+    'only qualified synthesis can start the generated line after the seam is held');
+  assert.match(controllerSource,/pendingNameBoundary=resumeAtMs/,
+    'the exact observed hold position is retained for continuation');
+  assert.doesNotMatch(controllerSource,/state\.nameSynthesisStatus==='ready'\)\{/,
+    'frame observation must not wait for synthesis readiness to notice the seam');
   assert.match(controllerSource,/cue\.index!==VISITOR_NAME_SLOT\.beforeCueIndex\)return/,
     'later narration cues must never become substitute name seams');
   assert.match(controllerSource,/observation\.elapsedMs-seamMs>250/,
