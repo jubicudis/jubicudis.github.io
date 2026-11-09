@@ -276,6 +276,12 @@ try{
     'renderer must use reducer-authorized motion as its only target');
   assert.match(recoverySource,/faceAssembly\.position\.set\(cx\+center\.x,cy\+center\.y/,
     'faceplate must follow the same material displacement as the body');
+  assert.match(recoverySource,/centerSurface:visualCapabilities\.getCenterSurface\(\)/,
+    'the actual A2 center material must share the ribbon deformation field');
+  assert.match(recoverySource,/updateFaceAttachments\(\)/,
+    'physical junctions must follow the same deformed body and faceplate');
+  assert.match(recoverySource,/new THREE\.TubeGeometry\(curve,18/,
+    'A2 faceplate and ribbons require curved material junctions, not an independent floating overlay');
   assert.match(recoverySource,/character\.position\.y=lift\*\.12/,
     'whole-body lift must derive from the qualified four-point field');
   assert.match(recoverySource,/character\.rotation\.z=\(smoothed\[1\]\.y-smoothed\[0\]\.y\)\*\.025/,
