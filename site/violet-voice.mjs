@@ -161,15 +161,38 @@ export function createVioletVoiceEngine({
       const session={kind:'authored',audio,token,emit,src:url.pathname,
         playing:false,onPosition};
       active=session;
+      const startPlayback=()=>{
+        if(active!==session)return;
+        let promise;
+        try{
+          if(startAtMs>0){
+            // The same media element previously contained the generated WAV.
+            // Its readyState may describe that OLD resource, so a seek before
+            // the new MP3's metadata is loaded is not an authorized resume.
+            audio.currentTime=startAtMs/1000;
+          }
+          promise=audio.play();
+        }catch(error){
+          if(active===session){
+            active=null;
+            emitSafely(emit,{type:'SPEECH_FAILED',token,reason:String(error?.message||error)});
+          }
+          return;
+        }
+        if(promise&&typeof promise.catch==='function')promise.catch(error=>{
+          if(active===session){
+            active=null;
+            emitSafely(emit,{type:'SPEECH_FAILED',token,reason:String(error?.message||error)});
+          }
+        });
+      };
       if(startAtMs>0){
-        const seek=()=>{if(active===session)audio.currentTime=startAtMs/1000;};
-        if(audio.readyState>=1)seek();
-        else audio.addEventListener('loadedmetadata',seek,{once:true});
-      }
-      const promise=audio.play();
-      if(promise&&typeof promise.catch==='function')promise.catch(error=>{
-        if(active===session){active=null;emitSafely(emit,{type:'SPEECH_FAILED',token,reason:String(error?.message||error)});}
-      });
+        // Never play the beginning of the authored recording while Safari
+        // is still loading the resumed source. Metadata belongs to this
+        // source only, and the seek is performed before the play request.
+        audio.addEventListener('loadedmetadata',startPlayback,{once:true});
+        audio.load();
+      }else startPlayback();
       return Object.freeze({source:'authored',token,src:url.pathname});
     }catch(error){
       active=null;
