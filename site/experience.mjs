@@ -169,7 +169,7 @@ function playApprovedTrack(state,{resumeAtMs=0,continueAfterGenerated=false}={})
     // player, but must never shift the approved line or its continuation.
     if(observation.elapsedMs<seamMs)return;
     const resumeAtMs=seamMs;
-    if(voice.holdAuthoredForName(state.speechToken)){
+    if(voice.holdAuthoredForName(state.speechToken,resumeAtMs)){
       // The first sound after the generated name is exactly cue 8,
       // regardless of how late WebKit delivered its playback observation.
       pendingNameBoundary=resumeAtMs;
