@@ -1,4 +1,4 @@
-import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261109-flow-phase-28';
+import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261109-language-fallback-29';
 import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
 import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261109-metadata-seek-25';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
@@ -244,7 +244,7 @@ function requestNameInsertion(state,resumeAtMs,evidenceType){
 }
 
 async function beginSpeech(state){
-  if(localizedPresentation){
+  if(localizedPresentation&&state.presentationLocale===localizedPresentation.locale){
     await playLocalizedTrack(state);
     return;
   }
@@ -456,8 +456,12 @@ const narrationReady=(async()=>{
     }
     timeline=parsed;
     envelope=measured;
-    if(store.getState().browserLocale?.split('-')[0]==='en')
-      store.dispatch({type:'VOICE_AVAILABLE',value:true});
+    // The existing approved English recording is playable independently
+    // of an optional mobile translation-model download.
+    store.dispatch({type:'VOICE_AVAILABLE',value:true});
+    if(store.getState().languageStatus==='unavailable')
+      store.dispatch({type:'ENGLISH_NARRATION_FALLBACK',
+        evidence:{type:'approved-english-audio-qualified'}});
   }catch(error){
     narrationLoadFailure=String(error?.message||error);
     if(store.getState().browserLocale?.split('-')[0]==='en')
@@ -480,7 +484,8 @@ const localizedReady=(async()=>{
     store.dispatch({type:'VOICE_AVAILABLE',value:true});
   }catch(error){
     localizedFailure=String(error?.message||error);
-    store.dispatch({type:'VOICE_AVAILABLE',value:false});
+    // Keep the qualified English audio active; translation failure must
+    // never disable the only working activation path.
     render(store.getState(),store.getState());
   }
 })();
