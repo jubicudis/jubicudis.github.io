@@ -88,17 +88,16 @@ export async function localizeApprovedOpening(openingTracks,nameSlot,translator)
     }
     tracks[track]=Object.freeze(translated);
   }
-  const template='Now, {visitor}, let\'s take a closer look.';
-  // Translation models often rewrite or drop brace-delimited tokens.
-  // Keep the visitor's literal name out of model translation. A model
-  // that drops the marker must not manufacture a successful named line.
-  const marker='JUBI_VISITOR_NAME_TOKEN';
-  let named=await translator.translate(template.replace('{visitor}',marker));
-  if(!named.includes(marker))
-    throw new Error('Translation did not preserve the authorized name slot');
-  named=named.replace(marker,'{visitor}');
-  if(!named.includes('{visitor}'))
-    throw new Error('Translated name invitation must retain the visitor placeholder');
+  // Translate the two authorized clauses separately. The visitor name
+  // never enters the translation model, so no opaque placeholder can be
+  // dropped, rewritten, or mispronounced as part of the sentence.
+  const [opening,invitation]=await Promise.all([
+    translator.translate('Now,'),
+    translator.translate("let's take a closer look.")
+  ]);
+  if(!opening.trim()||!invitation.trim())
+    throw new Error('Translated name invitation is incomplete');
+  const named=opening.trim()+' {visitor}, '+invitation.trim();
   return Object.freeze({
     locale:translator.locale,tracks:Object.freeze(tracks),
     nameLine:visitorName=>named.replace('{visitor}',visitorName),
