@@ -27,6 +27,7 @@ let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameA
 let preparedName=null,nameSynthesisError=null,pendingNameBoundary=null;
 let localizedPresentation=null,localizedAdapter=null,localizedFailure=null;
 let observeAuthoredPosition=null;
+let localizedFrameObserver=null;
 const store=createOpeningStore(render);
 const observedBrowserLocale=(navigator.languages||[])
   .find(value=>typeof value==='string'&&value.trim())||
@@ -62,6 +63,7 @@ async function playLocalizedTrack(state){
   }catch(error){
     if(store.getState().speechToken!==token)return;
     localizedFailure=String(error?.message||error);
+    localizedFrameObserver=null;
     voice.cancel('localized-narration-failed');
     store.dispatch({type:'SPEECH_FAILED',token,reason:localizedFailure});
   }
@@ -73,6 +75,28 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
   if(name)store.dispatch({type:'NAME_SYNTHESIS_READY',token});
   await new Promise((resolve,reject)=>{
     let started=false,cueObserved=false;
+    const onPosition=observation=>{
+      if(!observation?.playing||observation.source!=='observed-generated-heart-audio')return;
+      if(!cueObserved&&Number.isInteger(cueIndex)){
+        cueObserved=true;
+        store.dispatch({type:'LOCALIZED_CUE_OBSERVED',token,
+          evidence:{type:'localized-pcm-cue-playing',cueIndex}});
+      }
+      const start=Math.min(generated.pcm.length-1,
+        Math.floor(observation.elapsedMs*generated.sampleRate/1000));
+      const end=Math.min(generated.pcm.length,start+
+        Math.max(1,Math.floor(generated.sampleRate*.02)));
+      let sum=0;
+      for(let i=start;i<end;i++)sum+=generated.pcm[i]*generated.pcm[i];
+      const level=Math.min(255,Math.round(Math.sqrt(sum/(end-start))*255));
+      const current=store.getState();
+      if(current.localizedAudioPositionMs===observation.elapsedMs&&
+         current.observedAudioLevel===level)return;
+      store.dispatch({type:'LOCALIZED_AUDIO_FRAME_OBSERVED',token,
+        evidence:{type:'localized-pcm-clock-observed',playing:true,
+          elapsedMs:observation.elapsedMs,level}});
+    };
+    localizedFrameObserver=onPosition;
     const session=voice.playGenerated({
       wav:generated.wav,token,
       emit:event=>{
@@ -98,31 +122,18 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
           reject(new Error(event.reason||'Localized audio unavailable'));
         }
       },
-      onPosition:observation=>{
-        if(!observation?.playing||observation.source!=='observed-generated-heart-audio')return;
-        if(!cueObserved&&Number.isInteger(cueIndex)){
-          cueObserved=true;
-          store.dispatch({type:'LOCALIZED_CUE_OBSERVED',token,
-            evidence:{type:'localized-pcm-cue-playing',cueIndex}});
-        }
-        const start=Math.min(generated.pcm.length-1,
-          Math.floor(observation.elapsedMs*generated.sampleRate/1000));
-        const end=Math.min(generated.pcm.length,start+
-          Math.max(1,Math.floor(generated.sampleRate*.02)));
-        let sum=0;
-        for(let i=start;i<end;i++)sum+=generated.pcm[i]*generated.pcm[i];
-        const level=Math.min(255,Math.round(Math.sqrt(sum/(end-start))*255));
-        store.dispatch({type:'LOCALIZED_AUDIO_FRAME_OBSERVED',token,
-          evidence:{type:'localized-pcm-clock-observed',playing:true,
-            elapsedMs:observation.elapsedMs,level}});
-      },
+      onPosition,
       onEnded:()=>{
+        if(localizedFrameObserver===onPosition)localizedFrameObserver=null;
         if(name)store.dispatch({type:'NAME_AUDIO_ENDED',token,
           evidence:{type:'observed-generated-heart-ended',assetId:'generated-heart:'+token}});
         started?resolve():reject(new Error('Localized audio ended without playing'));
       }
     });
-    if(!session)reject(new Error('Localized audio playback unavailable'));
+    if(!session){
+      if(localizedFrameObserver===onPosition)localizedFrameObserver=null;
+      reject(new Error('Localized audio playback unavailable'));
+    }
   });
 }
 
@@ -331,6 +342,10 @@ function observeApprovedSpeechFrame(){
   });
 }
 function observeSpeechFrame(){
+  if(localizedFrameObserver&&voice.activeSource()==='generated'){
+    const observation=voice.sampleGeneratedClock(store.getState().speechToken);
+    if(observation)localizedFrameObserver(observation);
+  }
   observeGeneratedSpeechFrame();
   observeApprovedSpeechFrame();
 }
@@ -386,7 +401,7 @@ document.addEventListener('visibilitychange',()=>{
   const current=store.getState();
   if(current.speechStatus==='pending'&&current.nameDecision==='provided')
     store.dispatch({type:'SPEECH_INTERRUPTED',token:current.speechToken});
-  activeNameAudio=null;preparedName=null;
+  activeNameAudio=null;preparedName=null;localizedFrameObserver=null;
   voice.cancel('page-hidden');
 });
 
