@@ -8,9 +8,9 @@ import {HEART_ENVELOPE_URL,validateHeartEnvelope,sampleMeasuredHeartEnvelope}
   from './violet-heart-envelope.mjs';
 
 import {prepareQualifiedTranslator,localizeApprovedOpening}
-  from './violet-localization.mjs?v=20261109-multilingual-1';
+  from './violet-localization.mjs?v=20261109-multilingual-repair-2';
 import {createBrowserKokoroAdapter}
-  from './violet-kokoro-multilingual.mjs?v=20261109-kokoro-singlethread-01';
+  from './violet-kokoro-multilingual.mjs?v=20261109-pcm-normalize-02';
 import {OPENING_TRACKS,VISITOR_NAME_SLOT as NAME_SLOT}
   from './opening-script.mjs?v=20261108-name-slot-21';
 
@@ -457,12 +457,8 @@ const narrationReady=(async()=>{
     }
     timeline=parsed;
     envelope=measured;
-    // The existing approved English recording is playable independently
-    // of an optional mobile translation-model download.
-    store.dispatch({type:'VOICE_AVAILABLE',value:true});
-    if(store.getState().languageStatus==='unavailable')
-      store.dispatch({type:'ENGLISH_NARRATION_FALLBACK',
-        evidence:{type:'approved-english-audio-qualified'}});
+    if(store.getState().browserLocale?.split('-')[0]==='en')
+      store.dispatch({type:'VOICE_AVAILABLE',value:true});
   }catch(error){
     narrationLoadFailure=String(error?.message||error);
     if(store.getState().browserLocale?.split('-')[0]==='en')
@@ -485,8 +481,7 @@ const localizedReady=(async()=>{
     store.dispatch({type:'VOICE_AVAILABLE',value:true});
   }catch(error){
     localizedFailure=String(error?.message||error);
-    // Keep the qualified English audio active; translation failure must
-    // never disable the only working activation path.
+    store.dispatch({type:'VOICE_AVAILABLE',value:false});
     render(store.getState(),store.getState());
   }
 })();
