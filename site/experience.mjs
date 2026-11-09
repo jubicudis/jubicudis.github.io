@@ -8,7 +8,7 @@ import {HEART_ENVELOPE_URL,validateHeartEnvelope,sampleMeasuredHeartEnvelope}
   from './violet-heart-envelope.mjs';
 
 import {prepareQualifiedTranslator,localizeApprovedOpening}
-  from './violet-localization.mjs?v=20261109-multilingual-repair-2';
+  from './violet-localization.mjs?v=20261109-strict-engine-03';
 import {createBrowserKokoroAdapter}
   from './violet-kokoro-multilingual.mjs?v=20261109-pcm-normalize-02';
 import {OPENING_TRACKS,VISITOR_NAME_SLOT as NAME_SLOT}
@@ -269,8 +269,8 @@ async function beginSpeech(state){
     preparedName=generated;
     store.dispatch({type:'NAME_SYNTHESIS_READY',token});
     const ready=store.getState();
-    // The approved paragraph seam is held until this synthesis is ready.
-    // Only an actually observed track end can authorize the fallback.
+    // The approved paragraph seam is held until synthesis is ready.
+    // No alternate insertion location is authorized.
     if(pendingNameBoundary!==null&&ready.nameSlotObserved&&
        ready.nameInsertionStatus==='waiting'&&ready.speechStatus==='speaking')
       requestNameInsertion(ready,pendingNameBoundary,
@@ -391,8 +391,7 @@ function render(state,previous,event){
   const speechFailed=['failed','unavailable','interrupted'].includes(state.speechStatus);
   const englishNarration=state.browserLocale?.split('-')[0]==='en';
   audioFailure.hidden=!(englishNarration&&narrationLoadFailure)&&
-    !speechFailed&&!nameSynthesisError&&
-    !(localizedFailure&&state.presentationLocale!=='en-US')&&
+    !speechFailed&&!nameSynthesisError&&!localizedFailure&&
     state.languageStatus!=='unavailable';
   if(!audioFailure.hidden)
     audioFailure.textContent=state.languageStatus==='unavailable'
