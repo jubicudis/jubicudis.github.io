@@ -1,6 +1,6 @@
-import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261109-held-pose-24';
+import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261109-name-failure-25';
 import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
-import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261108-name-slot-21';
+import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261109-resume-held-22';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
   VIOLET_TIMELINE_URL,VIOLET_HEART_CONTINUATION} from './violet-selected-voice.mjs?v=20261106-name-05';
 import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs?v=20261107-name-slot-08';
@@ -186,7 +186,8 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
     token:state.speechToken,startAtMs:resumeAtMs,
     emit:event=>{
       if(event.type==='SPEECH_ENDED'&&state.nameDecision==='provided'&&
-         !store.getState().nameAudioCompleted){
+         !store.getState().nameAudioCompleted&&
+         store.getState().nameSynthesisStatus!=='failed'){
         store.dispatch({type:'AUTHORED_TRACK_ENDED',token:state.speechToken,
           evidence:{type:'authored-track-ended-observed'}});
         const current=store.getState();
@@ -274,15 +275,20 @@ async function beginSpeech(state){
        ready.speechStatus==='speaking')
       requestNameInsertion(ready,null,'authored-track-ended-observed');
   }catch(error){
-    // A provided name is a required part of this named-visitor path.
-    // Failure is explicit: never silently finish the unnamed narration
-    // while claiming the requested personalization succeeded.
+    // The independently observed recorded Heart track must remain audible
+    // when the optional on-device pronunciation model cannot initialize.
+    // Report the failure; never claim the visitor's name was spoken.
     const current=store.getState();
     if(current.speechToken!==token||current.nameDecision!=='provided')return;
-    nameSynthesisError=String(error?.message||error);
+    nameSynthesisError=String(error?.name||'Error')+': '+String(error?.message||error);
     console.error('Selected Heart name synthesis failed',error);
-    store.dispatch({type:'SPEECH_FAILED',token,reason:nameSynthesisError});
-    voice.cancel('required Heart name generation failed');
+    store.dispatch({type:'NAME_SYNTHESIS_FAILED',token,reason:nameSynthesisError});
+    if(pendingNameBoundary!==null){
+      pendingNameBoundary=null;
+      if(!voice.resumeHeldAuthored(token))
+        store.dispatch({type:'SPEECH_FAILED',token,
+          reason:'Heart narration could not resume after name synthesis failed'});
+    }
   }finally{
     if(constrained)scene?.setInferenceMode?.(false);
   }
@@ -374,8 +380,10 @@ function render(state,previous){
       :englishNarration&&narrationLoadFailure
       ?'Heart narration is unavailable. '+narrationLoadFailure
       :speechFailed?'Heart narration '+(state.speechStatus==='interrupted'
-        ?'was interrupted.':'could not be played.')
-      :'The selected Heart voice could not synthesize your name on this device. '+nameSynthesisError;
+        ?'was interrupted.':'could not be played.')+
+        (state.speechFailureReason?' '+state.speechFailureReason:'')
+      :nameSynthesisError?'On-device Heart name pronunciation unavailable; the approved narration continues without claiming your name was spoken. '+nameSynthesisError
+      :'';
   dialogue.hidden=state.phase==='dormant';
   if(state.phase==='dormant')return;
   // Captions remain inside the shared presentation, not a separate chat UI.
