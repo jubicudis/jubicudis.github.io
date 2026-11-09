@@ -26,6 +26,7 @@ const audioFailure=document.getElementById('audio-failure');
 let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameAudio=null;
 let preparedName=null,nameSynthesisError=null,pendingNameBoundary=null;
 let localizedPresentation=null,localizedAdapter=null,localizedFailure=null;
+let qualifiedFirstLocalizedClip=null;
 let observeAuthoredPosition=null;
 let localizedFrameObserver=null;
 const store=createOpeningStore(render);
@@ -69,7 +70,13 @@ async function playLocalizedTrack(state){
   }
 }
 async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueIndex=null}={}){
-  const generated=await localizedAdapter.synthesize(text);
+  // The first clip was actually synthesized and validated before activation.
+  // Reuse that observed PCM instead of delaying the first Safari play()
+  // behind model inference after the visitor gesture.
+  const first=qualifiedFirstLocalizedClip;
+  const generated=first&&first.text===text
+    ?first.audio:await localizedAdapter.synthesize(text);
+  if(first&&first.text===text)qualifiedFirstLocalizedClip=null;
   if(store.getState().speechToken!==token||document.hidden)
     throw new Error('Localized narration session interrupted');
   if(name)store.dispatch({type:'NAME_SYNTHESIS_READY',token});
@@ -479,6 +486,13 @@ const localizedReady=(async()=>{
       localizeApprovedOpening(OPENING_TRACKS,NAME_SLOT,translator),
       createBrowserKokoroAdapter(locale)
     ]);
+    // Qualified readiness includes the ability to produce actual audible
+    // PCM for the first approved cue, not merely loading a model handle.
+    const firstText=presentation.tracks['asking-name'][0].text;
+    const firstAudio=await adapter.synthesize(firstText);
+    if(!(firstAudio.wav instanceof ArrayBuffer)||firstAudio.wav.byteLength<=44)
+      throw new Error('Localized first cue produced no playable audio');
+    qualifiedFirstLocalizedClip={text:firstText,audio:firstAudio};
     localizedPresentation=presentation;
     localizedAdapter=adapter;
     store.dispatch({type:'LOCALIZED_NARRATION_READY',
@@ -486,6 +500,7 @@ const localizedReady=(async()=>{
     store.dispatch({type:'VOICE_AVAILABLE',value:true});
   }catch(error){
     localizedFailure=String(error?.message||error);
+    qualifiedFirstLocalizedClip=null;
     store.dispatch({type:'LOCALIZED_NARRATION_FAILED',
       locale,reason:localizedFailure});
     store.dispatch({type:'VOICE_AVAILABLE',value:false});
