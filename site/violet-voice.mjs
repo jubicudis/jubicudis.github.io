@@ -222,6 +222,22 @@ export function createVioletVoiceEngine({
     active.playing=false;
     return true;
   }
+  // Resume only a genuinely held authored session. The same media element,
+  // source and clock remain authoritative; no restart or replacement voice.
+  function resumeHeldAuthored(token){
+    const session=active;
+    if(!session||session.kind!=='authored'||session.token!==token||
+       !session.audio.paused||session.audio.ended)return false;
+    const request=session.audio.play();
+    if(request&&typeof request.catch==='function')
+      request.catch(error=>{
+        if(active!==session)return;
+        active=null;
+        emitSafely(session.emit,{type:'SPEECH_FAILED',token,
+          reason:'Heart resume rejected: '+String(error?.name||error?.message||error)});
+      });
+    return true;
+  }
   function sampleGeneratedClock(token){
     if(!active||active.kind!=='generated'||active.token!==token||
        !active.playing||active.audio.paused===true||active.audio.ended===true)
@@ -245,7 +261,7 @@ export function createVioletVoiceEngine({
       token,playing:true,elapsedMs:Math.floor(seconds*1000)});
   }
   return Object.freeze({
-    speakBrowser,playAuthored,playGenerated,holdAuthoredForName,cancel,
+    speakBrowser,playAuthored,playGenerated,holdAuthoredForName,resumeHeldAuthored,cancel,
     sampleAuthoredClock,sampleGeneratedClock,
     availableVoices:()=>typeof synthesis?.getVoices==='function'
       ?synthesis.getVoices().map(voiceDescriptor):[],
