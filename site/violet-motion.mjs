@@ -47,6 +47,18 @@ export function createBloomMotionCapabilities({structureSurface,artWidth,artHeig
     y:(.5-p.y/heightPx)*artHeight
   }));
   let requested=ZERO_BLOOM_MOTION;
+  function displacementAt(x,y){
+    const solved=solveCoupledMotion(requested);
+    const radius=Math.min(artWidth,artHeight)*.27;
+    const radiusSq=radius*radius;
+    let dx=0,dy=0,sum=0;
+    for(let j=0;j<4;j++){
+      const d2=(x-anchors[j].x)**2+(y-anchors[j].y)**2;
+      const w=Math.exp(-d2/(2*radiusSq));
+      dx+=w*solved[j].x;dy+=w*solved[j].y;sum+=w;
+    }
+    return Object.freeze({x:dx/Math.max(1,sum),y:dy/Math.max(1,sum)});
+  }
   function apply(influences){
     const input=validateBloomMotion(influences);
     const solved=solveCoupledMotion(input);
@@ -79,7 +91,7 @@ export function createBloomMotionCapabilities({structureSurface,artWidth,artHeig
       influenceCount:4,solved});
   }
   return Object.freeze({
-    apply,readRequested:()=>requested,readGeometry:()=>structureSurface.geometry,
+    apply,displacementAt,readRequested:()=>requested,readGeometry:()=>structureSurface.geometry,
     reset:()=>apply(ZERO_BLOOM_MOTION)
   });
 }
