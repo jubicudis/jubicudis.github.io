@@ -292,6 +292,11 @@ test('visitor-name handoff keeps the same media player and narration token witho
     audio.fire('ended');
     assert.equal(instances.length,1);
     assert.equal(engine.activeSource(),'authored');
+    assert.equal(audio.paused,true,
+      'resumed Heart must not start until new MP3 metadata is observed');
+    audio.fire('loadedmetadata');
+    assert.equal(audio.paused,false,
+      'metadata-qualified seek precedes continuation playback');
     assert.equal(audio.currentTime,62);
     assert.equal(events.includes('SPEECH_INTERRUPTED'),false,
       'source handoff is not a new visitor command or an interruption');
