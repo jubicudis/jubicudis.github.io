@@ -222,6 +222,19 @@ test('failed optional iPhone name inference does not invalidate observed recorde
   assert.equal(state.speechStatus,'completed');
   assert.equal(state.nameAudioCompleted,false,
     'narration ending must not fabricate successful name pronunciation');
+  let late=step(finishQuestion(),'GIVE_NAME',{name:'Morgan'});
+  const lateToken=late.speechToken;
+  late=step(late,'SPEECH_STARTED',{token:lateToken});
+  late=step(late,'NAME_SYNTHESIS_STARTED',{token:lateToken});
+  late=step(late,'AUTHORED_TRACK_ENDED',{token:lateToken,
+    evidence:{type:'authored-track-ended-observed'}});
+  late=step(late,'NAME_SYNTHESIS_FAILED',{token:lateToken,
+    reason:'HeadTTS unavailable'});
+  assert.equal(late.authoredAudioEnded,true);
+  assert.equal(late.nameSynthesisStatus,'failed');
+  late=step(late,'SPEECH_ENDED',{token:lateToken});
+  assert.equal(late.speechStatus,'completed');
+  assert.equal(late.nameAudioCompleted,false);
 });
 
 test('held approved name seam keeps captions and expression aligned until Heart actually plays',()=>{
