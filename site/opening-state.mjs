@@ -167,6 +167,25 @@ export function reduceOpening(state,event){
           observedSpeechPose:null,observedAudioLevel:0,nameAudioCompleted:false,nameAudioPlaying:false,
           nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',nameSlotObserved:false,nameSeamHeld:false,authoredAudioEnded:false};
       break;
+    case 'RETRY_SPEECH':
+      // A visitor gesture authorizes replay of the same approved track.
+      // No automatic retry invents an observed outcome or bypasses WebKit.
+      if(['failed','unavailable','interrupted'].includes(state.speechStatus)&&
+         state.track&&state.renderStatus==='observed'&&
+         state.voiceSupported===true&&state.languageStatus==='qualified'){
+        const first=OPENING_TRACKS[state.track][0];
+        patch={phase:first.phase,cueIndex:0,enteredAt:when,
+          speaking:false,speechStatus:'pending',speechFailureReason:null,
+          speechToken:state.speechToken+1,
+          playbackPositionMs:null,generatedPositionMs:null,
+          envelopePositionMs:null,localizedAudioPositionMs:null,
+          observedSpeechPose:null,observedAudioLevel:0,
+          nameAudioCompleted:false,nameAudioPlaying:false,
+          nameSynthesisStatus:'not-requested',
+          nameInsertionStatus:'not-requested',nameSlotObserved:false,
+          nameSeamHeld:false,authoredAudioEnded:false};
+      }
+      break;
     case 'GIVE_NAME':
       if(!nameChoiceReady(state)||typeof event.name!=='string')break;
       {
