@@ -448,6 +448,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         mesh.geometry.computeBoundingSphere();
       }
     }
+    let state={phase:'dormant',speaking:false,flowPhase:0};
     updateFaceAttachments();
     // Explicit observation requests are served after a real WebGL draw.
     // No independent timer decides when to inspect the scene.
@@ -459,7 +460,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     function rejectObservations(reason){
       for(const item of pendingObservations.splice(0))item.reject(reason);
     }
-    let state={phase:'dormant',speaking:false},live=true,observed=false,failed=false,frameCount=0,previousExpression='';
+    let live=true,observed=false,failed=false,frameCount=0,previousExpression='';
     const start=performance.now(),reduced=matchMedia('(prefers-reduced-motion: reduce)');
     // The approved A2 scene does not require 60 GPU submissions per second.
     // Bound actual WebGL work on iOS to 30 Hz while the narration clock
