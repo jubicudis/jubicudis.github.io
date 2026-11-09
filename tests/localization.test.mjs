@@ -15,8 +15,7 @@ test('on-device translator localizes every approved paragraph without replacing 
       assert.equal(sourceLanguage,'en');assert.equal(targetLanguage,'es');return 'available';
     },
     create:async()=>({translate:async text=>
-      text.replace('Now, JUBI_VISITOR_NAME_TOKEN, let\'s take a closer look.',
-        'Ahora, JUBI_VISITOR_NAME_TOKEN, veamos más de cerca.').replace(/^/,'ES: ')})
+      text.replace('Now,','Ahora,').replace("let's take a closer look.",'veamos más de cerca.').replace(/^/,'ES: ')})
   };
   const translator=await prepareDeviceTranslator('es-VE',{TranslatorAPI:api});
   const localized=await localizeApprovedOpening(OPENING_TRACKS,VISITOR_NAME_SLOT,translator);
@@ -29,10 +28,10 @@ test('unsupported on-device translation is explicit, never fabricated',async()=>
   await assert.rejects(()=>prepareDeviceTranslator('ja-JP',{TranslatorAPI:null}),
     /does not provide on-device translation/);
 });
-test('translated invitation fails qualification if model drops visitor placeholder',async()=>{
+test('visitor name is inserted after translation and never sent through the model',async()=>{
   const t={locale:'fr-FR',translate:async text=>text.includes('{visitor}')?'Bonjour':text};
-  await assert.rejects(()=>localizeApprovedOpening(OPENING_TRACKS,VISITOR_NAME_SLOT,t),
-    /name slot/);
+  const localized=await localizeApprovedOpening(OPENING_TRACKS,VISITOR_NAME_SLOT,t);
+  assert.match(localized.nameLine('Morgan'),/Morgan/);
 });
 
 test('localized approved script is authorized by the reducer and shown in captions',async()=>{
