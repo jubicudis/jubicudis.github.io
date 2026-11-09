@@ -1,6 +1,6 @@
 import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261109-language-state-30';
 import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
-import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261109-metadata-seek-25';
+import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261109-gesture-prime-26';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
   VIOLET_TIMELINE_URL,VIOLET_HEART_CONTINUATION} from './violet-selected-voice.mjs?v=20261106-name-05';
 import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs?v=20261109-kokoro-singlethread-01';
@@ -8,9 +8,9 @@ import {HEART_ENVELOPE_URL,validateHeartEnvelope,sampleMeasuredHeartEnvelope}
   from './violet-heart-envelope.mjs';
 
 import {prepareQualifiedTranslator,localizeApprovedOpening}
-  from './violet-localization.mjs?v=20261109-strict-engine-03';
+  from './violet-localization.mjs?v=20261109-name-clauses-04';
 import {createBrowserKokoroAdapter}
-  from './violet-kokoro-multilingual.mjs?v=20261109-pcm-normalize-02';
+  from './violet-kokoro-multilingual.mjs?v=20261109-catalog-03';
 import {OPENING_TRACKS,VISITOR_NAME_SLOT as NAME_SLOT}
   from './opening-script.mjs?v=20261108-name-slot-21';
 
@@ -419,6 +419,7 @@ activate.addEventListener('click',()=>{
   const state=store.getState();
   if(state.renderStatus!=='observed'||state.voiceSupported!==true||
      state.languageStatus!=='qualified')return;
+  if(localizedPresentation)voice.primeGeneratedPlayback();
   if(['failed','unavailable','interrupted'].includes(state.speechStatus))
     store.dispatch({type:'RETRY_SPEECH'});
   else if(state.phase==='dormant')
@@ -426,9 +427,13 @@ activate.addEventListener('click',()=>{
 });
 form.addEventListener('submit',event=>{
   event.preventDefault();
+  if(localizedPresentation)voice.primeGeneratedPlayback();
   store.dispatch({type:'GIVE_NAME',name:nameInput.value});
 });
-skip.addEventListener('click',()=>store.dispatch({type:'SKIP_NAME'}));
+skip.addEventListener('click',()=>{
+  if(localizedPresentation)voice.primeGeneratedPlayback();
+  store.dispatch({type:'SKIP_NAME'});
+});
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden)return;
   const current=store.getState();
