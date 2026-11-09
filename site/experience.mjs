@@ -78,7 +78,7 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false}={}){
       evidence:{type:'localized-pcm-cue-playing',cueIndex}});
   }
   await new Promise((resolve,reject)=>{
-    let started=false;
+    let started=false,cueObserved=false;
     const session=voice.playGenerated({
       wav:generated.wav,token,
       emit:event=>{
@@ -93,6 +93,11 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false}={}){
       },
       onPosition:observation=>{
         if(!observation?.playing||observation.source!=='observed-generated-heart-audio')return;
+        if(!cueObserved&&Number.isInteger(cueIndex)){
+          cueObserved=true;
+          store.dispatch({type:'LOCALIZED_CUE_OBSERVED',token,
+            evidence:{type:'localized-pcm-cue-playing',cueIndex}});
+        }
         const start=Math.min(generated.pcm.length-1,
           Math.floor(observation.elapsedMs*generated.sampleRate/1000));
         const end=Math.min(generated.pcm.length,start+
