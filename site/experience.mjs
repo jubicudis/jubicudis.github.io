@@ -1,4 +1,4 @@
-import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261109-name-failure-25';
+import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261109-articulated-a2-26';
 import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
 import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261109-resume-held-22';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
@@ -475,7 +475,7 @@ const localizedReady=(async()=>{
 })();
 store.dispatch({type:'RENDER_STARTED'});
 try{
-  const {createVioletEnvironment}=await import('./violet-environment.mjs?v=20261109-state-driven-motion-27');
+  const {createVioletEnvironment}=await import('./violet-environment.mjs?v=20261109-connected-a2-28');
   scene=await createVioletEnvironment(document.getElementById('world'),{
     onObserved:evidence=>store.dispatch({type:'RENDER_OBSERVED',evidence}),
     onFailure:error=>store.dispatch({type:'RENDER_FAILED',reason:error.message||String(error)}),
