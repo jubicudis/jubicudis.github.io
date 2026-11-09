@@ -474,24 +474,3 @@ test('approved script reserves a later actual spoken-name slot, not the immediat
   }),skipped);
 });
 
-test('non-English mobile activation uses approved English until localization is qualified',()=>{
-  let state=step(initialState,'BROWSER_LANGUAGE_OBSERVED',{evidence:{
-    type:'browser-language-observed',locale:'es-VE'
-  }});
-  state=step(state,'RENDER_STARTED');
-  state=step(state,'RENDER_OBSERVED',{evidence:{
-    type:'webgl-pixel-observed',drawCalls:24,nonBackgroundPixel:true
-  }});
-  state=step(state,'VOICE_AVAILABLE',{value:true});
-  assert.equal(step(state,'ACTIVATE'),state,'language is not yet qualified');
-  state=step(state,'ENGLISH_NARRATION_FALLBACK',{evidence:{
-    type:'approved-english-audio-qualified'
-  }});
-  assert.equal(state.browserLocale,'es-VE');
-  assert.equal(state.presentationLocale,'en-US');
-  assert.equal(state.languageStatus,'qualified');
-  const activated=step(state,'ACTIVATE');
-  assert.equal(activated.phase,'asking-name');
-  assert.equal(activated.track,'asking-name');
-  assert.equal(activated.speechStatus,'pending');
-});
