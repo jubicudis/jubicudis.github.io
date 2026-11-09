@@ -161,6 +161,8 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
     const resumeAtMs=observation.elapsedMs;
     if(voice.holdAuthoredForName(state.speechToken)){
       pendingNameBoundary=resumeAtMs;
+      store.dispatch({type:'NAME_SEAM_HELD',token:state.speechToken,
+        evidence:{type:'authored-media-paused-at-name-seam'}});
       const current=store.getState();
       if(current.nameSynthesisStatus==='ready')
         requestNameInsertion(current,resumeAtMs,
