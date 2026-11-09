@@ -8,23 +8,20 @@ import {OPENING_TRACKS,VISITOR_NAME_SLOT,openingTrackForPhase,visibleOpeningSegm
 // Four physical A2 structural influences are derived from actual observed
 // Heart sound energy, not an independent animation timer or page phase guess.
 const STILL_BLOOM=Object.freeze(Array.from({length:4},()=>Object.freeze({x:0,y:0})));
-function bloomFromObservedAudio(state){
-  if(!state.speaking||!state.observedSpeechPose)return STILL_BLOOM;
-  const pose=state.observedSpeechPose;
-  const level=state.observedAudioLevel;
-  if(!Number.isFinite(level)||level<=0)return STILL_BLOOM;
-  const strength=Math.min(.16,level/255*.16);
-  const wide=pose==='viseme-wide',round=pose==='viseme-round';
-  const open=pose==='viseme-open'||wide||round;
-  // Observed articulation bends the upper and lower ribbon roots in
-  // complementary directions. It never inflates all four corners as one
-  // breathing balloon; the faceplate and its junctions follow this field.
-  const articulation=open?1:.45;
+// Sculptural ribbon flow is independent of narration, mouth shapes and PCM.
+// The observed animation frame supplies elapsed time; only the reducer
+// establishes the field. Four phased bends travel through the structure.
+function ribbonFlowAt(elapsedMs,reducedMotion=false){
+  if(reducedMotion)return STILL_BLOOM;
+  const t=elapsedMs/1000;
+  const wave=(phase)=>Math.sin(t*.66-phase);
+  const drift=(phase)=>Math.sin(t*.31-phase)*.22;
+  const amplitude=.067;
   return Object.freeze([
-    Object.freeze({x:-strength*.32*articulation,y:strength*.68}),
-    Object.freeze({x:strength*.48*articulation,y:-strength*.25}),
-    Object.freeze({x:-strength*(round?.52:.26),y:-strength*.55}),
-    Object.freeze({x:strength*(wide?.45:.22),y:strength*.24})
+    Object.freeze({x:amplitude*(wave(0)*.42+drift(.3)),y:amplitude*wave(0)}),
+    Object.freeze({x:amplitude*(-wave(.95)*.56+drift(1.2)),y:amplitude*wave(.95)*.58}),
+    Object.freeze({x:amplitude*(wave(2.1)*.69+drift(2.4)),y:-amplitude*wave(2.1)*.74}),
+    Object.freeze({x:amplitude*(-wave(3.05)*.32+drift(3.2)),y:-amplitude*wave(3.05)*.43})
   ]);
 }
 export const initialState=Object.freeze({
@@ -69,23 +66,11 @@ export function reduceOpening(state,event){
   let patch=null;
   switch(event.type){
     case 'IDLE_FRAME_OBSERVED':
-      if(state.bodyMotionMode==='idle'&&state.renderStatus==='observed'&&
+      if(state.renderStatus==='observed'&&
          event.evidence?.type==='observed-animation-frame'&&
          Number.isFinite(event.evidence.elapsedMs)&&event.evidence.elapsedMs>=0){
-        const t=event.evidence.elapsedMs/1000;
-        const reduced=event.evidence.reducedMotion===true;
-        // Quiet, phased structural drift: separate corners articulate in
-        // sequence, not a synchronized inhale/exhale of every ribbon.
-        // Time is only the physical phase; the reducer authorizes idle mode.
-        const flow=reduced?0:Math.sin(t*.54)*.052;
-        const follow=reduced?0:Math.sin(t*.54-1.15)*.041;
-        const returnFlow=reduced?0:Math.sin(t*.54-2.30)*.035;
-        patch={bloomMotion:Object.freeze([
-          Object.freeze({x:flow*.48,y:flow}),
-          Object.freeze({x:-follow*.62,y:follow*.55}),
-          Object.freeze({x:returnFlow*.75,y:-returnFlow*.66}),
-          Object.freeze({x:-flow*.24,y:-follow*.44})
-        ])};
+        patch={bloomMotion:ribbonFlowAt(event.evidence.elapsedMs,
+          event.evidence.reducedMotion===true)};
       }
       break;
     case 'BROWSER_LANGUAGE_OBSERVED':
@@ -374,12 +359,12 @@ export function reduceOpening(state,event){
   const next={...state,...patch};
   // The reducer alone authorizes the facial expression. The WebGL renderer
   // consumes this state; it does not choose an expression from its own clock.
-  next.bodyMotionMode=next.speaking?'observed-heart':'idle';
-  // Speech articulation belongs to the face; a separate body pulse made the
-  // A2 ribbons appear detached from the curved faceplate. Keep the whole
-  // sculptural assembly coherent while observed visemes animate normally.
+  // Independent causal channels: scene frames establish flowing ribbons;
+  // observed speech establishes mouth shape only. Neither can overwrite
+  // the other's state, including during active Heart playback.
+  next.bodyMotionMode='flow';
   next.bloomMotion=event.type==='IDLE_FRAME_OBSERVED'
-    ?patch.bloomMotion:bloomFromObservedAudio(next);
+    ?patch.bloomMotion:state.bloomMotion;
   next.visualExpression=next.nameSeamHeld?'viseme-closed'
     :next.speaking?(next.observedSpeechPose||'talk')
     :next.phase==='asking-name'?'ask':'rest';
