@@ -225,11 +225,16 @@ export function createVioletVoiceEngine({
   }
   // Hold the approved Heart recording at the observed name-slot boundary.
   // This does not mark narration completed, fabricate a cue or change voice.
-  function holdAuthoredForName(token){
+  function holdAuthoredForName(token,authorizedResumeMs){
     if(!active||active.kind!=='authored'||active.token!==token||
-       !active.playing||active.audio.paused)return false;
-    active.audio.pause();
-    active.playing=false;
+       !active.playing||active.audio.paused||
+       !Number.isFinite(authorizedResumeMs)||authorizedResumeMs<0)return false;
+    const session=active;
+    session.audio.pause();
+    session.playing=false;
+    // Restore the exact approved cue boundary after a coarse Safari
+    // observation. Do not let polling latency become the continuation point.
+    session.audio.currentTime=authorizedResumeMs/1000;
     return true;
   }
   // Resume only a genuinely held authored session. The same media element,
