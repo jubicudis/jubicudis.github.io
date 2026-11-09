@@ -15,24 +15,24 @@ test('on-device translator localizes every approved paragraph without replacing 
       assert.equal(sourceLanguage,'en');assert.equal(targetLanguage,'es');return 'available';
     },
     create:async()=>({translate:async text=>
-      text.replace('Now, {visitor}, let\'s take a closer look.',
-        'Ahora, {visitor}, veamos más de cerca.').replace(/^/,'ES: ')})
+      text.replace('Now, JUBI_VISITOR_NAME_TOKEN, let\'s take a closer look.',
+        'Ahora, JUBI_VISITOR_NAME_TOKEN, veamos más de cerca.').replace(/^/,'ES: ')})
   };
   const translator=await prepareDeviceTranslator('es-VE',{TranslatorAPI:api});
   const localized=await localizeApprovedOpening(OPENING_TRACKS,VISITOR_NAME_SLOT,translator);
   assert.equal(localized.tracks['asking-name'].length,OPENING_TRACKS['asking-name'].length);
   assert.equal(localized.tracks['after-name'].length,OPENING_TRACKS['after-name'].length);
   assert.equal(localized.tracks['after-name'][8].phase,'presentation');
-  assert.equal(localized.nameLine('María'),"ES: Now, María, let's take a closer look.");
+  assert.equal(localized.nameLine('María'),'ES: Ahora, María, veamos más de cerca.');
 });
 test('unsupported on-device translation is explicit, never fabricated',async()=>{
   await assert.rejects(()=>prepareDeviceTranslator('ja-JP',{TranslatorAPI:null}),
     /does not provide on-device translation/);
 });
-test('translated invitation reconstructs visitor placeholder if model drops it',async()=>{
+test('translated invitation fails qualification if model drops visitor placeholder',async()=>{
   const t={locale:'fr-FR',translate:async text=>text.includes('{visitor}')?'Bonjour':text};
-  const localized=await localizeApprovedOpening(OPENING_TRACKS,VISITOR_NAME_SLOT,t);
-  assert.match(localized.nameLine('Morgan'),/Morgan/);
+  await assert.rejects(()=>localizeApprovedOpening(OPENING_TRACKS,VISITOR_NAME_SLOT,t),
+    /name slot/);
 });
 
 test('localized approved script is authorized by the reducer and shown in captions',async()=>{
@@ -69,4 +69,15 @@ test('localized approved script is authorized by the reducer and shown in captio
     type:'localized-pcm-cue-playing',cueIndex:1
   }});
   assert.equal(openingMessage(state),'ES: '+OPENING_TRACKS['asking-name'][1].text);
+});
+
+test('configured translation engine failure is not replaced with a second engine',async()=>{
+  const {prepareQualifiedTranslator}=await import('../site/violet-localization.mjs');
+  await assert.rejects(()=>prepareQualifiedTranslator('es-VE',{
+    engine:'device-translator',TranslatorAPI:null,
+    loadModule:async()=>{throw Error('must never load alternate model');}
+  }),/does not provide on-device translation/);
+  await assert.rejects(()=>prepareQualifiedTranslator('es-VE',{
+    engine:'unapproved'
+  }),/Unrecognized authorized translation engine/);
 });
