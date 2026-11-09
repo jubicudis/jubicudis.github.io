@@ -31,7 +31,7 @@ export const initialState=Object.freeze({
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',
   playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
   observedSpeechPose:null,observedAudioLevel:0,bloomMotion:STILL_BLOOM,bodyMotionMode:'idle',visualExpression:'rest',nameAudioCompleted:false,nameAudioPlaying:false,nameSynthesisStatus:'not-requested',
-  nameInsertionStatus:'not-requested',nameSlotObserved:false,authoredAudioEnded:false,enteredAt:0,
+  nameInsertionStatus:'not-requested',nameSlotObserved:false,nameSeamHeld:false,authoredAudioEnded:false,enteredAt:0,
   context:Object.freeze({
     who:'unidentified visitor',what:'Violet',when:'unstarted',
     where:'TNOS public introduction',why:'arrival',how:'await activation',
@@ -46,6 +46,11 @@ export function openingMessage(state){
   const track=state.track||openingTrackForPhase(state.phase);
   if(state.nameAudioPlaying&&state.nameDecision==='provided')
     return state.localizedNameLine||VISITOR_NAME_SLOT.text(state.visitorName);
+  // The next prerecorded paragraph has not played while the approved
+  // name seam is held. Captions must not get ahead of actual speech.
+  if(state.nameSeamHeld&&state.track==='after-name')
+    return state.localizedTracks?.['after-name']?.[VISITOR_NAME_SLOT.afterCueIndex]?.text||
+      OPENING_TRACKS['after-name'][VISITOR_NAME_SLOT.afterCueIndex].text;
   return state.localizedTracks?.[track]?.[state.cueIndex]?.text||
     visibleOpeningSegment(track,state.cueIndex,null);
 }
@@ -160,7 +165,7 @@ export function reduceOpening(state,event){
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,localizedAudioPositionMs:null,
           observedSpeechPose:null,observedAudioLevel:0,nameAudioCompleted:false,nameAudioPlaying:false,
-          nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',nameSlotObserved:false,authoredAudioEnded:false};
+          nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',nameSlotObserved:false,nameSeamHeld:false,authoredAudioEnded:false};
       break;
     case 'GIVE_NAME':
       if(!nameChoiceReady(state)||typeof event.name!=='string')break;
@@ -172,7 +177,7 @@ export function reduceOpening(state,event){
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
           observedSpeechPose:null,observedAudioLevel:0,nameAudioCompleted:false,nameAudioPlaying:false,
-          nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',nameSlotObserved:false,authoredAudioEnded:false};
+          nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',nameSlotObserved:false,nameSeamHeld:false,authoredAudioEnded:false};
       }
       break;
     case 'SKIP_NAME':
@@ -182,7 +187,7 @@ export function reduceOpening(state,event){
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
           observedSpeechPose:null,observedAudioLevel:0,nameAudioCompleted:false,nameAudioPlaying:false,
-          nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',nameSlotObserved:false,authoredAudioEnded:false};
+          nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',nameSlotObserved:false,nameSeamHeld:false,authoredAudioEnded:false};
       break;
     case 'SPEECH_STARTED':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
@@ -246,6 +251,12 @@ export function reduceOpening(state,event){
          state.nameInsertionStatus==='waiting')
         patch={nameSlotObserved:true};
       break;
+    case 'NAME_SEAM_HELD':
+      if(event.token===state.speechToken&&state.nameDecision==='provided'&&
+         state.nameSlotObserved&&state.nameInsertionStatus==='waiting'&&
+         !state.nameSeamHeld&&event.evidence?.type==='authored-media-paused-at-name-seam')
+        patch={nameSeamHeld:true,observedSpeechPose:null,observedAudioLevel:0};
+      break;
     case 'NAME_INSERTION_REQUESTED':
       if(event.token===state.speechToken&&state.nameDecision==='provided'&&
          state.speechStatus==='speaking'&&state.nameSynthesisStatus==='ready'&&
@@ -264,7 +275,7 @@ export function reduceOpening(state,event){
       if(state.nameDecision==='provided'&&state.speechStatus==='speaking'&&
          state.nameInsertionStatus==='requested'&&event.token===state.speechToken&&
          event.evidence?.type==='observed-generated-heart-playing')
-        patch={nameAudioPlaying:true,nameInsertionStatus:'playing'};
+        patch={nameAudioPlaying:true,nameInsertionStatus:'playing',nameSeamHeld:false};
       break;
     case 'NAME_AUDIO_ENDED':
       if(state.nameDecision==='provided'&&
@@ -273,7 +284,7 @@ export function reduceOpening(state,event){
         event.token===state.speechToken&&
         event.evidence?.type==='observed-generated-heart-ended'&&
         event.evidence.assetId==='generated-heart:'+state.speechToken)
-        patch={nameAudioCompleted:true,nameAudioPlaying:false,observedSpeechPose:null,
+        patch={nameAudioCompleted:true,nameAudioPlaying:false,nameSeamHeld:false,observedSpeechPose:null,
           nameInsertionStatus:'completed'};
       break;
     case 'SPEECH_CUE_OBSERVED':
