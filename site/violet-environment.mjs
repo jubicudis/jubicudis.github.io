@@ -4,9 +4,9 @@
 // This opening scene is NOT TNOS cognition or a completed 3D soft-body simulation.
 // If any required art or WebGL rendering fails, no replacement character is fabricated.
 import * as THREE from './vendor/three.module.js?v=20261106-webkit-precision-01';
-import {createVioletAppearanceCapabilities} from './violet-appearance.mjs';
+import {createVioletAppearanceCapabilities} from './violet-appearance.mjs?v=20261109-connected-center-2';
 import {A2_FACEPLATE,createA2FaceplateGeometry,createA2FaceplateSideGeometry} from './violet-faceplate.mjs';
-import {createBloomMotionCapabilities} from './violet-motion.mjs';
+import {createBloomMotionCapabilities} from './violet-motion.mjs?v=20261109-coupled-surfaces-2';
 import {captureWebGLRegion,compareWebGLObservations,compareWithOpenCV} from './violet-observation.mjs';
 
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
