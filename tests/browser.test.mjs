@@ -284,8 +284,14 @@ try{
     'face junctions must bind to vertices of the actual structural ribbon mesh');
   assert.match(recoverySource,/ribbonPositions\.getX\(attachment\.ribbonVertex\)/,
     'junctions must read observed deformed ribbon geometry, not independent approximations');
-  assert.match(recoverySource,/attr\.needsUpdate=true;\s*mesh\.geometry\.computeVertexNormals\(\)/,
-    'connected junction material must update its existing GPU buffer in place');
+  assert.match(recoverySource,/attr\.needsUpdate=true;\s*mesh\.geometry\.computeBoundingSphere\(\)/,
+    'outward ribbon material must propagate through its existing geometry buffer');
+  assert.match(recoverySource,/rim\.set\(rx\*\.87\*Math\.cos\(angle\)/,
+    'ribbon root must originate underneath the actual faceplate perimeter');
+  assert.match(recoverySource,/const width=\.035\+\.13\*t/,
+    'ribbon connection must broaden outward into the body, not pull a thin rod inward');
+  assert.doesNotMatch(recoverySource,/new THREE\.TubeGeometry\(curve,18/,
+    'old competing inward tube connectors must not return');
   assert.doesNotMatch(recoverySource,/mesh\.geometry\.dispose\(\);\s*mesh\.geometry=next/,
     'no GPU mesh replacement on every propagated motion update');
   assert.match(recoverySource,/character\.position\.y=lift\*\.12/,
