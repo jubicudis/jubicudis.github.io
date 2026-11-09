@@ -321,6 +321,17 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         toneMapped:false,side:THREE.DoubleSide}));
     expression.position.z=.018;
     faceAssembly.add(expression);
+    // A second copy of the same authored curved expression surface supplies
+    // intermediate mouth frames by optical blending. It shares the faceplate
+    // geometry and approved SVG poses; no replacement mouth is invented.
+    const expressionBlend=new THREE.Mesh(faceGeometry.clone(),
+      new THREE.MeshBasicMaterial({map:rest,transparent:true,opacity:0,
+        depthWrite:false,toneMapped:false,side:THREE.DoubleSide}));
+    expressionBlend.position.z=.019;
+    expressionBlend.visible=false;
+    faceAssembly.add(expressionBlend);
+    const mouthFrames=Object.freeze([0,.22,.5,.78,1]);
+    let mouthTransition=null;
     // Render capabilities are addressable but are NOT scheduled or activated by this opening.
     const visualCapabilities=createVioletAppearanceCapabilities({
       character,main,expression,art,artWidth,faceMaps:faces,backgroundGroup,faceplate:plate,faceAssembly
@@ -530,8 +541,8 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       // The reducer authorizes idle sculptural motion. Time supplies only
       // the physical animation phase, not the choice of presentation mode.
       // During Heart playback the rig follows observed acoustic energy.
-      if(state.bodyMotionMode==='idle'&&onAnimationFrame&&
-         now-lastBodyFrame>=1000/12){
+      if(state.bodyMotionMode==='flow'&&onAnimationFrame&&
+         now-lastBodyFrame>=1000/30){
         lastBodyFrame=now;
         onAnimationFrame(Object.freeze({
           type:'observed-animation-frame',
@@ -544,7 +555,32 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       // renderer only applies that exact state to the approved A2 material.
       const mode=state.visualExpression;
       const visualMode=visualCapabilities.desiredExpression(mode);
-      if(visualMode!==previousExpression){expression.material.map=faces[visualMode];expression.material.needsUpdate=true;previousExpression=visualMode;}
+      if(visualMode!==previousExpression){
+        // Keep the current authored expression visible while stepping through
+        // three intermediate mouth frames toward the new observed pose.
+        // State selects the target; the renderer only interpolates its display.
+        if(mouthTransition&&mouthTransition.frame>=mouthFrames.length-2){
+          expression.material.map=faces[mouthTransition.target];
+          expression.material.needsUpdate=true;
+        }
+        expressionBlend.material.map=faces[visualMode];
+        expressionBlend.material.needsUpdate=true;
+        mouthTransition={target:visualMode,frame:0};
+        previousExpression=visualMode;
+      }
+      if(mouthTransition){
+        const alpha=mouthFrames[Math.min(mouthTransition.frame,mouthFrames.length-1)];
+        expressionBlend.material.opacity=alpha;
+        expressionBlend.visible=expression.visible&&alpha>0;
+        mouthTransition.frame++;
+        if(mouthTransition.frame>=mouthFrames.length){
+          expression.material.map=faces[mouthTransition.target];
+          expression.material.needsUpdate=true;
+          expressionBlend.visible=false;
+          expressionBlend.material.opacity=0;
+          mouthTransition=null;
+        }
+      }else expressionBlend.visible=false;
       renderer.render(scene,camera);frameCount++;
       for(const observation of pendingObservations.splice(0)){
         try{observation.resolve(captureWebGLRegion({
