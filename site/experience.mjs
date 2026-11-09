@@ -169,13 +169,20 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
         }
         const current=store.getState();
         if(current.nameSlotObserved&&current.nameSynthesisStatus==='ready'){
-          // Preserve the real playback clock. Seeking back to cue.startMs
-          // repeats already-heard words after the generated name.
-          const resumeAtMs=observation.elapsedMs;
-          if(voice.holdAuthoredForName(state.speechToken)){
-            pendingNameBoundary=resumeAtMs;
-            requestNameInsertion(store.getState(),resumeAtMs,
-              'authored-paragraph-boundary-observed');
+          const cueStartMs=timeline.tracks[selected.track].cues[cue.index].startMs;
+          // timeupdate is not sample-accurate. Do not interrupt a sentence
+          // when Safari reports a cue well after its approved boundary.
+          // Continue to the next observed seam (or the actual track end).
+          const atSeam=observation.elapsedMs>=cueStartMs&&
+            observation.elapsedMs-cueStartMs<=250;
+          if(atSeam){
+            // Resume from the observed clock, never replay the paragraph.
+            const resumeAtMs=observation.elapsedMs;
+            if(voice.holdAuthoredForName(state.speechToken)){
+              pendingNameBoundary=resumeAtMs;
+              requestNameInsertion(store.getState(),resumeAtMs,
+                'authored-paragraph-boundary-observed');
+            }
           }
         }
       }
