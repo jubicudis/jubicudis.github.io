@@ -328,7 +328,8 @@ export function reduceOpening(state,event){
   // Speech articulation belongs to the face; a separate body pulse made the
   // A2 ribbons appear detached from the curved faceplate. Keep the whole
   // sculptural assembly coherent while observed visemes animate normally.
-  next.bloomMotion=STILL_BLOOM;
+  next.bloomMotion=event.type==='IDLE_FRAME_OBSERVED'
+    ?patch.bloomMotion:bloomFromObservedAudio(next);
   next.visualExpression=next.speaking
     ?(next.observedSpeechPose||'talk')
     :next.phase==='asking-name'?'ask':'rest';
