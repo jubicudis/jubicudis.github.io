@@ -287,8 +287,12 @@ try{
     'name generation completion must use an observed insertion boundary');
   assert.match(controllerSource,/current\.nameSlotObserved&&current\.nameSynthesisStatus==='ready'/,
     'the authored track must not be held while Heart name synthesis is unfinished');
-  assert.match(controllerSource,/observation\.elapsedMs-cueStartMs<=250/,
+  assert.match(controllerSource,/cue\.index!==VISITOR_NAME_SLOT\.beforeCueIndex\)return/,
+    'later narration cues must never become substitute name seams');
+  assert.match(controllerSource,/observation\.elapsedMs-seamMs>250/,
     'name insertion must not interrupt an already-started paragraph');
+  assert.match(controllerSource,/if\(observedClock\)observeAuthoredPosition\(observedClock\)/,
+    'sample the actual Heart audio clock during the existing scene frame');
   assert.match(controllerSource,/const resumeAtMs=observation\.elapsedMs/,
     'Heart narration must resume at its observed position, not replay the cue');
   assert.match(controllerSource,/cueIndex:VISITOR_NAME_SLOT\.beforeCueIndex/,
