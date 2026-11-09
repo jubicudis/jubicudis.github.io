@@ -386,8 +386,8 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       const t=reduced.matches?0:(now-start)/1000;
       character.position.y=reduced.matches?0:.038*Math.sin(t*.7);
       character.rotation.z=reduced.matches?0:.008*Math.sin(t*.39);
-      const expansion=1+(reduced.matches?0:.004*Math.sin(t*.74));
-      character.scale.setScalar(expansion);
+      // The head and body share one rigid parent; do not inflate the body.
+      character.scale.setScalar(1);
       // The reducer authorizes idle sculptural motion. Time supplies only
       // the physical animation phase, not the choice of presentation mode.
       // During Heart playback the rig follows observed acoustic energy.
