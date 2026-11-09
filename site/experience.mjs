@@ -229,6 +229,9 @@ async function beginSpeech(state){
   if(state.nameDecision!=='provided')return;
   const token=state.speechToken;
   store.dispatch({type:'NAME_SYNTHESIS_STARTED',token});
+  // The iPhone shares GPU memory with the browser's Heart WASM worker.
+  const constrained=/iPhone|iPad|iPod/.test(navigator.userAgent)&&/AppleWebKit/.test(navigator.userAgent);
+  if(constrained)scene?.setInferenceMode?.(true);
   try{
     const generated=await synthesizeHeartName(state.visitorName);
     const current=store.getState();
@@ -257,6 +260,8 @@ async function beginSpeech(state){
     console.error('Selected Heart name synthesis failed',error);
     store.dispatch({type:'SPEECH_FAILED',token,reason:nameSynthesisError});
     voice.cancel('required Heart name generation failed');
+  }finally{
+    if(constrained)scene?.setInferenceMode?.(false);
   }
 }
 
