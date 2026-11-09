@@ -77,8 +77,15 @@ export async function prepareDeviceTranslator(locale,{
 export async function localizeApprovedOpening(openingTracks,nameSlot,translator){
   const tracks={};
   for(const [track,segments] of Object.entries(openingTracks)){
-    tracks[track]=Object.freeze(await Promise.all(segments.map(async segment=>
-      Object.freeze({phase:segment.phase,text:await translator.translate(segment.text)}))));
+    const translated=[];
+    // Mobile Safari cannot safely run 21 concurrent translation inferences.
+    // One model and one sequential queue bound memory usage.
+    for(const segment of segments){
+      translated.push(Object.freeze({
+        phase:segment.phase,text:await translator.translate(segment.text)
+      }));
+    }
+    tracks[track]=Object.freeze(translated);
   }
   const template='Now, {visitor}, let\'s take a closer look.';
   const named=await translator.translate(template);
