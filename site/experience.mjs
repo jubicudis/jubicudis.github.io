@@ -360,8 +360,12 @@ function observeSpeechFrame(){
   observeGeneratedSpeechFrame();
   observeApprovedSpeechFrame();
 }
-function render(state,previous){
+function render(state,previous,event){
   scene?.update(state);
+  // Autonomous ribbon-flow frames only propagate the established geometry
+  // field. Rewriting captions, forms and accessibility DOM thirty times a
+  // second would compete with Safari's WebGL and audio work.
+  if(event?.type==='IDLE_FRAME_OBSERVED')return;
   stage.dataset.phase=state.phase;
   stage.dataset.cueIndex=String(state.cueIndex);
   stage.dataset.speechStatus=state.speechStatus;
