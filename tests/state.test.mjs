@@ -274,11 +274,10 @@ test('approved Heart orientation advances during name generation without invente
   assert.equal(ended.nameAudioCompleted,true);
   assert.equal(ended.nameInsertionStatus,'completed');
   assert.equal(ended.observedSpeechPose,null);
-  const orientation=progress(ended,1,2400);
-  assert.equal(orientation.phase,'orientation');
-  assert.match(openingMessage(orientation),/experimental operating system/);
-  assert.equal(progress(orientation,4,35000).phase,'orientation');
-  assert.equal(progress(orientation,8,61000).phase,'presentation');
+  assert.equal(ended.phase,'presentation');
+  assert.equal(ended.cueIndex,VISITOR_NAME_SLOT.beforeCueIndex);
+  assert.equal(openingMessage(ended),OPENING_TRACKS['after-name'][8].text);
+  assert.equal(progress(ended,9,64500).phase,'presentation');
 });
 
 test('actual named audio failure never advances to generic welcome or name-skipped path',()=>{
@@ -330,7 +329,7 @@ test('approved script reserves a later actual spoken-name slot, not the immediat
   });
   assert.equal(ended.nameAudioCompleted,true);
   assert.equal(ended.nameAudioPlaying,false);
-  assert.equal(openingMessage(ended),OPENING_TRACKS['after-name'][4].text);
+  assert.equal(openingMessage(ended),OPENING_TRACKS['after-name'][8].text);
   const skipped=step(finishQuestion(),'SKIP_NAME');
   assert.equal(step(skipped,'NAME_AUDIO_STARTED',{
     token:skipped.speechToken,evidence:{type:'observed-generated-heart-playing'}
