@@ -1,4 +1,4 @@
-// Real user journey: Chromium loads HeadTTS, synthesizes the visitor's
+// Real user journey: Chromium loads Kokoro Heart WASM, synthesizes the visitor's
 // voluntary name with selected Heart, observes actual audio and facial cue
 // changes, then plays the approved Heart orientation. No mocked synthesis,
 // manually dispatched presentation events, fallback audio, or fake timers.
@@ -114,9 +114,9 @@ try{
     }));
     assert.equal(generatedEnd.nameComplete,'true');
     assert.ok(generatedEnd.poses.length>=2,
-      'actual synthesized speech must change facial poses');
+      'observed Kokoro PCM must change facial poses');
     assert.ok(generatedEnd.poses.some(x=>x.pose==='viseme-open'||x.pose==='viseme-wide'||x.pose==='viseme-round'),
-      'real generated phonemes should produce articulated mouth expressions');
+      'real generated Heart PCM must produce articulated mouth expressions');
     await page.waitForFunction(()=>window.__heartEvents.some(x=>
       new URL(x.src).pathname.endsWith('/site/audio/violet-heart-after-name.mp3')&&x.event==='playing'),
       null,{timeout:15000});
