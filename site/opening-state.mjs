@@ -31,7 +31,7 @@ export const initialState=Object.freeze({
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',speechFailureReason:null,
   playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
-  observedSpeechPose:null,observedAudioLevel:0,bloomMotion:STILL_BLOOM,bodyMotionMode:'idle',visualExpression:'rest',nameAudioCompleted:false,nameAudioPlaying:false,nameSynthesisStatus:'not-requested',
+  observedSpeechPose:null,observedAudioLevel:0,bloomMotion:STILL_BLOOM,flowPhase:0,bodyMotionMode:'flow',visualExpression:'rest',nameAudioCompleted:false,nameAudioPlaying:false,nameSynthesisStatus:'not-requested',
   nameInsertionStatus:'not-requested',nameSlotObserved:false,nameSeamHeld:false,authoredAudioEnded:false,enteredAt:0,
   context:Object.freeze({
     who:'unidentified visitor',what:'Violet',when:'unstarted',
@@ -70,7 +70,9 @@ export function reduceOpening(state,event){
          event.evidence?.type==='observed-animation-frame'&&
          Number.isFinite(event.evidence.elapsedMs)&&event.evidence.elapsedMs>=0){
         patch={bloomMotion:ribbonFlowAt(event.evidence.elapsedMs,
-          event.evidence.reducedMotion===true)};
+          event.evidence.reducedMotion===true),
+          flowPhase:event.evidence.reducedMotion===true?0:
+            event.evidence.elapsedMs/1000};
       }
       break;
     case 'BROWSER_LANGUAGE_OBSERVED':
