@@ -204,6 +204,26 @@ test('approved opening covers all three distinct products without invented claim
   assert.equal(OPENING_TRACKS['after-name'].length,17);
 });
 
+test('failed optional iPhone name inference does not invalidate observed recorded Heart playback',()=>{
+  let state=step(finishQuestion(),'GIVE_NAME',{name:'Morgan'});
+  const token=state.speechToken;
+  state=step(state,'SPEECH_STARTED',{token});
+  state=step(state,'NAME_SYNTHESIS_STARTED',{token});
+  state=progress(state,1,2100);
+  state=step(state,'NAME_SYNTHESIS_FAILED',{token,
+    reason:'WebAssembly.Memory allocation failed'});
+  assert.equal(state.speechStatus,'speaking');
+  assert.equal(state.nameSynthesisStatus,'failed');
+  assert.equal(state.nameInsertionStatus,'unavailable');
+  assert.equal(state.nameAudioCompleted,false);
+  state=progress(state,2,11000);
+  assert.equal(state.cueIndex,2,'qualified authored narration continues');
+  state=step(state,'SPEECH_ENDED',{token});
+  assert.equal(state.speechStatus,'completed');
+  assert.equal(state.nameAudioCompleted,false,
+    'narration ending must not fabricate successful name pronunciation');
+});
+
 test('held approved name seam keeps captions and expression aligned until Heart actually plays',()=>{
   let state=step(finishQuestion(),'GIVE_NAME',{name:'Morgan'});
   const token=state.speechToken;
