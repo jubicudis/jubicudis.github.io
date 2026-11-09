@@ -279,6 +279,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     faceAssembly.position.set((faceCenterX-art.naturalWidth/2)*artPixelToWorld,
       (art.naturalHeight/2-faceCenterY)*artPixelToWorld,.11);
     faceAssembly.rotation.set(-.055,.16,-.065);
+    const faceRestPosition=faceAssembly.position.clone();
     character.add(faceAssembly);
     const plate=new THREE.Mesh(faceGeometry,new THREE.MeshPhongMaterial({
       map:createA2FaceplateTexture(art),transparent:true,depthWrite:false,
@@ -434,6 +435,13 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         const motion=next.bloomMotion;
         if(motion&&motion!==appliedBloom){
           motionCapabilities.apply(motion);
+          // The curved faceplate is attached to the same deforming A2
+          // structure. Follow the measured rig displacement at its anchor,
+          // rather than leaving the head fixed while the ribbons move.
+          const displacement=motionCapabilities.displacementAt(
+            faceRestPosition.x,faceRestPosition.y);
+          faceAssembly.position.set(faceRestPosition.x+displacement.x,
+            faceRestPosition.y+displacement.y,faceRestPosition.z);
           appliedBloom=motion;
         }
       },
