@@ -242,6 +242,15 @@ export function reduceOpening(state,event){
          ['pending','speaking'].includes(state.speechStatus))
         patch={nameSynthesisStatus:'ready'};
       break;
+    case 'NAME_SYNTHESIS_FAILED':
+      // The prerecorded Heart presentation is independently qualified.
+      // A failed optional on-device name model cannot revoke real narration.
+      if(event.token===state.speechToken&&state.nameDecision==='provided'&&
+         state.nameSynthesisStatus==='generating'&&
+         ['pending','speaking'].includes(state.speechStatus))
+        patch={nameSynthesisStatus:'failed',nameInsertionStatus:'unavailable',
+          nameSeamHeld:false,observedSpeechPose:null};
+      break;
     case 'NAME_SLOT_OBSERVED':
       if(event.token===state.speechToken&&state.nameDecision==='provided'&&
          state.track===VISITOR_NAME_SLOT.track&&state.speechStatus==='speaking'&&
