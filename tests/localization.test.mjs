@@ -7,6 +7,7 @@ import {OPENING_TRACKS,VISITOR_NAME_SLOT} from '../site/opening-script.mjs';
 test('browser language is observed, not hardcoded to English',()=>{
   assert.equal(observeBrowserLanguage({languages:['es-VE','en-US']}),'es-VE');
   assert.equal(languageTag('pt-BR'),'pt');
+  assert.equal(observeBrowserLanguage({languages:['en-US@posix']}),'en-US');
 });
 test('on-device translator localizes every approved paragraph without replacing script structure',async()=>{
   const api={
