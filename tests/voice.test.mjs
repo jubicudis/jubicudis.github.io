@@ -256,3 +256,50 @@ test('one gesture-authorized Heart player serves authored, generated, and contin
   assert.equal(engine.activeSource(),null);
   assert.equal(events.filter(event=>event.type==='SPEECH_STARTED').length,3);
 });
+
+test('visitor-name handoff keeps the same media player and narration token without false interruption',()=>{
+  const instances=[],events=[];
+  class Playback{
+    constructor(){this.handlers={};this.src='';this.currentTime=0;this.paused=true;this.ended=false;this.readyState=1;instances.push(this);}
+    addEventListener(type,handler){this.handlers[type]=handler;}
+    play(){this.paused=false;return Promise.resolve();}
+    pause(){this.paused=true;}
+    removeAttribute(){}load(){}
+    fire(type){this.handlers[type]?.();}
+  }
+  const originalCreate=URL.createObjectURL,originalRevoke=URL.revokeObjectURL;
+  URL.createObjectURL=()=> 'blob:https://jubicudis.github.io/name';
+  URL.revokeObjectURL=()=>{};
+  try{
+    const engine=createVioletVoiceEngine({AudioCtor:Playback,
+      baseURL:'https://jubicudis.github.io/'});
+    const token=41;
+    const emit=e=>events.push(e.type);
+    engine.playAuthored({src:'/site/audio/violet-heart-after-name.mp3',token,emit});
+    const audio=instances[0];
+    audio.fire('playing');
+    audio.currentTime=62;
+    assert.equal(engine.holdAuthoredForName(token),true);
+    assert.equal(audio.paused,true);
+    engine.playGenerated({wav:new ArrayBuffer(80),token,insertAfterAuthored:true,
+      emit,onEnded:()=>{
+        engine.playAuthored({src:'/site/audio/violet-heart-after-name.mp3',
+          token,startAtMs:62000,continueAfterGenerated:true,emit});
+      }});
+    audio.fire('playing');
+    audio.fire('ended');
+    assert.equal(instances.length,1);
+    assert.equal(engine.activeSource(),'authored');
+    assert.equal(audio.currentTime,62);
+    assert.equal(events.includes('SPEECH_INTERRUPTED'),false,
+      'source handoff is not a new visitor command or an interruption');
+    audio.fire('playing');
+    audio.fire('ended');
+    assert.equal(events.at(-1),'SPEECH_ENDED');
+  }finally{
+    if(originalCreate)URL.createObjectURL=originalCreate;
+    else delete URL.createObjectURL;
+    if(originalRevoke)URL.revokeObjectURL=originalRevoke;
+    else delete URL.revokeObjectURL;
+  }
+});
