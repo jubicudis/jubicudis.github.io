@@ -288,6 +288,11 @@ async function beginSpeech(state){
       if(!voice.resumeHeldAuthored(token))
         store.dispatch({type:'SPEECH_FAILED',token,
           reason:'Heart narration could not resume after name synthesis failed'});
+    }else if(store.getState().authoredAudioEnded&&
+             store.getState().speechStatus==='speaking'){
+      // A real authored-track end was already observed while the optional
+      // model was working. Its failure cannot leave the presentation stuck.
+      store.dispatch({type:'SPEECH_ENDED',token});
     }
   }finally{
     if(constrained)scene?.setInferenceMode?.(false);
