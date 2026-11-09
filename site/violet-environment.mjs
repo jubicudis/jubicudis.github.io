@@ -341,6 +341,19 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       {angle:-.67,body:{x:1.56,y:-1.07},color:0xffb95c},
       {angle:-2.44,body:{x:-1.65,y:-1.08},color:0xa05aff}
     ];
+    const ribbonGeometry=visualCapabilities.getStructureSurface().geometry;
+    const ribbonPositions=ribbonGeometry.getAttribute('position');
+    function nearestRibbonVertex({x,y}){
+      let nearest=-1,distance=Infinity;
+      for(let i=0;i<ribbonPositions.count;i++){
+        const dx=ribbonPositions.getX(i)-x;
+        const dy=ribbonPositions.getY(i)-y;
+        const d=dx*dx+dy*dy;
+        if(d<distance){distance=d;nearest=i;}
+      }
+      if(nearest<0)throw new Error('Required A2 ribbon attachment vertex unavailable');
+      return nearest;
+    }
     const attachments=attachmentSpecs.map(spec=>{
       const material=new THREE.MeshBasicMaterial({
         color:spec.color,transparent:true,opacity:.62,
@@ -361,7 +374,8 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       geometry.setIndex(indices);
       const mesh=new THREE.Mesh(geometry,material);
       character.add(mesh);
-      return {...spec,mesh,segments,radial};
+      return {...spec,mesh,segments,radial,
+        ribbonVertex:nearestRibbonVertex(spec.body)};
     });
     function updateFaceAttachments(){
       const rx=A2_FACEPLATE.widthPixels*artPixelToWorld*.5;
@@ -371,9 +385,12 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         const rimPoint=new THREE.Vector3(
           rx*.93*Math.cos(angle),ry*.93*Math.sin(angle),0);
         rimPoint.applyEuler(faceAssembly.rotation).add(faceAssembly.position);
-        const displacement=motionCapabilities.displacementAt(body.x,body.y);
+        // Read the *deformed physical ribbon vertex*, not a second
+        // independent approximation of where the ribbon ought to be.
+        // The faceplate connection therefore follows the actual material.
         const end=new THREE.Vector3(
-          body.x+displacement.x,body.y+displacement.y,.065);
+          ribbonPositions.getX(attachment.ribbonVertex),
+          ribbonPositions.getY(attachment.ribbonVertex),.065);
         const start=new THREE.Vector3(rimPoint.x,rimPoint.y,.12);
         const mid=start.clone().lerp(end,.52);
         // Curvature makes the connection visibly travel behind the plate,
