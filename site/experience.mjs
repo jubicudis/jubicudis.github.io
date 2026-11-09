@@ -286,12 +286,13 @@ async function beginSpeech(state){
     nameSynthesisError=String(error?.name||'Error')+': '+String(error?.message||error);
     console.error('Selected Heart name synthesis failed',error);
     store.dispatch({type:'NAME_SYNTHESIS_FAILED',token,reason:nameSynthesisError});
-    if(pendingNameBoundary!==null){
-      pendingNameBoundary=null;
-      if(!voice.resumeHeldAuthored(token))
-        store.dispatch({type:'SPEECH_FAILED',token,
-          reason:'Heart narration could not resume after name synthesis failed'});
-    }
+    // A named presentation cannot silently become the unnamed recording.
+    // Preserve the visitor's WHO and stop the incomplete named path.
+    pendingNameBoundary=null;
+    preparedName=null;
+    store.dispatch({type:'SPEECH_FAILED',token,
+      reason:'Named Heart narration unavailable: '+nameSynthesisError});
+    voice.cancel('name-synthesis-failed');
   }finally{
     if(constrained)scene?.setInferenceMode?.(false);
   }
