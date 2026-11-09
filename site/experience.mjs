@@ -1,4 +1,4 @@
-import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261109-language-fallback-29';
+import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261109-language-state-30';
 import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
 import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261109-metadata-seek-25';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
@@ -392,10 +392,11 @@ function render(state,previous,event){
   const englishNarration=state.browserLocale?.split('-')[0]==='en';
   audioFailure.hidden=!(englishNarration&&narrationLoadFailure)&&
     !speechFailed&&!nameSynthesisError&&!localizedFailure&&
-    state.languageStatus!=='unavailable';
+    !['unavailable','failed'].includes(state.languageStatus);
   if(!audioFailure.hidden)
-    audioFailure.textContent=state.languageStatus==='unavailable'
-      ?'Violet is preparing on-device narration for '+state.browserLocale+'. '+(localizedFailure||'The language model is still loading.')
+    audioFailure.textContent=['unavailable','failed'].includes(state.languageStatus)
+      ?(state.languageStatus==='failed'
+        ?'Localized narration unavailable for ':'Violet is preparing on-device narration for ')+state.browserLocale+'. '+(state.languageFailureReason||localizedFailure||'The language model is still loading.')
       :localizedFailure?'Localized narration unavailable. '+localizedFailure
       :englishNarration&&narrationLoadFailure
       ?'Heart narration is unavailable. '+narrationLoadFailure
@@ -480,6 +481,8 @@ const localizedReady=(async()=>{
     store.dispatch({type:'VOICE_AVAILABLE',value:true});
   }catch(error){
     localizedFailure=String(error?.message||error);
+    store.dispatch({type:'LOCALIZED_NARRATION_FAILED',
+      locale,reason:localizedFailure});
     store.dispatch({type:'VOICE_AVAILABLE',value:false});
     render(store.getState(),store.getState());
   }
