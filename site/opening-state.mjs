@@ -13,14 +13,18 @@ function bloomFromObservedAudio(state){
   const pose=state.observedSpeechPose;
   const level=state.observedAudioLevel;
   if(!Number.isFinite(level)||level<=0)return STILL_BLOOM;
-  const strength=Math.min(.20,level/255*.20);
-  const open=pose==='viseme-open'||pose==='viseme-wide'||pose==='viseme-round';
-  const factor=open?1:.55;
+  const strength=Math.min(.16,level/255*.16);
+  const wide=pose==='viseme-wide',round=pose==='viseme-round';
+  const open=pose==='viseme-open'||wide||round;
+  // Observed articulation bends the upper and lower ribbon roots in
+  // complementary directions. It never inflates all four corners as one
+  // breathing balloon; the faceplate and its junctions follow this field.
+  const articulation=open?1:.45;
   return Object.freeze([
-    Object.freeze({x:-strength*factor,y:strength*.50}),
-    Object.freeze({x:strength*factor,y:strength*.48}),
-    Object.freeze({x:strength*.60,y:-strength*.65}),
-    Object.freeze({x:-strength*.60,y:-strength*.62})
+    Object.freeze({x:-strength*.32*articulation,y:strength*.68}),
+    Object.freeze({x:strength*.48*articulation,y:-strength*.25}),
+    Object.freeze({x:-strength*(round?.52:.26),y:-strength*.55}),
+    Object.freeze({x:strength*(wide?.45:.22),y:strength*.24})
   ]);
 }
 export const initialState=Object.freeze({
@@ -70,13 +74,17 @@ export function reduceOpening(state,event){
          Number.isFinite(event.evidence.elapsedMs)&&event.evidence.elapsedMs>=0){
         const t=event.evidence.elapsedMs/1000;
         const reduced=event.evidence.reducedMotion===true;
-        const sway=reduced?0:Math.sin(t*.83)*.10;
-        const breath=reduced?0:Math.sin(t*1.07)*.075;
+        // Quiet, phased structural drift: separate corners articulate in
+        // sequence, not a synchronized inhale/exhale of every ribbon.
+        // Time is only the physical phase; the reducer authorizes idle mode.
+        const flow=reduced?0:Math.sin(t*.54)*.052;
+        const follow=reduced?0:Math.sin(t*.54-1.15)*.041;
+        const returnFlow=reduced?0:Math.sin(t*.54-2.30)*.035;
         patch={bloomMotion:Object.freeze([
-          Object.freeze({x:-sway,y:breath}),
-          Object.freeze({x:sway,y:breath}),
-          Object.freeze({x:sway*.65,y:-breath*.85}),
-          Object.freeze({x:-sway*.65,y:-breath*.85})
+          Object.freeze({x:flow*.48,y:flow}),
+          Object.freeze({x:-follow*.62,y:follow*.55}),
+          Object.freeze({x:returnFlow*.75,y:-returnFlow*.66}),
+          Object.freeze({x:-flow*.24,y:-follow*.44})
         ])};
       }
       break;
