@@ -276,6 +276,12 @@ try{
     'renderer must use reducer-authorized motion as its only target');
   assert.match(recoverySource,/faceAssembly\.position\.set\(cx\+center\.x,cy\+center\.y/,
     'faceplate must follow the same material displacement as the body');
+  assert.match(recoverySource,/character\.position\.y=lift\*\.12/,
+    'whole-body lift must derive from the qualified four-point field');
+  assert.match(recoverySource,/character\.rotation\.z=\(smoothed\[1\]\.y-smoothed\[0\]\.y\)\*\.025/,
+    'whole-body tilt must derive from the same field');
+  assert.doesNotMatch(recoverySource,/character\.position\.y=reduced\.matches/,
+    'an independent renderer clock must not drive character floating');
   assert.match(recoverySource,/onAnimationFrame\(Object\.freeze\(/,
     'renderer must report observed frame evidence rather than invent idle motion');
   assert.doesNotMatch(recoverySource,/motionCapabilities\.apply\(\[/,
