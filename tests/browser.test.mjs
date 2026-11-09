@@ -287,6 +287,12 @@ try{
     'name generation completion must use an observed insertion boundary');
   assert.match(controllerSource,/current\.nameSlotObserved&&current\.nameSynthesisStatus==='ready'/,
     'the authored track must not be held while Heart name synthesis is unfinished');
+  assert.match(controllerSource,/observation\.elapsedMs-cueStartMs<=250/,
+    'name insertion must not interrupt an already-started paragraph');
+  assert.match(controllerSource,/const resumeAtMs=observation\.elapsedMs/,
+    'Heart narration must resume at its observed position, not replay the cue');
+  assert.match(controllerSource,/cueIndex:VISITOR_NAME_SLOT\.beforeCueIndex/,
+    'coarse WebKit clock updates must not lose the authorized name seam');
   assert.match(reducerSource,/case 'NAME_SLOT_OBSERVED':/,
     'the name slot must be a qualified state observation');
   assert.match(voiceSource,/function holdAuthoredForName\(token\)/);
