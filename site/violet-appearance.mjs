@@ -130,7 +130,7 @@ export function createVioletAppearanceCapabilities({
   const surfaces={};
   for(const [i,part] of ['environment','structure','center'].entries()){
     const surface=new THREE.Mesh(new THREE.PlaneGeometry(width,height,
-      part==='structure'?88:1,part==='structure'?64:1),
+      part==='environment'?1:88,part==='environment'?1:64),
       new THREE.MeshBasicMaterial({
         map:textureMaps[part],transparent:true,opacity:1,depthWrite:false,
         toneMapped:false,side:THREE.DoubleSide
@@ -169,6 +169,7 @@ export function createVioletAppearanceCapabilities({
     syncMaterialView();
   }
   function getStructureSurface(){return surfaces.structure;}
+  function getCenterSurface(){return surfaces.center;}
   function setExpressionOverride(mode){
     if(mode!==null&&!(typeof mode==='string'&&Object.prototype.hasOwnProperty.call(faceMaps,mode)))
       throw new TypeError('Unrecognized authored Violet expression');
@@ -191,7 +192,7 @@ export function createVioletAppearanceCapabilities({
   }
   return Object.freeze({
     readFaceplateEvidence,
-    apply,setExpressionOverride,setStructuralWarpActive,getStructureSurface,
+    apply,setExpressionOverride,setStructuralWarpActive,getStructureSurface,getCenterSurface,
     desiredExpression:defaultMode=>expressionOverride??defaultMode,
     readRequested:()=>requested,
     readExpressionOverride:()=>expressionOverride,
