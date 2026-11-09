@@ -152,23 +152,26 @@ function playApprovedTrack(state,{resumeAtMs=0}={}){
         evidence:{...observation,track:selected.track,cueIndex:cue.index,
           elapsedMs:observation.elapsedMs+offset}
       });
-      // The name is inserted only at an observed authored cue boundary.
-      // If synthesis is still running, use the NEXT observed paragraph
-      // boundary, never splice a name in the middle of recorded speech.
+      // Observe the approved name seam without blocking narration while the
+      // Heart model is still generating. On constrained mobile devices the
+      // model may take longer than the recorded paragraph.
       if(state.nameDecision==='provided'&&
-         cue.index===VISITOR_NAME_SLOT.beforeCueIndex&&
-         cue.index>previousCueIndex&&pendingNameBoundary===null){
-        const boundary=timeline.tracks[selected.track].cues[cue.index].startMs;
-        // Hold the actual Heart recording at the approved paragraph seam.
-        // Never advance into the next paragraph while waiting for synthesis.
-        if(voice.holdAuthoredForName(state.speechToken)){
-          pendingNameBoundary=boundary;
+         cue.index>previousCueIndex&&
+         cue.index>=VISITOR_NAME_SLOT.beforeCueIndex&&
+         store.getState().nameInsertionStatus==='waiting'){
+        if(cue.index===VISITOR_NAME_SLOT.beforeCueIndex){
           store.dispatch({type:'NAME_SLOT_OBSERVED',token:state.speechToken,
             evidence:{type:'authored-name-slot-boundary-observed',
               cueIndex:cue.index}});
-          const current=store.getState();
-          if(current.nameSynthesisStatus==='ready'&&current.nameInsertionStatus==='waiting')
-            requestNameInsertion(current,boundary,'authored-paragraph-boundary-observed');
+        }
+        const current=store.getState();
+        if(current.nameSlotObserved&&current.nameSynthesisStatus==='ready'){
+          const boundary=timeline.tracks[selected.track].cues[cue.index].startMs;
+          if(voice.holdAuthoredForName(state.speechToken)){
+            pendingNameBoundary=boundary;
+            requestNameInsertion(store.getState(),boundary,
+              'authored-paragraph-boundary-observed');
+          }
         }
       }
 
