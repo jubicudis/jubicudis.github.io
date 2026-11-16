@@ -275,7 +275,10 @@ export function reduceOpening(state,event){
       if(event.token===state.speechToken&&state.nameDecision==='provided'&&
          state.track===VISITOR_NAME_SLOT.track&&state.speechStatus==='speaking'&&
          state.cueIndex>=VISITOR_NAME_SLOT.beforeCueIndex&&
-         event.evidence?.type==='authored-name-slot-boundary-observed'&&
+         ['authored-name-slot-boundary-observed','localized-name-slot-boundary-observed']
+           .includes(event.evidence?.type)&&
+         (event.evidence.type!=='localized-name-slot-boundary-observed'||
+           state.localizedTracks!==null)&&
          event.evidence.cueIndex===VISITOR_NAME_SLOT.beforeCueIndex&&
          state.nameInsertionStatus==='waiting')
         patch={nameSlotObserved:true};
@@ -291,6 +294,8 @@ export function reduceOpening(state,event){
          state.speechStatus==='speaking'&&state.nameSynthesisStatus==='ready'&&
          state.nameInsertionStatus==='waiting'&&
          ((state.nameSlotObserved&&event.evidence?.type==='authored-paragraph-boundary-observed')||
+          (state.nameSlotObserved&&state.localizedTracks&&
+           event.evidence?.type==='localized-paragraph-ended-observed')||
           (state.authoredAudioEnded&&event.evidence?.type==='authored-track-ended-observed')))
         patch={nameInsertionStatus:'requested'};
       break;
