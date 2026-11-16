@@ -79,7 +79,7 @@ export function createVioletVoiceEngine({
       active=null;session.playing=false;session.revoke?.();
       emitSafely(session.emit,{type:'SPEECH_FAILED',token:session.token,
         reason:session.kind==='generated'
-          ?'generated Heart audio could not be decoded or played'
+          ?'generated '+session.sourceKind+' audio could not be decoded or played'
           :'authored audio failed to load'});
     });
     media=audio;
