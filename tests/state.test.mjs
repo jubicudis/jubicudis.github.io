@@ -3,7 +3,7 @@ function advanceLocalized(state,to,step){
     const token=state.speechToken;
     state=step(state,'LOCALIZED_CUE_OBSERVED',{token,
       evidence:{type:'localized-pcm-cue-playing',cueIndex:cue}});
-    if(cue<to)state=step(state,'LOCALIZED_CLIP_ENDED',{token,evidence:{
+    state=step(state,'LOCALIZED_CLIP_ENDED',{token,evidence:{
       type:'localized-pcm-ended-observed',source:'observed-generated-piper-audio',
       assetId:'generated-piper:'+token,cueIndex:cue}});
   }
