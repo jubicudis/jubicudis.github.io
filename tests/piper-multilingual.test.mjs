@@ -17,13 +17,13 @@ function wav({peak=.24,frames=1000,rate=22050}={}){
 test('each selected locale has one primary language-specific voice, no alternate',()=>{
   assert.equal(piperVoiceForLocale('es-VE').voiceId,'es_MX-ald-medium');
   assert.equal(piperVoiceForLocale('fr-FR').voiceId,'fr_FR-siwis-medium');
-  assert.equal(piperVoiceForLocale('hi-IN').voiceId,'hi_IN-priyamvada-medium');
+  assert.equal(piperVoiceForLocale('hi-IN'),null);
   assert.equal(piperVoiceForLocale('ja-JP'),null);
 });
 test('Piper adapter produces qualified RIFF PCM from the configured engine',async()=>{
   let spoken=null;
   const adapter=await createBrowserPiperAdapter('es-VE',{loadModule:async()=>({
-    voices:async()=>({'es_MX-ald-medium':{}}),
+    voices:async()=>[{key:'es_MX-ald-medium'}],
     predict:async args=>{spoken=args;return new Blob([wav()],{type:'audio/wav'});}
   })});
   assert.equal(adapter.supports('es','es_MX-ald-medium'),true);
@@ -36,7 +36,7 @@ test('Piper adapter produces qualified RIFF PCM from the configured engine',asyn
 });
 test('missing selected voice fails; no substitute voice',async()=>{
   await assert.rejects(()=>createBrowserPiperAdapter('es-VE',{loadModule:async()=>({
-    voices:async()=>({'es_ES-davefx-medium':{}}),predict:async()=>new Blob([wav()])
+    voices:async()=>[{key:'es_ES-davefx-medium'}],predict:async()=>new Blob([wav()])
   })}),/not in the voice catalogue/);
 });
 test('silent and invalid model output never qualifies as audio',()=>{
