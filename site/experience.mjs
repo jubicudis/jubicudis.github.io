@@ -50,6 +50,10 @@ async function playLocalizedTrack(state){
       if(track==='after-name'&&i===NAME_SLOT.beforeCueIndex&&visitorName){
         const line=localizedPresentation.nameLine(visitorName);
         store.dispatch({type:'LOCALIZED_NAME_LINE_READY',token,text:line});
+        // The preceding localized cue finished on the real media 'ended'
+        // event before this insertion is requested.
+        store.dispatch({type:'NAME_SLOT_OBSERVED',token,
+          evidence:{type:'localized-name-slot-boundary-observed',cueIndex:i}});
         store.dispatch({type:'NAME_SYNTHESIS_STARTED',token});
         // Synthesis readiness is observed after actual PCM generation.
         // Playback evidence is established independently. The
@@ -79,7 +83,11 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
   if(first&&first.text===text)qualifiedFirstLocalizedClip=null;
   if(store.getState().speechToken!==token||document.hidden)
     throw new Error('Localized narration session interrupted');
-  if(name)store.dispatch({type:'NAME_SYNTHESIS_READY',token});
+  if(name){
+    store.dispatch({type:'NAME_SYNTHESIS_READY',token});
+    store.dispatch({type:'NAME_INSERTION_REQUESTED',token,
+      evidence:{type:'localized-paragraph-ended-observed'}});
+  }
   await new Promise((resolve,reject)=>{
     let started=false,cueObserved=false;
     const onPosition=observation=>{
@@ -116,12 +124,8 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
               evidence:{type:'localized-pcm-cue-playing',cueIndex}});
           }
           if(name){
-            store.dispatch({type:'LOCALIZED_CUE_OBSERVED',token,
-              evidence:{type:'localized-pcm-cue-playing',cueIndex:nameCueIndex}});
-            store.dispatch({type:'NAME_SLOT_OBSERVED',token,
-              evidence:{type:'authored-name-slot-boundary-observed',cueIndex:nameCueIndex}});
-            store.dispatch({type:'NAME_INSERTION_REQUESTED',token,
-              evidence:{type:'authored-paragraph-boundary-observed'}});
+            // The insertion boundary is the observed completion of the
+            // preceding localized cue, not an invented authored-track event.
             store.dispatch({type:'NAME_AUDIO_STARTED',token,
               evidence:{type:'observed-generated-heart-playing'}});
           }
