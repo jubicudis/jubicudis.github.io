@@ -8,9 +8,9 @@ import {HEART_ENVELOPE_URL,validateHeartEnvelope,sampleMeasuredHeartEnvelope}
   from './violet-heart-envelope.mjs';
 
 import {prepareQualifiedTranslator,localizeApprovedOpening}
-  from './violet-localization.mjs?v=20261109-name-clauses-04';
-import {createBrowserKokoroAdapter}
-  from './violet-kokoro-multilingual.mjs?v=20261109-catalog-03';
+  from './violet-localization.mjs?v=20261115-language-models-01';
+import {createBrowserPiperAdapter,piperVoiceForLocale}
+  from './violet-piper-multilingual.mjs?v=20261115-piper-primary-01';
 import {OPENING_TRACKS,VISITOR_NAME_SLOT as NAME_SLOT}
   from './opening-script.mjs?v=20261108-name-slot-21';
 
@@ -478,11 +478,18 @@ const localizedReady=(async()=>{
   const locale=store.getState().browserLocale;
   if(!locale||locale.split('-')[0]==='en')return;
   try{
+    if(!piperVoiceForLocale(locale))
+      throw new Error('No authorized local speech voice for '+locale);
     const translator=await prepareQualifiedTranslator(locale);
-    const [presentation,adapter]=await Promise.all([
-      localizeApprovedOpening(OPENING_TRACKS,NAME_SLOT,translator),
-      createBrowserKokoroAdapter(locale)
-    ]);
+    let presentation;
+    try {
+      presentation=await localizeApprovedOpening(OPENING_TRACKS,NAME_SLOT,translator);
+    } finally {
+      await translator.dispose?.();
+    }
+    // Translation resources are released before loading the speech model.
+    // Both stages must succeed; neither can substitute for the other.
+    const adapter=await createBrowserPiperAdapter(locale);
     // Qualified readiness includes the ability to produce actual audible
     // PCM for the first approved cue, not merely loading a model handle.
     const firstText=presentation.tracks['asking-name'][0].text;
