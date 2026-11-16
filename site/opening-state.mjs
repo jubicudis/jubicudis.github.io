@@ -374,7 +374,10 @@ export function reduceOpening(state,event){
       break;
     case 'SPEECH_ENDED':
       if(event.token===state.speechToken&&state.speaking&&
-          state.speechStatus==='speaking'){
+          state.speechStatus==='speaking'&&
+          (!state.localizedTracks||
+           state.localizedCompletedCue===OPENING_TRACKS[state.track].length-1)&&
+          (state.nameDecision!=='provided'||state.nameAudioCompleted)){
         const segments=OPENING_TRACKS[state.track];
         const last=segments.length-1;
         patch={speaking:false,speechStatus:'completed',
