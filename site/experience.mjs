@@ -162,6 +162,10 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
         if(!authorizedSpeech(token)){resolve();return;}
         if(name)store.dispatch({type:'NAME_AUDIO_ENDED',token,
           evidence:{type:'observed-generated-piper-ended',assetId:'generated-piper:'+token}});
+        else if(Number.isInteger(cueIndex))
+          store.dispatch({type:'LOCALIZED_CLIP_ENDED',token,evidence:{
+            type:'localized-pcm-ended-observed',source:'observed-generated-piper-audio',
+            assetId:'generated-piper:'+token,cueIndex}});
         started?resolve():reject(new Error('Localized audio ended without playing'));
       }
     });
