@@ -1,6 +1,6 @@
-import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261115-localized-seam-31';
+import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261115-authoritative-effects-32';
 import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
-import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261115-native-piper-pitch-29';
+import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261115-source-errors-30';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
   VIOLET_TIMELINE_URL,VIOLET_HEART_CONTINUATION} from './violet-selected-voice.mjs?v=20261106-name-05';
 import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs?v=20261109-kokoro-singlethread-01';
@@ -546,7 +546,7 @@ const localizedReady=(async()=>{
 })();
 store.dispatch({type:'RENDER_STARTED'});
 try{
-  const {createVioletEnvironment}=await import('./violet-environment.mjs?v=20261109-authored-mouth-flow-32');
+  const {createVioletEnvironment}=await import('./violet-environment.mjs?v=20261115-state-gated-animation-33');
   scene=await createVioletEnvironment(document.getElementById('world'),{
     onObserved:evidence=>store.dispatch({type:'RENDER_OBSERVED',evidence}),
     onFailure:error=>store.dispatch({type:'RENDER_FAILED',reason:error.message||String(error)}),
