@@ -474,3 +474,49 @@ test('approved script reserves a later actual spoken-name slot, not the immediat
   }),skipped);
 });
 
+
+test('inference load is reducer-authorized and revoked after completion or interruption',()=>{
+  let state=finishQuestion();
+  state=step(state,'GIVE_NAME',{name:'Jubi'});
+  const token=state.speechToken;
+  assert.equal(step(state,'INFERENCE_STARTED',{token}),state);
+  state=step(state,'NAME_SYNTHESIS_STARTED',{token});
+  state=step(state,'INFERENCE_STARTED',{token});
+  assert.equal(state.inferenceStatus,'active');
+  assert.equal(step(state,'INFERENCE_FINISHED',{token:token-1}),state);
+  state=step(state,'INFERENCE_FINISHED',{token});
+  assert.equal(state.inferenceStatus,'idle');
+  state=step(state,'INFERENCE_STARTED',{token});
+  state=step(state,'SPEECH_INTERRUPTED',{token});
+  assert.equal(state.inferenceStatus,'idle');
+  assert.equal(step(state,'SPEECH_STARTED',{token}),state);
+});
+test('localized seam is observed after cue seven, not after an unplayed cue eight',()=>{
+  let state=step(initialState,'BROWSER_LANGUAGE_OBSERVED',{evidence:{
+    type:'browser-language-observed',locale:'es-VE'
+  }});
+  const translated=Object.fromEntries(Object.entries(OPENING_TRACKS).map(([track,segments])=>
+    [track,segments.map(segment=>({...segment,text:'ES: '+segment.text}))]));
+  state=step(state,'LOCALIZED_NARRATION_READY',{locale:'es-VE',tracks:translated,
+    nameLine:name=>'Ahora, '+name+', veamos más de cerca.'});
+  state=step(state,'RENDER_STARTED');
+  state=step(state,'RENDER_OBSERVED',{evidence:{
+    type:'webgl-pixel-observed',drawCalls:24,nonBackgroundPixel:true
+  }});
+  state=step(state,'VOICE_AVAILABLE',{value:true});
+  state=step(state,'ACTIVATE');
+  state=step(state,'SPEECH_STARTED',{token:state.speechToken});
+  state=step(state,'LOCALIZED_CUE_OBSERVED',{token:state.speechToken,
+    evidence:{type:'localized-pcm-cue-playing',cueIndex:3}});
+  state=step(state,'SPEECH_ENDED',{token:state.speechToken});
+  state=step(state,'GIVE_NAME',{name:'Jubi'});
+  const token=state.speechToken;
+  state=step(state,'SPEECH_STARTED',{token});
+  state=step(state,'LOCALIZED_CUE_OBSERVED',{token,
+    evidence:{type:'localized-pcm-cue-playing',cueIndex:7}});
+  state=step(state,'NAME_SYNTHESIS_STARTED',{token});
+  state=step(state,'NAME_SLOT_OBSERVED',{token,evidence:{
+    type:'localized-name-slot-boundary-observed',cueIndex:8
+  }});
+  assert.equal(state.nameSlotObserved,true);
+});
