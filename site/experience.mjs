@@ -26,7 +26,7 @@ const audioFailure=document.getElementById('audio-failure');
 let scene=null,timeline=null,envelope=null,narrationLoadFailure=null,activeNameAudio=null;
 let preparedName=null,nameSynthesisError=null,pendingNameBoundary=null;
 let localizedPresentation=null,localizedAdapter=null,localizedFailure=null;
-let qualifiedFirstLocalizedClip=null;
+const qualifiedLocalizedOpeningClips=new Map();
 let observeAuthoredPosition=null;
 let localizedFrameObserver=null;
 const store=createOpeningStore(render);
@@ -74,13 +74,11 @@ async function playLocalizedTrack(state){
   }
 }
 async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueIndex=null}={}){
-  // The first clip was actually synthesized and validated before activation.
-  // Reuse that observed PCM instead of delaying the first Safari play()
-  // behind model inference after the visitor gesture.
-  const first=qualifiedFirstLocalizedClip;
-  const generated=first&&first.text===text
-    ?first.audio:await localizedAdapter.synthesize(text);
-  if(first&&first.text===text)qualifiedFirstLocalizedClip=null;
+  // Each track begins with PCM genuinely synthesized before activation.
+  // Reuse its verified buffer synchronously on a visitor gesture, including
+  // replays, rather than trying to open a new audio session after inference.
+  const verifiedOpening=qualifiedLocalizedOpeningClips.get(text);
+  const generated=verifiedOpening||await localizedAdapter.synthesize(text);
   if(store.getState().speechToken!==token||document.hidden)
     throw new Error('Localized narration session interrupted');
   if(name){
@@ -496,11 +494,13 @@ const localizedReady=(async()=>{
     const adapter=await createBrowserPiperAdapter(locale);
     // Qualified readiness includes the ability to produce actual audible
     // PCM for the first approved cue, not merely loading a model handle.
-    const firstText=presentation.tracks['asking-name'][0].text;
-    const firstAudio=await adapter.synthesize(firstText);
-    if(!(firstAudio.wav instanceof ArrayBuffer)||firstAudio.wav.byteLength<=44)
-      throw new Error('Localized first cue produced no playable audio');
-    qualifiedFirstLocalizedClip={text:firstText,audio:firstAudio};
+    for(const track of ['asking-name','after-name']){
+      const text=presentation.tracks[track][0].text;
+      const firstAudio=await adapter.synthesize(text);
+      if(!(firstAudio.wav instanceof ArrayBuffer)||firstAudio.wav.byteLength<=44)
+        throw new Error('Localized '+track+' opening produced no playable audio');
+      qualifiedLocalizedOpeningClips.set(text,firstAudio);
+    }
     localizedPresentation=presentation;
     localizedAdapter=adapter;
     store.dispatch({type:'LOCALIZED_NARRATION_READY',
@@ -508,7 +508,7 @@ const localizedReady=(async()=>{
     store.dispatch({type:'VOICE_AVAILABLE',value:true});
   }catch(error){
     localizedFailure=String(error?.message||error);
-    qualifiedFirstLocalizedClip=null;
+    qualifiedLocalizedOpeningClips.clear();
     store.dispatch({type:'LOCALIZED_NARRATION_FAILED',
       locale,reason:localizedFailure});
     store.dispatch({type:'VOICE_AVAILABLE',value:false});
