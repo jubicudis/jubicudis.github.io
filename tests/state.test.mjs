@@ -1,3 +1,14 @@
+function advanceLocalized(state,to,step){
+  for(let cue=0;cue<=to;cue++){
+    const token=state.speechToken;
+    state=step(state,'LOCALIZED_CUE_OBSERVED',{token,
+      evidence:{type:'localized-pcm-cue-playing',cueIndex:cue}});
+    if(cue<to)state=step(state,'LOCALIZED_CLIP_ENDED',{token,evidence:{
+      type:'localized-pcm-ended-observed',source:'observed-generated-piper-audio',
+      assetId:'generated-piper:'+token,cueIndex:cue}});
+  }
+  return state;
+}
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initialState,reduceOpening,openingMessage,nameChoiceReady}
@@ -506,14 +517,12 @@ test('localized seam is observed after cue seven, not after an unplayed cue eigh
   state=step(state,'VOICE_AVAILABLE',{value:true});
   state=step(state,'ACTIVATE');
   state=step(state,'SPEECH_STARTED',{token:state.speechToken});
-  state=step(state,'LOCALIZED_CUE_OBSERVED',{token:state.speechToken,
-    evidence:{type:'localized-pcm-cue-playing',cueIndex:3}});
+  state=advanceLocalized(state,3,step);
   state=step(state,'SPEECH_ENDED',{token:state.speechToken});
   state=step(state,'GIVE_NAME',{name:'Jubi'});
   const token=state.speechToken;
   state=step(state,'SPEECH_STARTED',{token});
-  state=step(state,'LOCALIZED_CUE_OBSERVED',{token,
-    evidence:{type:'localized-pcm-cue-playing',cueIndex:7}});
+  state=advanceLocalized(state,7,step);
   state=step(state,'NAME_SYNTHESIS_STARTED',{token});
   state=step(state,'NAME_SLOT_OBSERVED',{token,evidence:{
     type:'localized-name-slot-boundary-observed',cueIndex:8
