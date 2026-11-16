@@ -1,6 +1,6 @@
 // Browser-language localization capability. No server translation, invented
 // translations or prerecorded language-specific audio assets.
-// The browser must actually expose an on-device Translator implementation.
+// Translation uses one configured browser-side model per selected language.
 export function observeBrowserLanguage(browser=globalThis.navigator){
   const value=(browser?.languages||[]).find(x=>typeof x==='string'&&x.trim())||
     browser?.language||'en-US';
@@ -14,7 +14,10 @@ export const LOCAL_TRANSLATION_MODELS=Object.freeze({
   es:'Xenova/opus-mt-en-es',
   fr:'Xenova/opus-mt-en-fr',
   it:'Xenova/opus-mt-en-it',
-  pt:'Xenova/opus-mt-en-ROMANCE'
+  pt:'Xenova/opus-mt-en-ROMANCE',
+  hi:'Xenova/opus-mt-en-hi',
+  ja:'Xenova/opus-mt-en-jap',
+  zh:'Xenova/opus-mt-en-zh'
 });
 export async function prepareTransformersTranslator(locale,{
   loadModule=()=>import(TRANSFORMERS_MODULE)
@@ -27,12 +30,17 @@ export async function prepareTransformersTranslator(locale,{
   const translate=await pipeline('translation',model,{device:'wasm'});
   return Object.freeze({locale,language,kind:'transformers-wasm',model,
     translate:async text=>{
-      const result=await translate(text);
+      // The multi-target Romance model requires an explicit target token.
+      const target=language==='pt'?(locale.toLowerCase()==='pt-br'?'pt_BR':
+        locale.toLowerCase()==='pt-pt'?'pt_PT':'pt'):null;
+      const input=target?'>>'+target+'<< '+text:text;
+      const result=await translate(input);
       const output=Array.isArray(result)?result[0]?.translation_text:null;
       if(typeof output!=='string'||!output.trim())
         throw new Error('Transformers.js translation returned no text');
       return output.trim();
-    }
+    },
+    dispose:async()=>{if(typeof translate.dispose==='function')await translate.dispose();}
   });
 }
 export async function prepareQualifiedTranslator(locale,options={}){
@@ -91,10 +99,8 @@ export async function localizeApprovedOpening(openingTracks,nameSlot,translator)
   // Translate the two authorized clauses separately. The visitor name
   // never enters the translation model, so no opaque placeholder can be
   // dropped, rewritten, or mispronounced as part of the sentence.
-  const [opening,invitation]=await Promise.all([
-    translator.translate('Now,'),
-    translator.translate("let's take a closer look.")
-  ]);
+  const opening=await translator.translate('Now,');
+  const invitation=await translator.translate("let's take a closer look.");
   if(!opening.trim()||!invitation.trim())
     throw new Error('Translated name invitation is incomplete');
   const named=opening.trim()+' {visitor}, '+invitation.trim();
