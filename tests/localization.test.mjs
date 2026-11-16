@@ -102,3 +102,48 @@ test('Portuguese multilingual translation requests explicit model target and rel
   assert.equal(disposed,true);
   assert.deepEqual(calls,['>>pt_BR<< Hello']);
 });
+
+test('localized name enters only after observed paragraph seven end and verified named PCM',async()=>{
+  const {initialState,reduceOpening}=await import('../site/opening-state.mjs');
+  const send=(state,type,rest={})=>reduceOpening(state,{type,...rest});
+  const translated=Object.fromEntries(Object.entries(OPENING_TRACKS).map(([key,segments])=>
+    [key,segments.map(segment=>({...segment,text:'ES: '+segment.text}))]));
+  let state=send(initialState,'BROWSER_LANGUAGE_OBSERVED',{
+    evidence:{type:'browser-language-observed',locale:'es-VE'}});
+  state=send(state,'LOCALIZED_NARRATION_READY',{
+    locale:'es-VE',tracks:translated,nameLine:name=>'Ahora, '+name+', veamos más de cerca.'});
+  state=send(state,'RENDER_STARTED');
+  state=send(state,'RENDER_OBSERVED',{
+    evidence:{type:'webgl-pixel-observed',nonBackgroundPixel:true,drawCalls:3}});
+  state=send(state,'VOICE_AVAILABLE',{value:true});
+  state=send(state,'ACTIVATE');
+  state=send(state,'SPEECH_STARTED',{token:state.speechToken});
+  state=send(state,'LOCALIZED_CUE_OBSERVED',{token:state.speechToken,
+    evidence:{type:'localized-pcm-cue-playing',cueIndex:3}});
+  state=send(state,'SPEECH_ENDED',{token:state.speechToken});
+  state=send(state,'GIVE_NAME',{name:'María'});
+  const token=state.speechToken;
+  state=send(state,'SPEECH_STARTED',{token});
+  state=send(state,'LOCALIZED_CUE_OBSERVED',{token,
+    evidence:{type:'localized-pcm-cue-playing',cueIndex:7}});
+  state=send(state,'LOCALIZED_NAME_LINE_READY',{token,text:'Ahora, María, veamos más de cerca.'});
+  // No observed ending yet: name insertion is forbidden.
+  state=send(state,'NAME_SYNTHESIS_STARTED',{token});
+  assert.equal(state.nameInsertionStatus,'waiting');
+  assert.equal(send(state,'NAME_INSERTION_REQUESTED',{token,
+    evidence:{type:'localized-paragraph-ended-observed'}}),state);
+  state=send(state,'NAME_SLOT_OBSERVED',{token,
+    evidence:{type:'localized-name-slot-boundary-observed',cueIndex:8}});
+  assert.equal(state.nameSlotObserved,true);
+  state=send(state,'NAME_SYNTHESIS_READY',{token});
+  state=send(state,'NAME_INSERTION_REQUESTED',{token,
+    evidence:{type:'localized-paragraph-ended-observed'}});
+  assert.equal(state.nameInsertionStatus,'requested');
+  state=send(state,'NAME_AUDIO_STARTED',{token,
+    evidence:{type:'observed-generated-heart-playing'}});
+  assert.equal(state.nameAudioPlaying,true);
+  state=send(state,'NAME_AUDIO_ENDED',{token,
+    evidence:{type:'observed-generated-heart-ended',assetId:'generated-heart:'+token}});
+  assert.equal(state.nameAudioCompleted,true);
+  assert.equal(state.nameAudioPlaying,false);
+});
