@@ -140,10 +140,10 @@ test('localized name enters only after observed paragraph seven end and verified
     evidence:{type:'localized-paragraph-ended-observed'}});
   assert.equal(state.nameInsertionStatus,'requested');
   state=send(state,'NAME_AUDIO_STARTED',{token,
-    evidence:{type:'observed-generated-heart-playing'}});
+    evidence:{type:'observed-generated-piper-playing'}});
   assert.equal(state.nameAudioPlaying,true);
   state=send(state,'NAME_AUDIO_ENDED',{token,
-    evidence:{type:'observed-generated-heart-ended',assetId:'generated-heart:'+token}});
+    evidence:{type:'observed-generated-piper-ended',assetId:'generated-piper:'+token}});
   assert.equal(state.nameAudioCompleted,true);
   assert.equal(state.nameAudioPlaying,false);
 });
