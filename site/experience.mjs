@@ -1,6 +1,6 @@
 import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261109-language-state-30';
 import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
-import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261109-no-fake-prime-27';
+import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261115-piper-identity-28';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
   VIOLET_TIMELINE_URL,VIOLET_HEART_CONTINUATION} from './violet-selected-voice.mjs?v=20261106-name-05';
 import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs?v=20261109-kokoro-singlethread-01';
@@ -89,7 +89,7 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
   await new Promise((resolve,reject)=>{
     let started=false,cueObserved=false;
     const onPosition=observation=>{
-      if(!observation?.playing||observation.source!=='observed-generated-heart-audio')return;
+      if(!observation?.playing||observation.source!=='observed-generated-piper-audio')return;
       if(!cueObserved&&Number.isInteger(cueIndex)){
         cueObserved=true;
         store.dispatch({type:'LOCALIZED_CUE_OBSERVED',token,
@@ -111,7 +111,7 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
     };
     localizedFrameObserver=onPosition;
     const session=voice.playGenerated({
-      wav:generated.wav,token,
+      wav:generated.wav,token,sourceKind:'piper',
       emit:event=>{
         if(event.type==='SPEECH_STARTED'){
           started=true;
@@ -125,7 +125,7 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
             // The insertion boundary is the observed completion of the
             // preceding localized cue, not an invented authored-track event.
             store.dispatch({type:'NAME_AUDIO_STARTED',token,
-              evidence:{type:'observed-generated-heart-playing'}});
+              evidence:{type:'observed-generated-piper-playing'}});
           }
         }else if(['SPEECH_FAILED','SPEECH_UNAVAILABLE'].includes(event.type)){
           reject(new Error(event.reason||'Localized audio unavailable'));
@@ -135,7 +135,7 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
       onEnded:()=>{
         if(localizedFrameObserver===onPosition)localizedFrameObserver=null;
         if(name)store.dispatch({type:'NAME_AUDIO_ENDED',token,
-          evidence:{type:'observed-generated-heart-ended',assetId:'generated-heart:'+token}});
+          evidence:{type:'observed-generated-piper-ended',assetId:'generated-piper:'+token}});
         started?resolve():reject(new Error('Localized audio ended without playing'));
       }
     });
