@@ -221,7 +221,7 @@ export function reduceOpening(state,event){
         if(name)patch={phase:'welcome',track:'after-name',cueIndex:0,
           visitorName:name,nameDecision:'provided',enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
-          playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
+          playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,localizedCompletedCue:-1,
           observedSpeechPose:null,observedAudioLevel:0,nameAudioCompleted:false,nameAudioPlaying:false,
           nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',nameSlotObserved:false,nameSeamHeld:false,authoredAudioEnded:false};
       }
@@ -231,7 +231,7 @@ export function reduceOpening(state,event){
         patch={phase:'welcome',track:'after-name',cueIndex:0,
           visitorName:null,nameDecision:'skipped',enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
-          playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
+          playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,localizedCompletedCue:-1,
           observedSpeechPose:null,observedAudioLevel:0,nameAudioCompleted:false,nameAudioPlaying:false,
           nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',nameSlotObserved:false,nameSeamHeld:false,authoredAudioEnded:false};
       break;
