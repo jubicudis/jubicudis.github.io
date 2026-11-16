@@ -29,7 +29,31 @@ let localizedPresentation=null,localizedAdapter=null,localizedFailure=null;
 const qualifiedLocalizedOpeningClips=new Map();
 let observeAuthoredPosition=null;
 let localizedFrameObserver=null;
-const store=createOpeningStore(render);
+// State transitions authorize effects; rendering only projects state.
+const store=createOpeningStore((state,previous,event)=>{
+  render(state,previous,event);
+  runAuthorizedEffects(state,previous,event);
+});
+function authorizedSpeech(token){
+  const state=store.getState();
+  return state.speechToken===token&&
+    ['pending','speaking'].includes(state.speechStatus)&&
+    state.renderStatus==='observed'&&state.voiceSupported===true&&
+    state.languageStatus==='qualified'&&!document.hidden;
+}
+function runAuthorizedEffects(state,previous,event){
+  scene?.setInferenceMode?.(state.inferenceStatus==='active');
+  if(previous?.speechToken!==state.speechToken&&
+     state.speechStatus==='pending'&&authorizedSpeech(state.speechToken)){
+    beginSpeech(state);
+  }
+  if(['failed','unavailable','interrupted','completed'].includes(state.speechStatus)&&
+     previous?.speechStatus!==state.speechStatus){
+    if(state.speechStatus!=='completed')voice.cancel('state-revoked-speech');
+    localizedFrameObserver=null;
+    observeAuthoredPosition=null;
+  }
+}
 const observedBrowserLocale=(navigator.languages||[])
   .find(value=>typeof value==='string'&&value.trim())||
   navigator.language||'en-US';
@@ -45,7 +69,7 @@ async function playLocalizedTrack(state){
   const visitorName=state.visitorName;
   try{
     for(let i=0;i<segments.length;i++){
-      if(store.getState().speechToken!==token||document.hidden)return;
+      if(!authorizedSpeech(token))return;
       // The name is a separate synthesized line at the approved seam.
       if(track==='after-name'&&i===NAME_SLOT.beforeCueIndex&&visitorName){
         const line=localizedPresentation.nameLine(visitorName);
@@ -66,7 +90,7 @@ async function playLocalizedTrack(state){
        store.getState().speechStatus==='speaking')
       store.dispatch({type:'SPEECH_ENDED',token});
   }catch(error){
-    if(store.getState().speechToken!==token)return;
+    if(!authorizedSpeech(token))return;
     localizedFailure=String(error?.message||error);
     localizedFrameObserver=null;
     voice.cancel('localized-narration-failed');
@@ -79,7 +103,7 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
   // replays, rather than trying to open a new audio session after inference.
   const verifiedOpening=qualifiedLocalizedOpeningClips.get(text);
   const generated=verifiedOpening||await localizedAdapter.synthesize(text);
-  if(store.getState().speechToken!==token||document.hidden)
+  if(!authorizedSpeech(token))
     throw new Error('Localized narration session interrupted');
   if(name){
     store.dispatch({type:'NAME_SYNTHESIS_READY',token});
@@ -89,7 +113,8 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
   await new Promise((resolve,reject)=>{
     let started=false,cueObserved=false;
     const onPosition=observation=>{
-      if(!observation?.playing||observation.source!=='observed-generated-piper-audio')return;
+      if(!authorizedSpeech(token)||!observation?.playing||
+         observation.source!=='observed-generated-piper-audio')return;
       if(!cueObserved&&Number.isInteger(cueIndex)){
         cueObserved=true;
         store.dispatch({type:'LOCALIZED_CUE_OBSERVED',token,
@@ -113,6 +138,7 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
     const session=voice.playGenerated({
       wav:generated.wav,token,sourceKind:'piper',
       emit:event=>{
+        if(!authorizedSpeech(token))return;
         if(event.type==='SPEECH_STARTED'){
           started=true;
           store.dispatch(event);
@@ -134,6 +160,7 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
       onPosition,
       onEnded:()=>{
         if(localizedFrameObserver===onPosition)localizedFrameObserver=null;
+        if(!authorizedSpeech(token)){resolve();return;}
         if(name)store.dispatch({type:'NAME_AUDIO_ENDED',token,
           evidence:{type:'observed-generated-piper-ended',assetId:'generated-piper:'+token}});
         started?resolve():reject(new Error('Localized audio ended without playing'));
@@ -152,7 +179,7 @@ function playApprovedTrack(state,{resumeAtMs=0,continueAfterGenerated=false}={})
   if(!selected||!timeline)throw new Error('No qualified Heart audio for authorized state');
   const source=selected.src;
   const onPosition=observation=>{
-    if(observation.assetId!==source||
+    if(!authorizedSpeech(state.speechToken)||observation.assetId!==source||
        observation.source!=='observed-authored-audio'||!observation.playing)return;
     const cue=cueAtObservedPosition(timeline,selected.track,observation.elapsedMs);
     if(!cue)return;
@@ -196,6 +223,7 @@ function playApprovedTrack(state,{resumeAtMs=0,continueAfterGenerated=false}={})
     token:state.speechToken,startAtMs:resumeAtMs,
     continueAfterGenerated,
     emit:event=>{
+      if(!authorizedSpeech(state.speechToken))return;
       if(event.type==='SPEECH_ENDED'&&state.nameDecision==='provided'&&
          !store.getState().nameAudioCompleted&&
          store.getState().nameSynthesisStatus!=='failed'){
@@ -213,7 +241,7 @@ function playApprovedTrack(state,{resumeAtMs=0,continueAfterGenerated=false}={})
 }
 
 function requestNameInsertion(state,resumeAtMs,evidenceType){
-  if(!preparedName||state.nameInsertionStatus!=='waiting'||
+  if(!authorizedSpeech(state.speechToken)||!preparedName||state.nameInsertionStatus!=='waiting'||
      state.nameSynthesisStatus!=='ready')return;
   store.dispatch({type:'NAME_INSERTION_REQUESTED',token:state.speechToken,
     evidence:{type:evidenceType}});
@@ -235,7 +263,7 @@ function requestNameInsertion(state,resumeAtMs,evidenceType){
     },
     onEnded:()=>{
       const observed=store.getState();
-      if(observed.speechToken!==token)return;
+      if(!authorizedSpeech(token))return;
       store.dispatch({type:'NAME_AUDIO_ENDED',token,
         evidence:{type:'observed-generated-heart-ended',assetId:'generated-heart:'+token}});
       activeNameAudio=null;
@@ -253,6 +281,7 @@ function requestNameInsertion(state,resumeAtMs,evidenceType){
 }
 
 async function beginSpeech(state){
+  if(!authorizedSpeech(state.speechToken))return;
   if(localizedPresentation&&state.presentationLocale===localizedPresentation.locale){
     await playLocalizedTrack(state);
     return;
@@ -268,7 +297,7 @@ async function beginSpeech(state){
   store.dispatch({type:'NAME_SYNTHESIS_STARTED',token});
   // The iPhone shares GPU memory with the browser's Heart WASM worker.
   const constrained=/iPhone|iPad|iPod/.test(navigator.userAgent)&&/AppleWebKit/.test(navigator.userAgent);
-  if(constrained)scene?.setInferenceMode?.(true);
+  if(constrained)store.dispatch({type:'INFERENCE_STARTED',token});
   try{
     const generated=await synthesizeHeartName(state.visitorName);
     const current=store.getState();
@@ -303,7 +332,7 @@ async function beginSpeech(state){
       reason:'Named Heart narration unavailable: '+nameSynthesisError});
     voice.cancel('name-synthesis-failed');
   }finally{
-    if(constrained)scene?.setInferenceMode?.(false);
+    if(constrained)store.dispatch({type:'INFERENCE_FINISHED',token});
   }
 }
 
@@ -419,10 +448,7 @@ function render(state,previous,event){
   // Captions remain inside the shared presentation, not a separate chat UI.
   caption.textContent=openingMessage(state);
   form.hidden=!nameChoiceReady(state);
-  if(previous?.speechToken!==state.speechToken&&state.speechStatus==='pending'){
-    beginSpeech(state);
-    activate.hidden=true;
-  }
+
 }
 activate.addEventListener('click',()=>{
   const state=store.getState();
@@ -514,7 +540,7 @@ const localizedReady=(async()=>{
     store.dispatch({type:'LOCALIZED_NARRATION_FAILED',
       locale,reason:localizedFailure});
     store.dispatch({type:'VOICE_AVAILABLE',value:false});
-    render(store.getState(),store.getState());
+
   }
 })();
 store.dispatch({type:'RENDER_STARTED'});
