@@ -274,7 +274,9 @@ export function reduceOpening(state,event){
     case 'NAME_SLOT_OBSERVED':
       if(event.token===state.speechToken&&state.nameDecision==='provided'&&
          state.track===VISITOR_NAME_SLOT.track&&state.speechStatus==='speaking'&&
-         state.cueIndex>=VISITOR_NAME_SLOT.beforeCueIndex&&
+         (state.cueIndex>=VISITOR_NAME_SLOT.beforeCueIndex||
+           (state.localizedTracks&&state.cueIndex===VISITOR_NAME_SLOT.afterCueIndex&&
+            event.evidence?.type==='localized-name-slot-boundary-observed'))&&
          ['authored-name-slot-boundary-observed','localized-name-slot-boundary-observed']
            .includes(event.evidence?.type)&&
          (event.evidence.type!=='localized-name-slot-boundary-observed'||
