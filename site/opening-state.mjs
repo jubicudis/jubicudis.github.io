@@ -29,6 +29,7 @@ export const initialState=Object.freeze({
   browserLocale:null,presentationLocale:null,languageStatus:'unobserved',
   localizedTracks:null,localizedNameLine:null,localizedAudioPositionMs:null,
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
+  inferenceStatus:'idle',
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',speechFailureReason:null,
   playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,
   observedSpeechPose:null,observedAudioLevel:0,bloomMotion:STILL_BLOOM,flowPhase:0,bodyMotionMode:'flow',visualExpression:'rest',nameAudioCompleted:false,nameAudioPlaying:false,nameSynthesisStatus:'not-requested',
@@ -65,6 +66,15 @@ export function reduceOpening(state,event){
   const when=Number.isFinite(event.at)?event.at:null;
   let patch=null;
   switch(event.type){
+    case 'INFERENCE_STARTED':
+      if(event.token===state.speechToken&&state.nameDecision==='provided'&&
+         state.nameSynthesisStatus==='generating'&&state.inferenceStatus==='idle')
+        patch={inferenceStatus:'active'};
+      break;
+    case 'INFERENCE_FINISHED':
+      if(event.token===state.speechToken&&state.inferenceStatus==='active')
+        patch={inferenceStatus:'idle'};
+      break;
     case 'IDLE_FRAME_OBSERVED':
       if(state.renderStatus==='observed'&&
          event.evidence?.type==='observed-animation-frame'&&
@@ -158,7 +168,9 @@ export function reduceOpening(state,event){
           renderFailure:event.reason.slice(0,240)};
       break;
     case 'VOICE_AVAILABLE':
-      patch={voiceSupported:event.value===true};
+      if(state.phase==='dormant'&&state.renderStatus!=='failed'&&
+         (event.value===false||state.languageStatus==='qualified'))
+        patch={voiceSupported:event.value===true};
       break;
     case 'ACTIVATE':
       if(state.phase==='dormant'&&state.renderStatus==='observed'&&state.voiceSupported===true&&state.languageStatus==='qualified')
@@ -211,7 +223,8 @@ export function reduceOpening(state,event){
       break;
     case 'SPEECH_STARTED':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
-          state.speechStatus==='pending')
+          state.speechStatus==='pending'&&state.renderStatus==='observed'&&
+          state.voiceSupported===true&&state.languageStatus==='qualified')
         patch={speaking:true,speechStatus:'speaking'};
       break;
     case 'GENERATED_VISEME_OBSERVED':
@@ -369,7 +382,7 @@ export function reduceOpening(state,event){
     case 'SPEECH_INTERRUPTED':
       if(event.token===state.speechToken&&state.phase!=='dormant'&&
           ['speaking','pending'].includes(state.speechStatus))
-        patch={speaking:false,speechStatus:'interrupted',observedSpeechPose:null,
+        patch={speaking:false,speechStatus:'interrupted',inferenceStatus:'idle',observedSpeechPose:null,
           speechFailureReason:String(event.reason||'Page or audio interruption').slice(0,280)};
       break;
   }
