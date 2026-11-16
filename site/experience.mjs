@@ -50,11 +50,11 @@ async function playLocalizedTrack(state){
       if(track==='after-name'&&i===NAME_SLOT.beforeCueIndex&&visitorName){
         const line=localizedPresentation.nameLine(visitorName);
         store.dispatch({type:'LOCALIZED_NAME_LINE_READY',token,text:line});
+        store.dispatch({type:'NAME_SYNTHESIS_STARTED',token});
         // The preceding localized cue finished on the real media 'ended'
         // event before this insertion is requested.
         store.dispatch({type:'NAME_SLOT_OBSERVED',token,
           evidence:{type:'localized-name-slot-boundary-observed',cueIndex:i}});
-        store.dispatch({type:'NAME_SYNTHESIS_STARTED',token});
         // Synthesis readiness is observed after actual PCM generation.
         // Playback evidence is established independently. The
         // localized name slot is observed only when the generated PCM plays.
