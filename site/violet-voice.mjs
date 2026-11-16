@@ -204,13 +204,16 @@ export function createVioletVoiceEngine({
   // The full presentation completes only after the separate approved Heart
   // continuation has actually played; generated welcome completion alone
   // must never manufacture the final SPEECH_ENDED state.
-  function playGenerated({wav,token,emit,onPosition,onEnded,insertAfterAuthored=false}){
+  function playGenerated({wav,token,emit,onPosition,onEnded,insertAfterAuthored=false,
+    sourceKind='heart'}){
     if(insertAfterAuthored&&active?.kind==='authored'&&active.token===token){
       active=null;media.pause();
     }else if(insertAfterAuthored&&active===null){
       // A genuinely observed authored end leaves no active media session.
       // The same narration token continues without a synthetic interruption.
     }else cancel('replaced');
+    if(!['heart','piper'].includes(sourceKind))
+      throw new TypeError('Unrecognized generated audio source');
     if(!(wav instanceof ArrayBuffer)||wav.byteLength<=44||!Number.isSafeInteger(token))
       throw new TypeError('Generated speech requires qualified WAV and current token');
     if(!AudioCtor||typeof URL==='undefined'||typeof URL.createObjectURL!=='function'){
@@ -230,7 +233,8 @@ export function createVioletVoiceEngine({
       audio.preservesPitch=false;
       audio.playbackRate=1.08;
       const session={kind:'generated',audio,token,emit,
-        src:'generated-heart:'+token,playing:false,revoke,onPosition,onEnded};
+        src:'generated-'+sourceKind+':'+token,sourceKind,
+        playing:false,revoke,onPosition,onEnded};
       active=session;
       const request=audio.play();
       if(request&&typeof request.catch==='function')request.catch(error=>{
@@ -239,7 +243,7 @@ export function createVioletVoiceEngine({
         emitSafely(emit,{type:'SPEECH_FAILED',token,
           reason:String(error?.message||error)});
       });
-      return Object.freeze({source:'generated-heart',token,assetId:session.src});
+      return Object.freeze({source:'generated-'+sourceKind,token,assetId:session.src});
     }catch(error){
       active=null;revoke();
       emitSafely(emit,{type:'SPEECH_FAILED',token,reason:String(error?.message||error)});
@@ -283,7 +287,7 @@ export function createVioletVoiceEngine({
     const seconds=active.audio.currentTime;
     if(!Number.isFinite(seconds)||seconds<0)return null;
     return Object.freeze({type:'generated-playback-position-observed',
-      source:'observed-generated-heart-audio',
+      source:'observed-generated-'+active.sourceKind+'-audio',
       assetId:active.src,token,playing:true,elapsedMs:seconds*1000});
   }
   // This reads a qualified browser audio clock; no timer guesses how far
