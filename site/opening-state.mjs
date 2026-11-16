@@ -28,6 +28,7 @@ export const initialState=Object.freeze({
   phase:'dormant',track:null,cueIndex:0,visitorName:null,nameDecision:null,
   browserLocale:null,presentationLocale:null,languageStatus:'unobserved',
   localizedTracks:null,localizedNameLine:null,localizedAudioPositionMs:null,
+  localizedCompletedCue:-1,
   renderStatus:'uninitialized',renderEvidence:null,renderFailure:null,
   inferenceStatus:'idle',
   speaking:false,speechToken:0,voiceSupported:null,speechStatus:'not-requested',speechFailureReason:null,
@@ -137,12 +138,25 @@ export function reduceOpening(state,event){
           observedAudioLevel:event.evidence.level,
           observedSpeechPose:event.evidence.level>20?'viseme-open':'viseme-closed'};
       break;
+    case 'LOCALIZED_CLIP_ENDED':
+      if(state.localizedTracks&&state.speechStatus==='speaking'&&
+         event.token===state.speechToken&&
+         event.evidence?.type==='localized-pcm-ended-observed'&&
+         event.evidence.source==='observed-generated-piper-audio'&&
+         event.evidence.assetId==='generated-piper:'+state.speechToken&&
+         Number.isInteger(event.evidence.cueIndex)&&
+         event.evidence.cueIndex===state.cueIndex&&
+         event.evidence.cueIndex===state.localizedCompletedCue+1)
+        patch={localizedCompletedCue:event.evidence.cueIndex};
+      break;
     case 'LOCALIZED_CUE_OBSERVED':
       if(state.localizedTracks&&state.speechStatus==='speaking'&&
          event.token===state.speechToken&&
          event.evidence?.type==='localized-pcm-cue-playing'&&
          Number.isInteger(event.evidence.cueIndex)&&
          event.evidence.cueIndex>=state.cueIndex&&
+         (event.evidence.cueIndex===0||
+          state.localizedCompletedCue===event.evidence.cueIndex-1)&&
          event.evidence.cueIndex<OPENING_TRACKS[state.track].length){
         const segment=OPENING_TRACKS[state.track][event.evidence.cueIndex];
         patch={cueIndex:event.evidence.cueIndex,phase:segment.phase,
@@ -176,7 +190,7 @@ export function reduceOpening(state,event){
       if(state.phase==='dormant'&&state.renderStatus==='observed'&&state.voiceSupported===true&&state.languageStatus==='qualified')
         patch={phase:'asking-name',track:'asking-name',cueIndex:0,enteredAt:when,
           speaking:false,speechStatus:'pending',speechToken:state.speechToken+1,
-          playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,localizedAudioPositionMs:null,
+          playbackPositionMs:null,generatedPositionMs:null,envelopePositionMs:null,localizedAudioPositionMs:null,localizedCompletedCue:-1,
           observedSpeechPose:null,observedAudioLevel:0,nameAudioCompleted:false,nameAudioPlaying:false,
           nameSynthesisStatus:'not-requested',nameInsertionStatus:'not-requested',nameSlotObserved:false,nameSeamHeld:false,authoredAudioEnded:false};
       break;
@@ -191,7 +205,7 @@ export function reduceOpening(state,event){
           speaking:false,speechStatus:'pending',speechFailureReason:null,
           speechToken:state.speechToken+1,
           playbackPositionMs:null,generatedPositionMs:null,
-          envelopePositionMs:null,localizedAudioPositionMs:null,
+          envelopePositionMs:null,localizedAudioPositionMs:null,localizedCompletedCue:-1,
           observedSpeechPose:null,observedAudioLevel:0,
           nameAudioCompleted:false,nameAudioPlaying:false,
           nameSynthesisStatus:'not-requested',
