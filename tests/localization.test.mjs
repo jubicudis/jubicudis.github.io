@@ -1,3 +1,14 @@
+function advanceLocalized(state,to,step){
+  for(let cue=0;cue<=to;cue++){
+    const token=state.speechToken;
+    state=step(state,'LOCALIZED_CUE_OBSERVED',{token,
+      evidence:{type:'localized-pcm-cue-playing',cueIndex:cue}});
+    if(cue<to)state=step(state,'LOCALIZED_CLIP_ENDED',{token,evidence:{
+      type:'localized-pcm-ended-observed',source:'observed-generated-piper-audio',
+      assetId:'generated-piper:'+token,cueIndex:cue}});
+  }
+  return state;
+}
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {observeBrowserLanguage,languageTag,prepareDeviceTranslator,
@@ -68,6 +79,13 @@ test('localized approved script is authorized by the reducer and shown in captio
   assert.equal(state.observedSpeechPose,'viseme-open');
   assert.ok(state.bloomMotion.some(p=>p.x!==0));
   state=dispatch(state,'LOCALIZED_CUE_OBSERVED',{token,evidence:{
+    type:'localized-pcm-cue-playing',cueIndex:0
+  }});
+  state=dispatch(state,'LOCALIZED_CLIP_ENDED',{token,evidence:{
+    type:'localized-pcm-ended-observed',source:'observed-generated-piper-audio',
+    assetId:'generated-piper:'+token,cueIndex:0
+  }});
+  state=dispatch(state,'LOCALIZED_CUE_OBSERVED',{token,evidence:{
     type:'localized-pcm-cue-playing',cueIndex:1
   }});
   assert.equal(openingMessage(state),'ES: '+OPENING_TRACKS['asking-name'][1].text);
@@ -118,14 +136,12 @@ test('localized name enters only after observed paragraph seven end and verified
   state=send(state,'VOICE_AVAILABLE',{value:true});
   state=send(state,'ACTIVATE');
   state=send(state,'SPEECH_STARTED',{token:state.speechToken});
-  state=send(state,'LOCALIZED_CUE_OBSERVED',{token:state.speechToken,
-    evidence:{type:'localized-pcm-cue-playing',cueIndex:3}});
+  state=advanceLocalized(state,3,send);
   state=send(state,'SPEECH_ENDED',{token:state.speechToken});
   state=send(state,'GIVE_NAME',{name:'María'});
   const token=state.speechToken;
   state=send(state,'SPEECH_STARTED',{token});
-  state=send(state,'LOCALIZED_CUE_OBSERVED',{token,
-    evidence:{type:'localized-pcm-cue-playing',cueIndex:7}});
+  state=advanceLocalized(state,7,send);
   state=send(state,'LOCALIZED_NAME_LINE_READY',{token,text:'Ahora, María, veamos más de cerca.'});
   // No observed ending yet: name insertion is forbidden.
   state=send(state,'NAME_SYNTHESIS_STARTED',{token});
