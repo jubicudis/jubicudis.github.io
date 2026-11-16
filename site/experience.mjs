@@ -1,6 +1,6 @@
 import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261115-localized-seam-31';
 import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
-import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261115-piper-identity-28';
+import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261115-native-piper-pitch-29';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
   VIOLET_TIMELINE_URL,VIOLET_HEART_CONTINUATION} from './violet-selected-voice.mjs?v=20261106-name-05';
 import {synthesizeHeartName,sampleGeneratedViseme} from './violet-dynamic-name.mjs?v=20261109-kokoro-singlethread-01';
