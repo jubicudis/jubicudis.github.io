@@ -38,6 +38,6 @@ test('WASM Kokoro adapter verifies available voice and real generated PCM',async
 });
 test('model must actually expose the requested voice',async()=>{
   await assert.rejects(()=>createBrowserKokoroAdapter('fr-FR',{loadModule:async()=>({
-    KokoroTTS:{from_pretrained:async()=>({list_voices:()=>['af_heart']})}
+    KokoroTTS:{from_pretrained:async()=>({voices:{af_heart:{}},generate:async()=>{throw Error('unsupported');}})}
   })}),/voice not available/);
 });
