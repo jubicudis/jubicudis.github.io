@@ -14,15 +14,18 @@ test('on-device translator localizes every approved paragraph without replacing 
     availability:async({sourceLanguage,targetLanguage})=>{
       assert.equal(sourceLanguage,'en');assert.equal(targetLanguage,'es');return 'available';
     },
-    create:async()=>({translate:async text=>
-      text.replace('Now,','Ahora,').replace("let's take a closer look.",'veamos más de cerca.').replace(/^/,'ES: ')})
+    create:async()=>({translate:async text=>{
+      if(text==='Now,')return 'Ahora,';
+      if(text==="let's take a closer look.")return 'veamos más de cerca.';
+      return 'ES: '+text;
+    }})
   };
   const translator=await prepareDeviceTranslator('es-VE',{TranslatorAPI:api});
   const localized=await localizeApprovedOpening(OPENING_TRACKS,VISITOR_NAME_SLOT,translator);
   assert.equal(localized.tracks['asking-name'].length,OPENING_TRACKS['asking-name'].length);
   assert.equal(localized.tracks['after-name'].length,OPENING_TRACKS['after-name'].length);
   assert.equal(localized.tracks['after-name'][8].phase,'presentation');
-  assert.equal(localized.nameLine('María'),'ES: Ahora, María, veamos más de cerca.');
+  assert.equal(localized.nameLine('María'),'Ahora, María, veamos más de cerca.');
 });
 test('unsupported on-device translation is explicit, never fabricated',async()=>{
   await assert.rejects(()=>prepareDeviceTranslator('ja-JP',{TranslatorAPI:null}),
@@ -79,4 +82,23 @@ test('configured translation engine failure is not replaced with a second engine
   await assert.rejects(()=>prepareQualifiedTranslator('es-VE',{
     engine:'unapproved'
   }),/Unrecognized authorized translation engine/);
+});
+
+test('Portuguese multilingual translation requests explicit model target and releases resources',async()=>{
+  const {prepareTransformersTranslator}=await import('../site/violet-localization.mjs');
+  const calls=[];
+  let disposed=false;
+  const translator=await prepareTransformersTranslator('pt-BR',{
+    loadModule:async()=>({pipeline:async(kind,model)=>{
+      assert.equal(kind,'translation');
+      assert.equal(model,'Xenova/opus-mt-en-ROMANCE');
+      const translate=async input=>{calls.push(input);return [{translation_text:input}];};
+      translate.dispose=async()=>{disposed=true;};
+      return translate;
+    }})
+  });
+  assert.equal(await translator.translate('Hello'), '>>pt_BR<< Hello');
+  await translator.dispose();
+  assert.equal(disposed,true);
+  assert.deepEqual(calls,['>>pt_BR<< Hello']);
 });
