@@ -6,7 +6,6 @@ export const PIPER_LANGUAGE_VOICES=Object.freeze({
   fr:'fr_FR-siwis-medium',
   it:'it_IT-paola-medium',
   pt:'pt_BR-faber-medium',
-  hi:'hi_IN-priyamvada-medium',
   zh:'zh_CN-huayan-medium'
 });
 export function piperVoiceForLocale(locale){
@@ -54,7 +53,9 @@ export async function createBrowserPiperAdapter(locale,{
   if(typeof tts?.predict!=='function'||typeof tts?.voices!=='function')
     throw new Error('Piper browser speech module unavailable');
   const catalog=await tts.voices();
-  if(!catalog||!Object.prototype.hasOwnProperty.call(catalog,voice.voiceId))
+  // The published Piper voices() API returns Voice[] with a key property,
+  // not an object indexed by voice ID.
+  if(!Array.isArray(catalog)||!catalog.some(entry=>entry?.key===voice.voiceId))
     throw new Error('Configured Piper voice is not in the voice catalogue: '+voice.voiceId);
   return Object.freeze({locale,language:voice.language,voiceId:voice.voiceId,
     supports:(language,id)=>language===voice.language&&id===voice.voiceId,
