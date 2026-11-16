@@ -227,11 +227,11 @@ export function createVioletVoiceEngine({
     try{
       const audio=sharedMedia();
       audio.src=url;
-      // The dynamic visitor-name line receives the same subtle character
-      // pitch lift as the recorded Heart narration. WebKit uses
-      // preservesPitch=false for actual sample-rate pitch movement.
-      audio.preservesPitch=false;
-      audio.playbackRate=1.08;
+      // Only approved English Heart name insertion uses the authored
+      // pitch treatment. A localized Piper voice plays at its generated
+      // native pitch and sample duration, without voice substitution.
+      audio.preservesPitch=sourceKind!=='heart';
+      audio.playbackRate=sourceKind==='heart'?1.08:1;
       const session={kind:'generated',audio,token,emit,
         src:'generated-'+sourceKind+':'+token,sourceKind,
         playing:false,revoke,onPosition,onEnded};
