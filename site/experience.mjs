@@ -1,4 +1,4 @@
-import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261109-language-state-30';
+import {createOpeningStore,openingMessage,nameChoiceReady} from './opening-state.mjs?v=20261115-localized-seam-31';
 import {VISITOR_NAME_SLOT} from './opening-script.mjs?v=20261108-name-slot-21';
 import {createVioletVoiceEngine} from './violet-voice.mjs?v=20261115-piper-identity-28';
 import {resolveVioletOpeningAudio,validateHeartTimeline,cueAtObservedPosition,
@@ -10,7 +10,7 @@ import {HEART_ENVELOPE_URL,validateHeartEnvelope,sampleMeasuredHeartEnvelope}
 import {prepareQualifiedTranslator,localizeApprovedOpening}
   from './violet-localization.mjs?v=20261115-language-models-01';
 import {createBrowserPiperAdapter,piperVoiceForLocale}
-  from './violet-piper-multilingual.mjs?v=20261115-piper-primary-01';
+  from './violet-piper-multilingual.mjs?v=20261115-voices-catalogue-02';
 import {OPENING_TRACKS,VISITOR_NAME_SLOT as NAME_SLOT}
   from './opening-script.mjs?v=20261108-name-slot-21';
 
