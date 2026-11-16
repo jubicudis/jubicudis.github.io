@@ -61,7 +61,6 @@ const canonicalBrowserLocale=observedBrowserLocale.split('@')[0].replace(/_/g,'-
 store.dispatch({type:'BROWSER_LANGUAGE_OBSERVED',
   evidence:{type:'browser-language-observed',locale:canonicalBrowserLocale}});
 const voice=createVioletVoiceEngine();
-activate.disabled=true;
 
 async function playLocalizedTrack(state){
   const token=state.speechToken,track=state.track;
@@ -176,7 +175,8 @@ async function playLocalizedClip(text,token,{cueIndex=null,name=false,nameCueInd
 function playApprovedTrack(state,{resumeAtMs=0,continueAfterGenerated=false}={}){
   observeAuthoredPosition=null;
   const selected=resolveVioletOpeningAudio(state);
-  if(!selected||!timeline)throw new Error('No qualified Heart audio for authorized state');
+  if(!authorizedSpeech(state.speechToken)||!selected||!timeline)
+    throw new Error('No qualified Heart audio for authorized state');
   const source=selected.src;
   const onPosition=observation=>{
     if(!authorizedSpeech(state.speechToken)||observation.assetId!==source||
@@ -282,7 +282,8 @@ function requestNameInsertion(state,resumeAtMs,evidenceType){
 
 async function beginSpeech(state){
   if(!authorizedSpeech(state.speechToken))return;
-  if(localizedPresentation&&state.presentationLocale===localizedPresentation.locale){
+  if(state.localizedTracks&&localizedPresentation&&
+     state.presentationLocale===localizedPresentation.locale){
     await playLocalizedTrack(state);
     return;
   }
@@ -292,7 +293,7 @@ async function beginSpeech(state){
   pendingNameBoundary=null;
   nameSynthesisError=null;
   playApprovedTrack(state);
-  if(state.nameDecision!=='provided')return;
+  if(state.nameDecision!=='provided'||!authorizedSpeech(state.speechToken))return;
   const token=state.speechToken;
   store.dispatch({type:'NAME_SYNTHESIS_STARTED',token});
   // The iPhone shares GPU memory with the browser's Heart WASM worker.
