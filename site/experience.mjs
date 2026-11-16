@@ -443,7 +443,9 @@ skip.addEventListener('click',()=>{
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden)return;
   const current=store.getState();
-  if(current.speechStatus==='pending'&&current.nameDecision==='provided')
+  // Page visibility is actual browser evidence. End the active narration
+  // session even between localized clips, when no media element is playing.
+  if(['pending','speaking'].includes(current.speechStatus))
     store.dispatch({type:'SPEECH_INTERRUPTED',token:current.speechToken});
   activeNameAudio=null;preparedName=null;localizedFrameObserver=null;
   voice.cancel('page-hidden');
