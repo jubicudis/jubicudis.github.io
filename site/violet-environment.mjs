@@ -462,7 +462,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
         mesh.geometry.computeBoundingSphere();
       }
     }
-    let state={phase:'dormant',speaking:false,flowPhase:0};
+    let state=null;
     updateFaceAttachments();
     // Explicit observation requests are served after a real WebGL draw.
     // No independent timer decides when to inspect the scene.
@@ -552,6 +552,9 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     }
     function frame(now){
       if(!live)return;
+      // No animation or audio sampling without a reducer-issued scene state.
+      if(!state){frameRequest=requestAnimationFrame(frame);return;}
+      if(state.renderStatus==='failed')return;
       onAudioFrame?.();
       if(now-lastGpuFrame<(inferenceMode?1000/12:gpuFrameInterval)){
         frameRequest=requestAnimationFrame(frame);
@@ -569,7 +572,7 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
       // The reducer authorizes idle sculptural motion. Time supplies only
       // the physical animation phase, not the choice of presentation mode.
       // During Heart playback the rig follows observed acoustic energy.
-      if(state.bodyMotionMode==='flow'&&onAnimationFrame&&
+      if(state.renderStatus==='observed'&&state.bodyMotionMode==='flow'&&onAnimationFrame&&
          now-lastBodyFrame>=1000/30){
         lastBodyFrame=now;
         onAnimationFrame(Object.freeze({
@@ -645,13 +648,16 @@ export async function createVioletEnvironment(canvas,{onObserved,onFailure,onAud
     frameRequest=requestAnimationFrame(frame);
     return {
       update(next){
+        if(!next||!['uninitialized','initializing','observed','failed'].includes(next.renderStatus))
+          throw new TypeError('Violet renderer requires authorized presentation state');
         state=next;
         // Reducer-observed acoustic or idle influences remain the sole
         // authority for motion. Rendering only smooths their physical response.
         if(next.bloomMotion)motionTarget=next.bloomMotion;
       },
       setInferenceMode(enabled){
-        const next=enabled===true;
+        // Only the state-authorized inference lifecycle may change rendering load.
+        const next=state?.inferenceStatus==='active'&&enabled===true;
         if(next===inferenceMode)return;
         inferenceMode=next;
         resize();
